@@ -18,6 +18,8 @@ if TYPE_CHECKING:
 class GameMode(Enum):
     """Core operational modes of the game engine."""
 
+    WELCOME = auto()
+    CREDITS = auto()
     MAP = auto()
     COMBAT = auto()
     INVENTORY = auto()
@@ -32,8 +34,8 @@ class GameState:
     def __init__(self) -> None:
         self.player: Player = Player(name="Sir Aethelgard")
         self.map_graph: MapGraph = generate_spire_map(num_floors=8, width_lanes=4)
-        self.current_mode: GameMode = GameMode.MAP
-        self.previous_mode: GameMode = GameMode.MAP
+        self.current_mode: GameMode = GameMode.WELCOME
+        self.previous_mode: GameMode = GameMode.WELCOME
 
         self.combat: CombatSystem | None = None
         self.current_event_text: str = ""
