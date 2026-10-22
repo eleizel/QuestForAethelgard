@@ -344,7 +344,7 @@ class WelcomeView(View):
         w, h = SCREEN_WIDTH, SCREEN_HEIGHT
 
         # Display Title
-        pyxel.text(w // 2 - 40, 40, "Quest For Aethelgard", COLOR_YELLOW)
+        pyxel.blt(w // 2 - 32, 30, 0, 0, 112, 64, 16, 0)
 
         # Draw some pixel art sprites from game.pyxres (e.g. hero and enemy sprites)
         # Assuming typical sprites based on existing CombatView usages:
