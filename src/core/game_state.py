@@ -26,6 +26,7 @@ class GameMode(Enum):
     EVENTS = auto()
     GAME_OVER = auto()
     VICTORY = auto()
+    ABILITY_CHOICE = auto()
 
 
 class GameState:
@@ -132,6 +133,10 @@ class GameState:
 
         result = self.combat.step()
         if result == CombatResult.PLAYER_VICTORY:
+            if self.player.pending_ability_choices:
+                self.switch_mode(GameMode.ABILITY_CHOICE)
+                return
+
             current_node = self.map_graph.current_node
             if current_node and current_node.node_type == NodeType.BOSS:
                 self.switch_mode(GameMode.VICTORY)
