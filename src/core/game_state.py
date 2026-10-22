@@ -41,6 +41,7 @@ class GameState:
         self.combat: CombatSystem | None = None
         self.current_event_text: str = ""
         self.floor: int = 1
+        self.act: int = 1
 
         self._seed_starter_kit()
 
@@ -96,7 +97,8 @@ class GameState:
             elif node.node_type == NodeType.BOSS:
                 tier = EnemyTier.BOSS
 
-            enemy = generate_enemy(tier=tier, floor=self.floor)
+            effective_floor = self.floor + (self.act - 1) * 8
+            enemy = generate_enemy(tier=tier, floor=effective_floor)
             self.combat = CombatSystem(player=self.player, enemy=enemy)
             self.switch_mode(GameMode.COMBAT)
 
@@ -139,7 +141,14 @@ class GameState:
 
             current_node = self.map_graph.current_node
             if current_node and current_node.node_type == NodeType.BOSS:
-                self.switch_mode(GameMode.VICTORY)
+                if self.act < 3:
+                    self.act += 1
+                    self.floor = 1
+                    self.map_graph = generate_spire_map(num_floors=8, width_lanes=4)
+                    self.player.heal(9999) # Full heal between acts
+                    self.switch_mode(GameMode.MAP)
+                else:
+                    self.switch_mode(GameMode.VICTORY)
             else:
                 self.switch_mode(GameMode.MAP)
         elif result == CombatResult.PLAYER_DEFEAT:
