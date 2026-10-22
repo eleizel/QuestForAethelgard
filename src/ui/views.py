@@ -33,11 +33,9 @@ class View:
     """Base abstract interface for game screens."""
 
     def update(self, game_state: GameState) -> None:
-        """Handle screen-specific input and state logic."""
         pass
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
-        """Render screen contents."""
         pass
 
 
@@ -46,10 +44,10 @@ class MapView(View):
 
     def update(self, game_state: GameState) -> None:
         available = game_state.map_graph.get_available_nodes()
-        # Allow selecting next node via number keys 1-9
         for idx, node in enumerate(available):
             key = getattr(pyxel, f"KEY_{idx + 1}", None)
             if key and pyxel.btnp(key):
+                pyxel.play(0, 3)  # Sound 3: Menu Click
                 game_state.select_map_node(node.id)
                 break
 
@@ -64,12 +62,11 @@ class MapView(View):
         available_ids = {n.id for n in game_state.map_graph.get_available_nodes()}
         current_id = game_state.map_graph.current_node_id
 
-        # Render connection lines between floors
         total_floors = len(floors)
         lane_w = (SCREEN_WIDTH - 60) // 4
 
+        # Connection lines
         for f_idx, floor in enumerate(floors):
-            # Display bottom floor near bottom, top floor near top
             y_pos = 200 - int((f_idx / max(1, total_floors - 1)) * 140)
             for node in floor:
                 x_pos = 35 + node.lane * lane_w
@@ -81,7 +78,6 @@ class MapView(View):
                         line_col = COLOR_WHITE if (node.id == current_id or node.id in available_ids) else COLOR_NAVY
                         pyxel.line(x_pos + 6, y_pos + 4, out_x + 6, out_y + 4, line_col)
 
-        # Render node icons
         node_icons = {
             NodeType.COMBAT: ("M", COLOR_RED),
             NodeType.ELITE: ("E", COLOR_PURPLE),
@@ -107,7 +103,14 @@ class MapView(View):
 
                 pyxel.rect(x_pos, y_pos, 13, 11, bg_c)
                 pyxel.rectb(x_pos, y_pos, 13, 11, border_c)
-                pyxel.text(x_pos + 4, y_pos + 3, icon_char, color if not is_curr else COLOR_BLACK)
+
+                # 8x8 icons for Rest & Treasure; text fallback for others
+                if node.node_type == NodeType.REST and not is_curr:
+                    pyxel.blt(x_pos + 3, y_pos + 1, 0, 88, 0, 8, 8, 0)
+                elif node.node_type == NodeType.TREASURE and not is_curr:
+                    pyxel.blt(x_pos + 3, y_pos + 1, 0, 96, 0, 8, 8, 0)
+                else:
+                    pyxel.text(x_pos + 4, y_pos + 3, icon_char, color if not is_curr else COLOR_BLACK)
 
                 if is_avail:
                     pyxel.text(x_pos + 3, y_pos - 7, f"[{option_index}]", COLOR_YELLOW)
@@ -115,15 +118,32 @@ class MapView(View):
 
 
 class CombatView(View):
-    """Renders active auto-battle arena, tick gauges, and battle logs."""
+    """Renders active auto-battle arena, sprites, tick gauges, and battle logs."""
 
     def update(self, game_state: GameState) -> None:
         if game_state.combat is None:
             return
 
+        # In-combat quick belt triggers: Keys [1, 2, 3]
+        for idx, key in enumerate((pyxel.KEY_1, pyxel.KEY_2, pyxel.KEY_3)):
+            if pyxel.btnp(key):
+                if game_state.player.inventory.use_belt_item(idx, game_state.player):
+                    pyxel.play(1, 2)  # Sound 2: Potion Heal chime
+                    game_state.combat.combat_logs.append(
+                        f"{game_state.player.name} used belt slot [{idx+1}]!"
+                    )
+
         # Advance combat: space or auto-tick
         if pyxel.btnp(pyxel.KEY_SPACE) or (pyxel.frame_count % 15 == 0):
             game_state.update_combat()
+
+    def _get_enemy_sprite_u(self, enemy_name: str, tier_val: int) -> int:
+        name_lower = enemy_name.lower()
+        if tier_val >= 4 or "lich" in name_lower or "dragon" in name_lower:
+            return 48  # Boss sprite
+        if "goblin" in name_lower or "scavenger" in name_lower or "cultist" in name_lower:
+            return 32  # Goblin sprite
+        return 16      # Skeleton Warrior sprite
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
         renderer.draw_hud(game_state.player, game_state.floor)
@@ -136,42 +156,63 @@ class CombatView(View):
         # Player Stat Panel
         renderer.draw_stat_panel(
             x=10,
-            y=30,
+            y=28,
             w=112,
-            h=80,
+            h=78,
             title=f"{game_state.player.name}",
             stats=game_state.player.effective_stats,
             hp=game_state.player.current_hp,
             max_hp=game_state.player.max_hp,
             color_scheme=COLOR_DARK_BLUE,
         )
+        # Hero sprite
+        pyxel.blt(100, 32, 0, 0, 0, 16, 16, 0)
 
         # Enemy Stat Panel
         renderer.draw_stat_panel(
             x=134,
-            y=30,
+            y=28,
             w=112,
-            h=80,
+            h=78,
             title=f"{combat.enemy.name}",
             stats=combat.enemy.base_stats,
             hp=combat.enemy.current_hp,
             max_hp=combat.enemy.max_hp,
             color_scheme=COLOR_RED if combat.enemy.tier.value >= 3 else COLOR_NAVY,
         )
+        # Enemy sprite
+        enemy_u = self._get_enemy_sprite_u(combat.enemy.name, combat.enemy.tier.value)
+        pyxel.blt(224, 32, 0, enemy_u, 0, 16, 16, 0)
 
         # Action Tick Meter (Player vs Enemy)
-        pyxel.text(10, 116, "Tick Gauges:", COLOR_YELLOW)
-        renderer.draw_bar(10, 126, 112, 6, combat.player_gauge, ACTION_THRESHOLD, fill_col=COLOR_LIGHT_BLUE, bg_col=COLOR_BLACK)
-        renderer.draw_bar(134, 126, 112, 6, combat.enemy_gauge, ACTION_THRESHOLD, fill_col=COLOR_ORANGE, bg_col=COLOR_BLACK)
+        pyxel.text(10, 110, "Tick Gauges:", COLOR_YELLOW)
+        renderer.draw_bar(10, 118, 112, 5, combat.player_gauge, ACTION_THRESHOLD, fill_col=COLOR_LIGHT_BLUE, bg_col=COLOR_BLACK)
+        renderer.draw_bar(134, 118, 112, 5, combat.enemy_gauge, ACTION_THRESHOLD, fill_col=COLOR_ORANGE, bg_col=COLOR_BLACK)
+
+        # In-Combat Quick Belt Display
+        renderer.draw_box(10, 128, SCREEN_WIDTH - 20, 22, bg_col=COLOR_NAVY, border_col=COLOR_DARK_BLUE)
+        pyxel.text(14, 131, "BELT:", COLOR_YELLOW)
+        inv = game_state.player.inventory
+        for b_idx in range(MAX_BELT_SLOTS):
+            bx = 42 + b_idx * 70
+            b_item = inv.belt[b_idx]
+            name = b_item.name[:7] if b_item else "Empty"
+            pyxel.text(bx, 132, f"[{b_idx+1}]", COLOR_YELLOW)
+            if b_item:
+                pyxel.blt(bx + 14, 130, 0, 64, 0, 8, 8, 0)  # Potion sprite
+                pyxel.text(bx + 24, 132, name, COLOR_WHITE)
+                pyxel.text(bx + 24, 140, f"+{b_item.heal_amount}HP", COLOR_LIME)
+            else:
+                pyxel.text(bx + 14, 132, name, COLOR_GRAY)
 
         # Combat activity logs
         renderer.draw_combat_logs(
             logs=combat.combat_logs,
             x=10,
-            y=138,
+            y=154,
             w=SCREEN_WIDTH - 20,
-            h=108,
-            max_entries=10,
+            h=94,
+            max_entries=8,
         )
 
 
@@ -179,13 +220,10 @@ class InventoryView(View):
     """Renders 6+2 Equipment, 10-slot Pouch, and 3-slot Belt."""
 
     def update(self, game_state: GameState) -> None:
-        # Toggle inventory or use belt item [1-3]
-        if pyxel.btnp(pyxel.KEY_1):
-            game_state.player.inventory.use_belt_item(0, game_state.player)
-        elif pyxel.btnp(pyxel.KEY_2):
-            game_state.player.inventory.use_belt_item(1, game_state.player)
-        elif pyxel.btnp(pyxel.KEY_3):
-            game_state.player.inventory.use_belt_item(2, game_state.player)
+        for idx, key in enumerate((pyxel.KEY_1, pyxel.KEY_2, pyxel.KEY_3)):
+            if pyxel.btnp(key):
+                if game_state.player.inventory.use_belt_item(idx, game_state.player):
+                    pyxel.play(1, 2)  # Sound 2: Potion Heal chime
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
         renderer.draw_hud(game_state.player, game_state.floor)
@@ -195,9 +233,6 @@ class InventoryView(View):
 
         inv = game_state.player.inventory
 
-        # Draw 6+2 Equipment layout
-        # 6 Primary Slots: Head, Chest, Hands, Legs, Main Hand, Off Hand
-        # 2 Accessory Slots: Ring, Amulet
         equip_order = [
             EquipSlot.HEAD, EquipSlot.CHEST,
             EquipSlot.HANDS, EquipSlot.LEGS,
@@ -226,9 +261,12 @@ class InventoryView(View):
             name = b_item.name if b_item else "Empty"
             renderer.draw_box(x, y, 70, 18, bg_col=COLOR_NAVY, border_col=COLOR_WHITE)
             pyxel.text(x + 4, y + 3, f"[{b_idx+1}]", COLOR_YELLOW)
-            pyxel.text(x + 18, y + 3, name[:8], COLOR_WHITE)
             if b_item:
-                pyxel.text(x + 18, y + 10, f"+{b_item.heal_amount}HP", COLOR_LIME)
+                pyxel.blt(x + 16, y + 2, 0, 64, 0, 8, 8, 0)
+                pyxel.text(x + 26, y + 3, name[:6], COLOR_WHITE)
+                pyxel.text(x + 26, y + 10, f"+{b_item.heal_amount}HP", COLOR_LIME)
+            else:
+                pyxel.text(x + 18, y + 6, name, COLOR_GRAY)
 
         # 10-Slot Pouch
         pyxel.text(18, 154, f"-- Pouch ({len(inv.pouch)}/{MAX_POUCH_SLOTS} Slots) --", COLOR_YELLOW)
@@ -271,8 +309,7 @@ class EndGameView(View):
 
     def update(self, game_state: GameState) -> None:
         if pyxel.btnp(pyxel.KEY_RETURN):
-            # Restart game state
-            game_state.__init__()  # Reinitialize state
+            game_state.__init__()
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
         pyxel.cls(COLOR_BLACK)
@@ -304,7 +341,6 @@ class ViewManager:
         }
 
     def update(self, game_state: GameState) -> None:
-        # Global key listener for toggling inventory
         if pyxel.btnp(pyxel.KEY_I) or (game_state.current_mode == GameMode.INVENTORY and pyxel.btnp(pyxel.KEY_ESCAPE)):
             game_state.toggle_inventory()
             return

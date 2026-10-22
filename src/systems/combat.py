@@ -6,6 +6,8 @@ import random
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Final
 
+import pyxel
+
 if TYPE_CHECKING:
     from src.entities.enemy import Enemy
     from src.entities.player import Player
@@ -77,9 +79,11 @@ class CombatSystem:
             self.result = CombatResult.PLAYER_VICTORY
             self.combat_logs.append(f"{self.enemy.name} was defeated!")
             self._distribute_rewards()
+            pyxel.play(0, 4)  # Sound 4: Victory fanfare
         elif not self.player.is_alive:
             self.result = CombatResult.PLAYER_DEFEAT
             self.combat_logs.append(f"{self.player.name} succumbed to injuries...")
+            pyxel.play(0, 5)  # Sound 5: Defeat sting
 
         return self.result
 
@@ -89,6 +93,10 @@ class CombatSystem:
         raw_dmg, is_crit = self.player.calculate_attack(self.rng)
         crit_str = " (CRITICAL HIT!)" if is_crit else ""
         dmg_dealt = self.enemy.take_damage(raw_dmg)
+
+        # Audio feedback: Sound 1 (Crit) or Sound 0 (Hit)
+        pyxel.play(0, 1 if is_crit else 0)
+
         self.combat_logs.append(
             f"[Tick {self.current_tick}] {self.player.name} attacks {self.enemy.name} "
             f"for {dmg_dealt} dmg{crit_str}. ({self.enemy.current_hp}/{self.enemy.max_hp} HP)"
@@ -100,6 +108,10 @@ class CombatSystem:
         raw_dmg, is_crit = self.enemy.calculate_attack(self.rng)
         crit_str = " (CRITICAL HIT!)" if is_crit else ""
         dmg_dealt = self.player.take_damage(raw_dmg)
+
+        # Audio feedback: Sound 1 (Crit) or Sound 0 (Hit)
+        pyxel.play(0, 1 if is_crit else 0)
+
         self.combat_logs.append(
             f"[Tick {self.current_tick}] {self.enemy.name} strikes {self.player.name} "
             f"for {dmg_dealt} dmg{crit_str}. ({self.player.current_hp}/{self.player.max_hp} HP)"
