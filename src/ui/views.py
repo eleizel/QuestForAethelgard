@@ -134,6 +134,16 @@ class CombatView(View):
                         f"{game_state.player.name} used belt slot [{idx+1}]!"
                     )
 
+        # Active Abilities: Keys [4, 5] (with 3-tick cooldown)
+        for idx, key in enumerate((pyxel.KEY_4, pyxel.KEY_5)):
+            if pyxel.btnp(key) and idx < len(game_state.player.abilities.active):
+                if game_state.combat.ability_cooldown <= 0:
+                    game_state.combat.queued_ability = game_state.player.abilities.active[idx]
+                    game_state.combat.ability_cooldown = 3
+                    game_state.combat.combat_logs.append(f"Queued {game_state.player.abilities.active[idx].name}!")
+                else:
+                    game_state.combat.combat_logs.append(f"Ability on cooldown ({game_state.combat.ability_cooldown} turns)!")
+
         # Advance combat: space or auto-tick
         if pyxel.btnp(pyxel.KEY_SPACE) or (pyxel.frame_count % 15 == 0):
             game_state.update_combat()

@@ -40,6 +40,7 @@ class CombatSystem:
         self.player_gauge: int = 0
         self.enemy_gauge: int = 0
         self.queued_ability = None
+        self.ability_cooldown = 0
 
         self.current_tick: int = 0
         self.result: CombatResult = CombatResult.IN_PROGRESS
@@ -91,6 +92,8 @@ class CombatSystem:
     def _execute_player_attack(self) -> None:
         """Execute a player strike against the enemy, or an ability if queued."""
         self.player_gauge -= ACTION_THRESHOLD
+        if self.ability_cooldown > 0:
+            self.ability_cooldown -= 1
 
         if self.queued_ability:
             # Execute queued active ability
