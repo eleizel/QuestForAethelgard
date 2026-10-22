@@ -191,7 +191,7 @@ class CombatView(View):
         renderer.draw_bar(134, 118, 112, 5, combat.enemy_gauge, ACTION_THRESHOLD, fill_col=COLOR_ORANGE, bg_col=COLOR_BLACK)
 
         # In-Combat Quick Belt Display
-        renderer.draw_box(10, 128, SCREEN_WIDTH - 20, 22, bg_col=COLOR_NAVY, border_col=COLOR_DARK_BLUE)
+        renderer.draw_box(10, 128, SCREEN_WIDTH - 20, 32, bg_col=COLOR_NAVY, border_col=COLOR_DARK_BLUE)
         pyxel.text(14, 131, "BELT:", COLOR_YELLOW)
         inv = game_state.player.inventory
         for b_idx in range(MAX_BELT_SLOTS):
@@ -207,22 +207,22 @@ class CombatView(View):
                 pyxel.text(bx + 14, 132, name, COLOR_GRAY)
 
         # Abilities panel
-        # Place it to the right of belt
-        pyxel.text(230, 131, "SKILLS:", COLOR_YELLOW)
+        # Placed under the belt hotkeys
+        pyxel.text(14, 148, "SKILLS:", COLOR_YELLOW)
         for a_idx, active_ab in enumerate(game_state.player.abilities.active):
-            y_pos = 132 + a_idx * 10
-            key_label = "4/Q" if a_idx == 0 else "5/W"
+            x_pos = 46 + a_idx * 95
+            key_label = "4" if a_idx == 0 else "5"
             queued_marker = "*" if game_state.combat and game_state.combat.queued_ability == active_ab else " "
-            pyxel.text(230, y_pos, f"[{key_label}]{queued_marker} {active_ab.name[:8]}", COLOR_LIME)
+            pyxel.text(x_pos, 148, f"[{key_label}]{queued_marker} {active_ab.name[:15]}", COLOR_LIME)
 
         # Combat activity logs
         renderer.draw_combat_logs(
             logs=combat.combat_logs,
             x=10,
-            y=154,
+            y=164,
             w=SCREEN_WIDTH - 20,
-            h=94,
-            max_entries=8,
+            h=84,
+            max_entries=7,
         )
 
 
