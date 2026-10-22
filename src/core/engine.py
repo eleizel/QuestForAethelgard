@@ -24,11 +24,12 @@ class Engine:
             headless=self.headless,
         )
 
-        if os.path.exists(RESOURCE_PATH):
+        abs_resource_path = os.path.abspath(RESOURCE_PATH)
+        if os.path.exists(abs_resource_path):
             try:
-                pyxel.load(RESOURCE_PATH)
+                pyxel.load(abs_resource_path)
             except Exception as e:
-                print(f"Warning: Could not load resource file {RESOURCE_PATH}: {e}")
+                print(f"Warning: Could not load resource file {abs_resource_path}: {e}")
 
         self.game_state: GameState = GameState()
         self.renderer: Renderer = Renderer()
