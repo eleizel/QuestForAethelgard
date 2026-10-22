@@ -88,10 +88,16 @@ class PlayerAbilities:
 # ---------------------------------------------------------
 
 def execute_cross_cut(combat: CombatSystem) -> tuple[str, int, bool]:
-    dmg1 = int(combat.player.effective_stats.attack * 0.65)
-    dmg2 = int(combat.player.effective_stats.attack * 0.65)
+    raw_dmg1, crit1 = combat.player.calculate_attack(combat.rng)
+    raw_dmg2, crit2 = combat.player.calculate_attack(combat.rng)
+
+    dmg1 = int(raw_dmg1 * 0.65)
+    dmg2 = int(raw_dmg2 * 0.65)
+
     total_dmg = combat.enemy.take_damage(dmg1) + combat.enemy.take_damage(dmg2)
-    return f"{combat.player.name} uses Cross Cut! Deals {total_dmg} total damage!", total_dmg, False
+    any_crit = crit1 or crit2
+
+    return f"{combat.player.name} uses Cross Cut! Deals {total_dmg} total damage!", total_dmg, any_crit
 
 CROSS_CUT = Ability(
     id="cross_cut",
