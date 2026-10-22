@@ -7,7 +7,7 @@ from typing import Final
 
 from src.entities.actor import Actor, Stats
 from src.systems.inventory import Inventory
-from src.systems.abilities import PlayerAbilities, CROSS_CUT
+from src.systems.abilities import PlayerAbilities, CROSS_CUT, PW_KILL
 
 
 class ClassPromotion(Enum):
@@ -69,6 +69,7 @@ class Player(Actor):
         self.combat_def_buff: int = 0
         self.abilities = PlayerAbilities()
         self.abilities.add_ability(CROSS_CUT)
+        self.abilities.add_ability(PW_KILL)
 
     @property
     def effective_stats(self) -> Stats:

@@ -91,8 +91,8 @@ def execute_cross_cut(combat: CombatSystem) -> tuple[str, int, bool]:
     raw_dmg1, crit1 = combat.player.calculate_attack(combat.rng)
     raw_dmg2, crit2 = combat.player.calculate_attack(combat.rng)
 
-    dmg1 = int(raw_dmg1 * 0.65)
-    dmg2 = int(raw_dmg2 * 0.65)
+    dmg1 = int(raw_dmg1 * 0.90)
+    dmg2 = int(raw_dmg2 * 0.90)
 
     total_dmg = combat.enemy.take_damage(dmg1) + combat.enemy.take_damage(dmg2)
     any_crit = crit1 or crit2
@@ -102,13 +102,27 @@ def execute_cross_cut(combat: CombatSystem) -> tuple[str, int, bool]:
 CROSS_CUT = Ability(
     id="cross_cut",
     name="Cross Cut",
-    description="Strikes 2 times at 65% ATK.",
+    description="Strikes 2 times at 90% ATK.",
     ability_type=AbilityType.ACTIVE,
     rarity=AbilityRarity.STANDARD,
     execute_hook=execute_cross_cut
 )
 
 # ---------------------------------------------------------
+
+def execute_pw_kill(combat: CombatSystem) -> tuple[str, int, bool]:
+    actual_dmg = combat.enemy.take_damage(999999)
+    return f"{combat.player.name} uses PW: Kill! Insta-kills enemy for {actual_dmg} damage!", actual_dmg, True
+
+PW_KILL = Ability(
+    id="pw_kill",
+    name="PW: Kill",
+    description="Insta-kill the enemy for debugging.",
+    ability_type=AbilityType.ACTIVE,
+    rarity=AbilityRarity.STANDARD,
+    execute_hook=execute_pw_kill
+)
+
 # Standard Pool Abilities
 # ---------------------------------------------------------
 
