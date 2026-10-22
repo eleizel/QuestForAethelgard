@@ -415,7 +415,8 @@ class AbilityChoiceView(View):
 
         self.pending_rarity = game_state.player.pending_ability_choices[0]
         rarity_enum = AbilityRarity.STANDARD if self.pending_rarity == "STANDARD" else AbilityRarity.EPIC
-        self.choices = get_random_abilities(rarity_enum, count=2)
+        known = [a.id for a in game_state.player.abilities.active + game_state.player.abilities.passive]
+        self.choices = get_random_abilities(rarity_enum, known, count=2)
 
     def update(self, game_state: GameState) -> None:
         if not self.choices and game_state.player.pending_ability_choices:

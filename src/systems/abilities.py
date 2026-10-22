@@ -213,7 +213,8 @@ EPIC_ABILITIES = [
     Ability(id="executioners_might", name="Executioner's Might", description="250% ATK damage; doubles if enemy < 40% HP", ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.EPIC, execute_hook=execute_executioners_might)
 ]
 
-def get_random_abilities(rarity: AbilityRarity, count: int = 2) -> list[Ability]:
+def get_random_abilities(rarity: AbilityRarity, known_abilities: list[str], count: int = 2) -> list[Ability]:
     import random
     pool = STANDARD_ABILITIES if rarity == AbilityRarity.STANDARD else EPIC_ABILITIES
-    return random.sample(pool, min(count, len(pool)))
+    available = [ab for ab in pool if ab.id not in known_abilities]
+    return random.sample(available, min(count, len(available)))
