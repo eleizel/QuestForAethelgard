@@ -327,11 +327,65 @@ class EndGameView(View):
         pyxel.text(w // 2 - 45, 150, "Press [ENTER] to Restart", COLOR_WHITE)
 
 
+class WelcomeView(View):
+    """Renders the game's welcome screen."""
+
+    def update(self, game_state: GameState) -> None:
+        if pyxel.btnp(pyxel.KEY_1):
+            game_state.__init__()
+            game_state.switch_mode(GameMode.MAP)
+        elif pyxel.btnp(pyxel.KEY_2):
+            pass  # Load game out of scope
+        elif pyxel.btnp(pyxel.KEY_3):
+            game_state.switch_mode(GameMode.CREDITS)
+
+    def draw(self, game_state: GameState, renderer: Renderer) -> None:
+        pyxel.cls(COLOR_BLACK)
+        w, h = SCREEN_WIDTH, SCREEN_HEIGHT
+
+        # Display Title
+        pyxel.text(w // 2 - 40, 40, "Quest For Aethelgard", COLOR_YELLOW)
+
+        # Draw some pixel art sprites from game.pyxres (e.g. hero and enemy sprites)
+        # Assuming typical sprites based on existing CombatView usages:
+        # Hero sprite is at 0, 0
+        pyxel.blt(w // 2 - 24, 70, 0, 0, 0, 16, 16, 0)
+        # Enemy sprite (like a goblin or skeleton)
+        pyxel.blt(w // 2 + 8, 70, 0, 16, 0, 16, 16, 0)
+
+        # Menu Options
+        renderer.draw_box(40, 120, w - 80, 80, bg_col=COLOR_NAVY, border_col=COLOR_WHITE)
+        pyxel.text(50, 135, "[1] New Game", COLOR_WHITE)
+        pyxel.text(50, 155, "[2] Load Game", COLOR_GRAY)
+        pyxel.text(50, 175, "[3] Credits", COLOR_WHITE)
+
+
+class CreditsView(View):
+    """Renders the game's credits screen."""
+
+    def update(self, game_state: GameState) -> None:
+        if pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_ESCAPE):
+            game_state.switch_mode(GameMode.WELCOME)
+
+    def draw(self, game_state: GameState, renderer: Renderer) -> None:
+        pyxel.cls(COLOR_BLACK)
+        w, h = SCREEN_WIDTH, SCREEN_HEIGHT
+
+        renderer.draw_box(20, 60, w - 40, 120, bg_col=COLOR_NAVY, border_col=COLOR_YELLOW)
+        pyxel.text(w // 2 - 20, 80, "CREDITS", COLOR_YELLOW)
+        pyxel.text(35, 110, "Developed by Sergio Esperalta", COLOR_WHITE)
+        pyxel.text(35, 130, "Assisted by AI (Gemini)", COLOR_WHITE)
+
+        pyxel.text(w // 2 - 45, 160, "Press [ENTER] to Return", COLOR_LIME)
+
+
 class ViewManager:
     """Manages view selection and delegates update/render calls."""
 
     def __init__(self) -> None:
         self.views: dict[GameMode, View] = {
+            GameMode.WELCOME: WelcomeView(),
+            GameMode.CREDITS: CreditsView(),
             GameMode.MAP: MapView(),
             GameMode.COMBAT: CombatView(),
             GameMode.INVENTORY: InventoryView(),
