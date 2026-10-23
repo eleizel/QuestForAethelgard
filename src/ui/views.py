@@ -465,8 +465,9 @@ class AbilityChoiceView(View):
                 if game_state.act < 3:
                     game_state.act += 1
                     game_state.floor = 1
+                    next_floors = 18 if game_state.act == 3 else 12
                     from src.systems.map_gen import generate_spire_map
-                    game_state.map_graph = generate_spire_map(num_floors=8, width_lanes=4)
+                    game_state.map_graph = generate_spire_map(num_floors=next_floors, width_lanes=4)
                     game_state.player.heal(9999) # Full heal between acts
                     game_state.switch_mode(GameMode.MAP)
                 else:

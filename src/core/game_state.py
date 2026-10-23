@@ -34,7 +34,7 @@ class GameState:
 
     def __init__(self) -> None:
         self.player: Player = Player(name="Sir Aethelgard")
-        self.map_graph: MapGraph = generate_spire_map(num_floors=8, width_lanes=4)
+        self.map_graph: MapGraph = generate_spire_map(num_floors=12, width_lanes=4)
         self.current_mode: GameMode = GameMode.WELCOME
         self.previous_mode: GameMode = GameMode.WELCOME
 
@@ -97,7 +97,7 @@ class GameState:
             elif node.node_type == NodeType.BOSS:
                 tier = EnemyTier.BOSS
 
-            effective_floor = self.floor + (self.act - 1) * 8
+            effective_floor = self.floor + (12 if self.act == 2 else (24 if self.act == 3 else 0))
             enemy = generate_enemy(tier=tier, floor=effective_floor)
             self.combat = CombatSystem(player=self.player, enemy=enemy)
             self.switch_mode(GameMode.COMBAT)
@@ -144,7 +144,8 @@ class GameState:
                 if self.act < 3:
                     self.act += 1
                     self.floor = 1
-                    self.map_graph = generate_spire_map(num_floors=8, width_lanes=4)
+                    next_floors = 18 if self.act == 3 else 12
+                    self.map_graph = generate_spire_map(num_floors=next_floors, width_lanes=4)
                     self.player.heal(9999) # Full heal between acts
                     self.switch_mode(GameMode.MAP)
                 else:
