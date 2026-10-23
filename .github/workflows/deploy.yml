@@ -37,8 +37,8 @@ jobs:
           # Empaqueta la carpeta raíz indicando tu script inicial (ej. main.py)
           pyxel package . main.py
           # Convierte el archivo .pyxapp a HTML autónomo dentro de /dist
-          pyxel app2html main.pyxapp
-          mv main.html dist/index.html
+          pyxel app2html QuestForAethelgard.pyxapp
+          mv QuestForAethelgard.html dist/index.html
 
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
