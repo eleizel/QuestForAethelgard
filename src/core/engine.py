@@ -22,6 +22,8 @@ class Engine:
             title=WINDOW_TITLE,
             fps=FPS,
             headless=self.headless,
+            quit_key=pyxel.KEY_NONE,
+
         )
 
         abs_resource_path = os.path.abspath(RESOURCE_PATH)
