@@ -6,8 +6,8 @@ from enum import Enum
 from typing import Final
 
 from src.entities.actor import Actor, Stats
-from src.systems.inventory import Inventory
 from src.systems.abilities import PlayerAbilities, CROSS_CUT, PW_KILL
+import src.systems.inventory
 
 
 class ClassPromotion(Enum):
@@ -63,7 +63,7 @@ class Player(Actor):
         self.exp_to_next_level: int = 50
         self.gold: int = 0
         self.stat_points: int = 0
-        self.inventory: Inventory = Inventory()
+        self.inventory: 'src.systems.inventory.Inventory' = src.systems.inventory.Inventory()
         self.exp_multiplier: float = 1.0
         self.pending_ability_choices: list[str] = [] # "STANDARD" or "EPIC"
         self.combat_def_buff: int = 0
