@@ -75,15 +75,15 @@ def generate_enemy(
 
     if tier == EnemyTier.BOSS:
         template = rand.choice(BOSS_ARCHETYPES)
-        multiplier = 1.0 + (floor * 0.15)
+        multiplier = 1.0 + (floor * 0.06)
     else:
         template = rand.choice(ARCHETYPES)
         tier_multipliers = {
             EnemyTier.COMMON: 1.0,
             EnemyTier.UNCOMMON: 1.3,
-            EnemyTier.ELITE: 1.8,
+            EnemyTier.ELITE: 1.5,
         }
-        multiplier = tier_multipliers.get(tier, 1.0) * (1.0 + (floor - 1) * 0.08)
+        multiplier = tier_multipliers.get(tier, 1.0) * (1.0 + (floor - 1) * 0.04)
 
     scaled_stats = Stats(
         max_hp=int(template.base_hp * multiplier),
