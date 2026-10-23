@@ -36,6 +36,7 @@ jobs:
           # Genera los assets necesarios
           cd src/tools
           python generate_assets.py
+          cd ../..
           # Genera la carpeta dist
           mkdir dist
           # Empaqueta la carpeta raíz indicando tu script inicial (ej. main.py)
