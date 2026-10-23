@@ -10,7 +10,7 @@ from src.entities import Stats
 from src.entities.enemy import EnemyTier, generate_enemy
 from src.entities.player import Player
 from src.systems.combat import CombatResult, CombatSystem
-from src.systems.inventory import ConsumableItem, EquipSlot, EquipmentItem
+from src.systems.inventory import ConsumableItem, EquipSlot, EquipmentItem, Item
 from src.systems.map_gen import MapGraph, MapNode, NodeType, generate_spire_map
 
 if TYPE_CHECKING:
