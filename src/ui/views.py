@@ -47,7 +47,25 @@ class MapView(View):
     """Visualizes the Spire node tree and node selection."""
 
     def update(self, game_state: GameState) -> None:
+        if Renderer.is_clicked(18, 44, 200, 10):
+            game_state.toggle_inventory()
+            return
+
         available = game_state.map_graph.get_available_nodes()
+
+        floors = game_state.map_graph.floors
+        total_floors = len(floors)
+        lane_w = (SCREEN_WIDTH - 60) // 4
+
+        for f_idx, floor in enumerate(floors):
+            y_pos = 200 - int((f_idx / max(1, total_floors - 1)) * 140)
+            for node in floor:
+                x_pos = 35 + node.lane * lane_w
+                if node in available and Renderer.is_clicked(x_pos - 2, y_pos - 2, 17, 15):
+                    pyxel.play(0, 3)
+                    game_state.select_map_node(node.id)
+                    return
+
         for idx, node in enumerate(available):
             key = getattr(pyxel, f"KEY_{idx + 1}", None)
             if key and pyxel.btnp(key):
@@ -130,28 +148,30 @@ class CombatView(View):
         if game_state.combat is None:
             return
 
-        # In-combat quick belt triggers: Keys [1, 2, 3]
+        # Advance combat: space, auto-tick, or tap anywhere on arena / combat log
+        if pyxel.btnp(pyxel.KEY_SPACE) or (pyxel.frame_count % 15 == 0) or Renderer.is_clicked(0, 164, SCREEN_WIDTH, 84) or Renderer.is_clicked(0, 20, SCREEN_WIDTH, 100):
+            game_state.update_combat()
+
+        # In-combat quick belt triggers: Keys [1, 2, 3] or Tap
         for idx, key in enumerate((pyxel.KEY_1, pyxel.KEY_2, pyxel.KEY_3)):
-            if pyxel.btnp(key):
+            bx = 42 + idx * 70
+            if pyxel.btnp(key) or Renderer.is_clicked(bx, 130, 64, 18):
                 if game_state.player.inventory.use_belt_item(idx, game_state.player):
                     pyxel.play(1, 2)  # Sound 2: Potion Heal chime
                     game_state.combat.combat_logs.append(
                         f"{game_state.player.name} used belt slot [{idx+1}]!"
                     )
 
-        # Active Abilities: Keys [4, 5] (with 3-tick cooldown)
+        # Active Abilities: Keys [4, 5] or Tap
         for idx, key in enumerate((pyxel.KEY_4, pyxel.KEY_5)):
-            if pyxel.btnp(key) and idx < len(game_state.player.abilities.active):
+            x_pos = 46 + idx * 95
+            if (pyxel.btnp(key) or Renderer.is_clicked(x_pos - 4, 146, 90, 14)) and idx < len(game_state.player.abilities.active):
                 if game_state.combat.ability_cooldown <= 0:
                     game_state.combat.queued_ability = game_state.player.abilities.active[idx]
                     game_state.combat.ability_cooldown = 3
                     game_state.combat.combat_logs.append(f"Queued {game_state.player.abilities.active[idx].name}!")
                 else:
                     game_state.combat.combat_logs.append(f"Ability on cooldown ({game_state.combat.ability_cooldown} turns)!")
-
-        # Advance combat: space or auto-tick
-        if pyxel.btnp(pyxel.KEY_SPACE) or (pyxel.frame_count % 15 == 0):
-            game_state.update_combat()
 
     def _get_enemy_sprite_u(self, enemy_name: str, tier_val: int) -> int:
         name_lower = enemy_name.lower()
@@ -257,20 +277,43 @@ class InventoryView(View):
         self.feedback_message: str = ""
 
     def update(self, game_state: GameState) -> None:
-        if pyxel.btnp(pyxel.KEY_ESCAPE) or pyxel.btnp(pyxel.KEY_I):
+        if pyxel.btnp(pyxel.KEY_ESCAPE) or pyxel.btnp(pyxel.KEY_I) or Renderer.is_clicked(SCREEN_WIDTH - 60, 228, 50, 16):
             game_state.toggle_inventory()
             return
 
-        if pyxel.btnp(pyxel.KEY_TAB):
-            self.active_pane = "EQUIPMENT" if self.active_pane == "POUCH" else "POUCH"
+        if pyxel.btnp(pyxel.KEY_TAB) or Renderer.is_clicked(10, 32, 100, 10):
+            self.active_pane = "EQUIPMENT"
             self.feedback_message = ""
-            return
+        elif Renderer.is_clicked(10, 130, 100, 10):
+            self.active_pane = "POUCH"
+            self.feedback_message = ""
 
         up_pressed = pyxel.btnp(pyxel.KEY_UP) or pyxel.btnp(pyxel.KEY_W)
         down_pressed = pyxel.btnp(pyxel.KEY_DOWN) or pyxel.btnp(pyxel.KEY_S)
 
         from src.systems.inventory import EquipmentItem, ConsumableItem, EquipSlot
         inv = game_state.player.inventory
+
+        # Direct item selection by tapping
+        for i in range(len(EquipSlot)):
+            col = i % 2
+            row = i // 2
+            x = 10 + col * 118
+            y = 44 + row * 12
+            if Renderer.is_clicked(x, y, 100, 10):
+                self.active_pane = "EQUIPMENT"
+                self.equip_cursor = i
+                self.feedback_message = ""
+
+        for p_idx in range(MAX_POUCH_SLOTS):
+            col = p_idx % 2
+            row = p_idx // 2
+            x = 10 + col * 118
+            y = 142 + row * 14
+            if Renderer.is_clicked(x, y, 100, 12):
+                self.active_pane = "POUCH"
+                self.pouch_cursor = p_idx
+                self.feedback_message = ""
 
         if self.active_pane == "POUCH":
             if up_pressed:
@@ -280,7 +323,7 @@ class InventoryView(View):
                 self.pouch_cursor = min(MAX_POUCH_SLOTS - 1, self.pouch_cursor + 1)
                 self.feedback_message = ""
 
-            if pyxel.btnp(pyxel.KEY_E):
+            if pyxel.btnp(pyxel.KEY_E) or Renderer.is_clicked(14, 228, 80, 16):
                 if self.pouch_cursor < len(inv.pouch):
                     item = inv.pouch[self.pouch_cursor]
                     if isinstance(item, EquipmentItem):
@@ -303,7 +346,7 @@ class InventoryView(View):
                         if success:
                             pyxel.play(0, 3)
 
-            if pyxel.btnp(pyxel.KEY_D):
+            if pyxel.btnp(pyxel.KEY_D) or Renderer.is_clicked(160, 228, 46, 16):
                 if self.pouch_cursor < len(inv.pouch):
                     success, msg = inv.drop_from_pouch(self.pouch_cursor)
                     self.feedback_message = msg
@@ -312,7 +355,7 @@ class InventoryView(View):
 
             # Assign to belt 1, 2, 3
             for idx, key in enumerate((pyxel.KEY_1, pyxel.KEY_2, pyxel.KEY_3)):
-                if pyxel.btnp(key):
+                if pyxel.btnp(key) or Renderer.is_clicked(100 + idx*20, 228, 16, 16):
                     if self.pouch_cursor < len(inv.pouch):
                         success, msg = inv.assign_pouch_to_belt(self.pouch_cursor, idx)
                         self.feedback_message = msg
@@ -327,7 +370,7 @@ class InventoryView(View):
                 self.equip_cursor = min(len(EquipSlot) - 1, self.equip_cursor + 1)
                 self.feedback_message = ""
 
-            if pyxel.btnp(pyxel.KEY_U):
+            if pyxel.btnp(pyxel.KEY_U) or Renderer.is_clicked(14, 228, 70, 16):
                 slots = list(EquipSlot)
                 target_slot = slots[self.equip_cursor]
                 if inv.equipment[target_slot] is not None:
@@ -421,11 +464,15 @@ class InventoryView(View):
         y_bottom = 224
         renderer.draw_box(10, y_bottom, SCREEN_WIDTH - 20, 24, bg_col=COLOR_NAVY, border_col=COLOR_WHITE)
         if self.active_pane == "POUCH":
-            pyxel.text(14, y_bottom + 4, "[TAB] Focus Equip | [E] Equip/Use", COLOR_PEACH)
-            pyxel.text(14, y_bottom + 12, "[D] Drop | [1-3] Belt | [ESC] Close", COLOR_PEACH)
+            renderer.draw_button(14, y_bottom + 4, 80, 16, "[EQUIP / USE]", bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
+            renderer.draw_button(100, y_bottom + 4, 16, 16, "B1", bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
+            renderer.draw_button(120, y_bottom + 4, 16, 16, "B2", bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
+            renderer.draw_button(140, y_bottom + 4, 16, 16, "B3", bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
+            renderer.draw_button(160, y_bottom + 4, 46, 16, "[DROP]", bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
         else:
-            pyxel.text(14, y_bottom + 4, "[TAB] Focus Pouch | [U] Unequip", COLOR_PEACH)
-            pyxel.text(14, y_bottom + 12, "[ESC] Close", COLOR_PEACH)
+            renderer.draw_button(14, y_bottom + 4, 70, 16, "[UNEQUIP]", bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
+
+        renderer.draw_button(SCREEN_WIDTH - 60, y_bottom + 4, 50, 16, "[CLOSE]", bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
 
         # Feedback Message
         if self.feedback_message:
@@ -437,7 +484,7 @@ class EventsView(View):
     """Renders non-combat room encounters (sanctuary, treasure, merchant)."""
 
     def update(self, game_state: GameState) -> None:
-        if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.KEY_RETURN):
+        if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.KEY_RETURN) or Renderer.is_clicked(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT):
             game_state.switch_mode(GameMode.MAP)
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
@@ -447,7 +494,7 @@ class EventsView(View):
         pyxel.text(30, 65, "-- Room Encounter --", COLOR_YELLOW)
         pyxel.text(30, 90, game_state.current_event_text, COLOR_WHITE)
 
-        pyxel.text(30, 150, "Press [SPACE] or [ENTER] to return to Map.", COLOR_LIME)
+        renderer.draw_button(SCREEN_WIDTH // 2 - 40, 150, 80, 16, "[CONTINUE]", bg_col=COLOR_NAVY, text_col=COLOR_LIME)
 
 
 class EndGameView(View):
@@ -457,7 +504,7 @@ class EndGameView(View):
         self.is_victory: bool = is_victory
 
     def update(self, game_state: GameState) -> None:
-        if pyxel.btnp(pyxel.KEY_RETURN):
+        if pyxel.btnp(pyxel.KEY_RETURN) or Renderer.is_clicked(SCREEN_WIDTH // 2 - 45, 145, 90, 16):
             game_state.__init__()
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
@@ -473,7 +520,7 @@ class EndGameView(View):
             pyxel.text(w // 2 - 24, 80, "YOU DIED", COLOR_WHITE)
             pyxel.text(35, 110, "Your bones join the endless dungeon...", COLOR_PEACH)
 
-        pyxel.text(w // 2 - 45, 150, "Press [ENTER] to Restart", COLOR_WHITE)
+        renderer.draw_button(w // 2 - 45, 145, 90, 16, "[RESTART]", bg_col=COLOR_BLACK, border_col=COLOR_WHITE, text_col=COLOR_WHITE)
 
 
 
@@ -486,6 +533,23 @@ class ClassSelectView(View):
 
     def update(self, game_state: GameState) -> None:
         from src.config import SND_CLICK, SND_VICTORY
+
+        # Check for card clicks
+        card_w, card_h = 74, 84
+        x_offsets = [10, 91, 172]
+        card_y = 34
+
+        for i, card_x in enumerate(x_offsets):
+            if Renderer.is_clicked(card_x, card_y, card_w, card_h):
+                if self.selected_index == i:
+                    # Double click / confirm
+                    pyxel.play(0, SND_VICTORY)
+                    game_state.start_new_game(self.classes[self.selected_index])
+                    return
+                else:
+                    self.selected_index = i
+                    pyxel.play(0, SND_CLICK)
+
         if pyxel.btnp(pyxel.KEY_LEFT) or pyxel.btnp(pyxel.KEY_A):
             self.selected_index = (self.selected_index - 1) % len(self.classes)
             pyxel.play(0, SND_CLICK)
@@ -501,10 +565,10 @@ class ClassSelectView(View):
         elif pyxel.btnp(pyxel.KEY_3):
             self.selected_index = 2
             pyxel.play(0, SND_CLICK)
-        elif pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_SPACE):
+        elif pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_SPACE) or Renderer.is_clicked(SCREEN_WIDTH - 110, 230, 100, 16):
             pyxel.play(0, SND_VICTORY)
             game_state.start_new_game(self.classes[self.selected_index])
-        elif pyxel.btnp(pyxel.KEY_ESCAPE):
+        elif pyxel.btnp(pyxel.KEY_ESCAPE) or Renderer.is_clicked(10, 230, 50, 16):
             game_state.switch_mode(GameMode.WELCOME)
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
@@ -596,21 +660,23 @@ class ClassSelectView(View):
         pyxel.text(16, detail_y + 94, f"Promotions: {promotions}", COLOR_PEACH)
 
         # Footer
-        footer_text = "[<- / ->] Select  |  [ENTER] Start Journey  |  [ESC] Back"
+        renderer.draw_button(10, 230, 50, 16, "[BACK]", bg_col=COLOR_BLACK, border_col=COLOR_GRAY)
+        footer_text = "[<- / ->] Select"
         pyxel.text(SCREEN_WIDTH // 2 - len(footer_text) * 2, 234, footer_text, COLOR_GRAY)
+        renderer.draw_button(SCREEN_WIDTH - 110, 230, 100, 16, "[BEGIN JOURNEY]", bg_col=COLOR_DARK_BLUE, border_col=COLOR_YELLOW)
 
 
 class WelcomeView(View):
     """Renders the high-atmosphere gothic fantasy title screen."""
 
     def update(self, game_state: GameState) -> None:
-        if pyxel.btnp(pyxel.KEY_1):
-            from src.config import SND_CLICK
+        from src.config import SND_CLICK
+        if pyxel.btnp(pyxel.KEY_1) or Renderer.is_clicked(36, 158, 184, 16):
             pyxel.play(0, SND_CLICK)
             game_state.switch_mode(GameMode.CLASS_SELECT)
-        elif pyxel.btnp(pyxel.KEY_2):
+        elif pyxel.btnp(pyxel.KEY_2) or Renderer.is_clicked(36, 178, 184, 16):
             pass
-        elif pyxel.btnp(pyxel.KEY_3):
+        elif pyxel.btnp(pyxel.KEY_3) or Renderer.is_clicked(36, 198, 184, 16):
             pyxel.play(0, 3)
             game_state.switch_mode(GameMode.CREDITS)
 
@@ -791,9 +857,9 @@ class WelcomeView(View):
         pyxel.blt(48 + cursor_pulse, 162, 1, 200, 0, 8, 8, 0)
 
         # Menu Options
-        pyxel.text(62, 164, "> [1] NEW GAME", COLOR_YELLOW)
-        pyxel.text(62, 183, "  [2] LOAD GAME", COLOR_GRAY)
-        pyxel.text(62, 202, "  [3] CREDITS", COLOR_WHITE)
+        renderer.draw_button(46, 158, 164, 16, "> [1] NEW GAME", bg_col=COLOR_NAVY)
+        renderer.draw_button(46, 178, 164, 16, "  [2] LOAD GAME", bg_col=COLOR_NAVY, text_col=COLOR_GRAY)
+        renderer.draw_button(46, 198, 164, 16, "  [3] CREDITS", bg_col=COLOR_NAVY, text_col=COLOR_WHITE)
 
         # Flashing Footer Prompt
         if (fc // 15) % 2 == 0:
@@ -805,7 +871,7 @@ class CreditsView(View):
     """Renders the game's credits screen."""
 
     def update(self, game_state: GameState) -> None:
-        if pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_ESCAPE):
+        if pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_ESCAPE) or Renderer.is_clicked(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT):
             game_state.switch_mode(GameMode.WELCOME)
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
@@ -817,7 +883,7 @@ class CreditsView(View):
         pyxel.text(35, 110, "Developed by Sergio Esperalta", COLOR_WHITE)
         pyxel.text(35, 130, "Assisted by AI (Gemini)", COLOR_WHITE)
 
-        pyxel.text(w // 2 - 45, 160, "Press [ENTER] to Return", COLOR_LIME)
+        renderer.draw_button(w // 2 - 50, 155, 100, 16, "[RETURN]", bg_col=COLOR_NAVY, text_col=COLOR_LIME)
 
 
 
@@ -849,24 +915,24 @@ class AbilityChoiceView(View):
             self._init_choices(game_state)
 
         if self.replace_mode and self.selected_ability:
-            if pyxel.btnp(pyxel.KEY_1):
+            if pyxel.btnp(pyxel.KEY_1) or Renderer.is_clicked(30, 70, SCREEN_WIDTH - 60, 25):
                 game_state.player.abilities.replace_ability(self.selected_ability, 0)
                 self._finish_choice(game_state)
-            elif pyxel.btnp(pyxel.KEY_2):
+            elif pyxel.btnp(pyxel.KEY_2) or Renderer.is_clicked(30, 100, SCREEN_WIDTH - 60, 25):
                 game_state.player.abilities.replace_ability(self.selected_ability, 1)
                 self._finish_choice(game_state)
-            elif pyxel.btnp(pyxel.KEY_ESCAPE):
+            elif pyxel.btnp(pyxel.KEY_ESCAPE) or Renderer.is_clicked(SCREEN_WIDTH - 80, SCREEN_HEIGHT - 30, 70, 16):
                 self.replace_mode = False
                 self.selected_ability = None
             return
 
-        if pyxel.btnp(pyxel.KEY_ESCAPE):
+        if pyxel.btnp(pyxel.KEY_ESCAPE) or Renderer.is_clicked(SCREEN_WIDTH - 80, SCREEN_HEIGHT - 30, 70, 16):
             self._finish_choice(game_state)
             return
 
-        if pyxel.btnp(pyxel.KEY_1) and len(self.choices) > 0:
+        if (pyxel.btnp(pyxel.KEY_1) or Renderer.is_clicked(30, 60, SCREEN_WIDTH - 60, 50)) and len(self.choices) > 0:
             self._handle_selection(game_state, self.choices[0])
-        elif pyxel.btnp(pyxel.KEY_2) and len(self.choices) > 1:
+        elif (pyxel.btnp(pyxel.KEY_2) or Renderer.is_clicked(30, 120, SCREEN_WIDTH - 60, 50)) and len(self.choices) > 1:
             self._handle_selection(game_state, self.choices[1])
 
     def _handle_selection(self, game_state: GameState, chosen: Ability) -> None:
@@ -913,9 +979,12 @@ class AbilityChoiceView(View):
 
             target_list = game_state.player.abilities.active if self.selected_ability.ability_type == AbilityType.ACTIVE else game_state.player.abilities.passive
             for i, ab in enumerate(target_list):
-                pyxel.text(40, 70 + (i * 30), f"[{i+1}] {ab.name}: {ab.description[:30]}...", COLOR_WHITE)
+                y_pos = 70 + (i * 30)
+                renderer.draw_box(30, y_pos, w - 60, 25, bg_col=COLOR_DARK_BLUE, border_col=COLOR_WHITE)
+                pyxel.text(40, y_pos + 8, f"[{i+1}] {ab.name}: {ab.description[:30]}...", COLOR_WHITE)
 
-            pyxel.text(30, h - 40, "Press [1] or [2] to replace. [ESC] to cancel.", COLOR_PEACH)
+            renderer.draw_button(w - 80, h - 30, 70, 16, "[CANCEL]", bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
+            pyxel.text(30, h - 30, "Press [1] or [2] to replace.", COLOR_PEACH)
             return
 
         pyxel.text(30, 30, f"LEVEL UP! {self.pending_rarity} ABILITY CHOICE", COLOR_YELLOW)
@@ -933,7 +1002,8 @@ class AbilityChoiceView(View):
             else:
                 pyxel.text(40, y_offset + 18, desc, COLOR_WHITE)
 
-        pyxel.text(30, h - 35, "Press [1] or [2] to select. [ESC] to skip.", COLOR_PEACH)
+        renderer.draw_button(w - 80, h - 30, 70, 16, "[SKIP]", bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
+        pyxel.text(30, h - 30, "Press [1] or [2] to select.", COLOR_PEACH)
 
 
 class ShopView(View):
@@ -946,26 +1016,42 @@ class ShopView(View):
         self.feedback_msg: str = ""
 
     def update(self, game_state: GameState) -> None:
-        if pyxel.btnp(pyxel.KEY_ESCAPE) or pyxel.btnp(pyxel.KEY_SPACE):
+        if pyxel.btnp(pyxel.KEY_ESCAPE) or pyxel.btnp(pyxel.KEY_SPACE) or Renderer.is_clicked(SCREEN_WIDTH - 90, 230, 80, 16):
             game_state.switch_mode(GameMode.MAP)
             return
 
-        if pyxel.btnp(pyxel.KEY_TAB):
-            self.active_tab = "SELL" if self.active_tab == "BUY" else "BUY"
+        if pyxel.btnp(pyxel.KEY_TAB) or Renderer.is_clicked(60, 60, 20, 10):
+            self.active_tab = "BUY"
             self.feedback_msg = ""
-            return
+        elif Renderer.is_clicked(88, 60, 24, 10):
+            self.active_tab = "SELL"
+            self.feedback_msg = ""
 
         up_pressed = pyxel.btnp(pyxel.KEY_UP) or pyxel.btnp(pyxel.KEY_W)
         down_pressed = pyxel.btnp(pyxel.KEY_DOWN) or pyxel.btnp(pyxel.KEY_S)
 
         if self.active_tab == "BUY":
             stock = game_state.merchant_stock
+
+            buy_action = pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_B) or Renderer.is_clicked(12, 230, 40, 16)
+
+            # Row selection & direct double-tap purchase
+            for i in range(len(stock)):
+                y = 75 + i * 16
+                if Renderer.is_clicked(8, y, SCREEN_WIDTH - 24, 16):
+                    if self.buy_cursor == i:
+                        buy_action = True
+                    else:
+                        self.buy_cursor = i
+                        self.feedback_msg = ""
+                        buy_action = False # Prevent accidental buy on first tap
+
             if up_pressed:
                 self.buy_cursor = max(0, self.buy_cursor - 1)
             elif down_pressed:
                 self.buy_cursor = min(max(0, len(stock) - 1), self.buy_cursor + 1)
 
-            if len(stock) > 0 and (pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_B)):
+            if len(stock) > 0 and buy_action:
                 if 0 <= self.buy_cursor < len(stock):
                     item, price = stock[self.buy_cursor]
                     if game_state.player.gold < price:
@@ -983,12 +1069,26 @@ class ShopView(View):
 
         elif self.active_tab == "SELL":
             pouch = game_state.player.inventory.pouch
+
+            sell_action = pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_S) or Renderer.is_clicked(12, 230, 40, 16)
+
+            # Row selection & direct double-tap sale
+            for i in range(len(pouch)):
+                y = 75 + i * 14
+                if Renderer.is_clicked(8, y, SCREEN_WIDTH - 24, 14):
+                    if self.sell_cursor == i:
+                        sell_action = True
+                    else:
+                        self.sell_cursor = i
+                        self.feedback_msg = ""
+                        sell_action = False # Prevent accidental sell on first tap
+
             if up_pressed:
                 self.sell_cursor = max(0, self.sell_cursor - 1)
             elif down_pressed:
                 self.sell_cursor = min(max(0, len(pouch) - 1), self.sell_cursor + 1)
 
-            if len(pouch) > 0 and (pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_S)):
+            if len(pouch) > 0 and sell_action:
                 if 0 <= self.sell_cursor < len(pouch):
                     item = pouch[self.sell_cursor]
                     sell_value = max(5, item.gold_value // 2)
@@ -1067,32 +1167,34 @@ class ShopView(View):
 
         msg_color = COLOR_RED if "!" in self.feedback_msg and "Purchased" not in self.feedback_msg and "Sold" not in self.feedback_msg else COLOR_LIME
         if self.feedback_msg:
-            pyxel.text(12, 226, self.feedback_msg, msg_color)
+            pyxel.text(12, 224, self.feedback_msg, msg_color)
 
         if self.active_tab == "BUY":
-            pyxel.text(12, 238, "[UP/DN] Select | [ENTER/B] Buy", COLOR_GRAY)
-            pyxel.text(12, 246, "[TAB] Sell Tab | [ESC] Leave", COLOR_GRAY)
+            renderer.draw_button(12, 230, 40, 16, "[BUY]", bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
+            pyxel.text(60, 234, "[TAB] Sell Tab", COLOR_GRAY)
         else:
-            pyxel.text(12, 238, "[UP/DN] Select | [ENTER/S] Sell", COLOR_GRAY)
-            pyxel.text(12, 246, "[TAB] Buy Tab | [ESC] Leave", COLOR_GRAY)
+            renderer.draw_button(12, 230, 40, 16, "[SELL]", bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
+            pyxel.text(60, 234, "[TAB] Buy Tab", COLOR_GRAY)
+
+        renderer.draw_button(SCREEN_WIDTH - 90, 230, 80, 16, "[LEAVE SHOP]", bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
 
 
 class LootView(View):
     """Renders the post-combat loot screen."""
 
     def update(self, game_state: GameState) -> None:
-        if pyxel.btnp(pyxel.KEY_1) and len(game_state.pending_loot) > 0:
+        if (pyxel.btnp(pyxel.KEY_1) or Renderer.is_clicked(20, 90, SCREEN_WIDTH - 40, 25)) and len(game_state.pending_loot) > 0:
             self._take_loot(game_state, 0)
-        elif pyxel.btnp(pyxel.KEY_2) and len(game_state.pending_loot) > 1:
+        elif (pyxel.btnp(pyxel.KEY_2) or Renderer.is_clicked(20, 120, SCREEN_WIDTH - 40, 25)) and len(game_state.pending_loot) > 1:
             self._take_loot(game_state, 1)
-        elif pyxel.btnp(pyxel.KEY_3) and len(game_state.pending_loot) > 2:
+        elif (pyxel.btnp(pyxel.KEY_3) or Renderer.is_clicked(20, 150, SCREEN_WIDTH - 40, 25)) and len(game_state.pending_loot) > 2:
             self._take_loot(game_state, 2)
-        elif pyxel.btnp(pyxel.KEY_SPACE):
+        elif pyxel.btnp(pyxel.KEY_SPACE) or Renderer.is_clicked(SCREEN_WIDTH - 150, SCREEN_HEIGHT - 30, 60, 16):
             # Take all that can fit
             for i in range(len(game_state.pending_loot) - 1, -1, -1):
                 self._take_loot(game_state, i, play_sound=False)
             pyxel.play(0, 3) # Play click sound once for take all
-        elif pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_C):
+        elif pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_C) or Renderer.is_clicked(SCREEN_WIDTH - 80, SCREEN_HEIGHT - 30, 70, 16):
             self._exit_loot(game_state)
 
     def _take_loot(self, game_state: GameState, index: int, play_sound: bool = True) -> None:
@@ -1167,8 +1269,9 @@ class LootView(View):
         if not game_state.pending_loot:
             pyxel.text(20, y_offset, "No items remaining.", COLOR_GRAY)
 
-        pyxel.text(20, h - 25, "[1-3] Take Item | [SPACE] Take All", COLOR_PEACH)
-        pyxel.text(20, h - 15, "[ENTER]/[C] Continue", COLOR_PEACH)
+        pyxel.text(20, h - 30, "[1-3] Take Item", COLOR_PEACH)
+        renderer.draw_button(w - 150, h - 30, 60, 16, "[TAKE ALL]", bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
+        renderer.draw_button(w - 80, h - 30, 70, 16, "[CONTINUE]", bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
 
 
 class ViewManager:
@@ -1191,9 +1294,12 @@ class ViewManager:
         }
 
     def update(self, game_state: GameState) -> None:
-        if pyxel.btnp(pyxel.KEY_I) or (game_state.current_mode == GameMode.INVENTORY and pyxel.btnp(pyxel.KEY_ESCAPE)):
-            game_state.toggle_inventory()
-            return
+        # Check for inventory toggle only if in gameplay modes where HUD is shown
+        if game_state.current_mode in (GameMode.MAP, GameMode.COMBAT, GameMode.EVENTS, GameMode.INVENTORY, GameMode.LOOT, GameMode.SHOP):
+            inv_clicked = Renderer.is_clicked(218, 3, 34, 16)
+            if pyxel.btnp(pyxel.KEY_I) or inv_clicked or (game_state.current_mode == GameMode.INVENTORY and pyxel.btnp(pyxel.KEY_ESCAPE)):
+                game_state.toggle_inventory()
+                return
 
         view = self.views.get(game_state.current_mode)
         if view:
