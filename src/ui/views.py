@@ -22,7 +22,10 @@ from src.config import (
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
 )
-from src.core.game_state import GameMode, GameState
+from src.core.game_state import GameMode
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from src.core.game_state import GameState
 from src.systems.combat import ACTION_THRESHOLD
 from src.systems.inventory import EquipSlot, MAX_BELT_SLOTS, MAX_POUCH_SLOTS
 from src.systems.abilities import Ability, AbilityRarity, AbilityType, get_random_abilities
@@ -239,69 +242,187 @@ class CombatView(View):
 class InventoryView(View):
     """Renders 6+2 Equipment, 10-slot Pouch, and 3-slot Belt."""
 
+    def __init__(self) -> None:
+        self.active_pane: str = "POUCH" # "POUCH" or "EQUIPMENT"
+        self.pouch_cursor: int = 0
+        self.equip_cursor: int = 0
+        self.feedback_message: str = ""
+
     def update(self, game_state: GameState) -> None:
-        for idx, key in enumerate((pyxel.KEY_1, pyxel.KEY_2, pyxel.KEY_3)):
-            if pyxel.btnp(key):
-                if game_state.player.inventory.use_belt_item(idx, game_state.player):
-                    pyxel.play(1, 2)  # Sound 2: Potion Heal chime
+        if pyxel.btnp(pyxel.KEY_ESCAPE) or pyxel.btnp(pyxel.KEY_I):
+            game_state.toggle_inventory()
+            return
+
+        if pyxel.btnp(pyxel.KEY_TAB):
+            self.active_pane = "EQUIPMENT" if self.active_pane == "POUCH" else "POUCH"
+            self.feedback_message = ""
+            return
+
+        up_pressed = pyxel.btnp(pyxel.KEY_UP) or pyxel.btnp(pyxel.KEY_W)
+        down_pressed = pyxel.btnp(pyxel.KEY_DOWN) or pyxel.btnp(pyxel.KEY_S)
+
+        from src.systems.inventory import EquipmentItem, ConsumableItem, EquipSlot
+        inv = game_state.player.inventory
+
+        if self.active_pane == "POUCH":
+            if up_pressed:
+                self.pouch_cursor = max(0, self.pouch_cursor - 1)
+                self.feedback_message = ""
+            elif down_pressed:
+                self.pouch_cursor = min(MAX_POUCH_SLOTS - 1, self.pouch_cursor + 1)
+                self.feedback_message = ""
+
+            if pyxel.btnp(pyxel.KEY_E):
+                if self.pouch_cursor < len(inv.pouch):
+                    item = inv.pouch[self.pouch_cursor]
+                    if isinstance(item, EquipmentItem):
+                        success, msg = inv.equip_from_pouch(self.pouch_cursor, game_state.player)
+                        self.feedback_message = msg
+                        if success:
+                            pyxel.play(0, 3)
+                    elif isinstance(item, ConsumableItem):
+                        # Find empty belt slot
+                        target_belt = -1
+                        for i in range(MAX_BELT_SLOTS):
+                            if inv.belt[i] is None:
+                                target_belt = i
+                                break
+                        if target_belt == -1:
+                            target_belt = 0
+
+                        success, msg = inv.assign_pouch_to_belt(self.pouch_cursor, target_belt)
+                        self.feedback_message = msg
+                        if success:
+                            pyxel.play(0, 3)
+
+            if pyxel.btnp(pyxel.KEY_D):
+                if self.pouch_cursor < len(inv.pouch):
+                    success, msg = inv.drop_from_pouch(self.pouch_cursor)
+                    self.feedback_message = msg
+                    if success:
+                        pyxel.play(0, 3)
+
+            # Assign to belt 1, 2, 3
+            for idx, key in enumerate((pyxel.KEY_1, pyxel.KEY_2, pyxel.KEY_3)):
+                if pyxel.btnp(key):
+                    if self.pouch_cursor < len(inv.pouch):
+                        success, msg = inv.assign_pouch_to_belt(self.pouch_cursor, idx)
+                        self.feedback_message = msg
+                        if success:
+                            pyxel.play(0, 3)
+
+        elif self.active_pane == "EQUIPMENT":
+            if up_pressed:
+                self.equip_cursor = max(0, self.equip_cursor - 1)
+                self.feedback_message = ""
+            elif down_pressed:
+                self.equip_cursor = min(len(EquipSlot) - 1, self.equip_cursor + 1)
+                self.feedback_message = ""
+
+            if pyxel.btnp(pyxel.KEY_U):
+                slots = list(EquipSlot)
+                target_slot = slots[self.equip_cursor]
+                if inv.equipment[target_slot] is not None:
+                    success, msg = inv.unequip_to_pouch(target_slot)
+                    self.feedback_message = msg
+                    if success:
+                        pyxel.play(0, 3)
+
+        # Still allow using belt items from anywhere just for convenience?
+        # Actually, instructions specify belt assignments via [1-3] in pouch mode.
+        # It doesn't explicitly restrict use_belt_item when not in pouch mode but we can ignore it
+        # or leave the default update if we wanted. But the prompt says "When in Pouch Pane: [1-3]: Assign selected consumable"
+        # In Map/Combat we might use belt items. In inventory, [1-3] are used for assignment.
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
         renderer.draw_hud(game_state.player, game_state.floor)
 
-        renderer.draw_box(10, 26, SCREEN_WIDTH - 20, SCREEN_HEIGHT - 32, bg_col=COLOR_BLACK, border_col=COLOR_GRAY)
-        pyxel.text(18, 32, "-- Equipment (6 Primary + 2 Accessory) --", COLOR_YELLOW)
+        renderer.draw_box(5, 26, SCREEN_WIDTH - 10, SCREEN_HEIGHT - 32, bg_col=COLOR_BLACK, border_col=COLOR_GRAY)
 
         inv = game_state.player.inventory
+        from src.systems.inventory import EquipSlot, EquipmentItem, ConsumableItem
 
-        equip_order = [
-            EquipSlot.HEAD, EquipSlot.CHEST,
-            EquipSlot.HANDS, EquipSlot.LEGS,
-            EquipSlot.MAIN_HAND, EquipSlot.OFF_HAND,
-            EquipSlot.RING, EquipSlot.AMULET,
-        ]
+        # Equipment Section
+        equip_title_col = COLOR_YELLOW if self.active_pane == "EQUIPMENT" else COLOR_GRAY
+        pyxel.text(10, 32, "-- Equipment --", equip_title_col)
 
+        equip_order = list(EquipSlot)
         for i, slot in enumerate(equip_order):
             col = i % 2
             row = i // 2
-            x = 18 + col * 114
-            y = 44 + row * 16
+            x = 10 + col * 118
+            y = 44 + row * 12
+
+            cursor_str = "> " if self.active_pane == "EQUIPMENT" and self.equip_cursor == i else "  "
+
             item = inv.equipment.get(slot)
             item_name = item.name if item else "(Empty)"
-            tag = "[Acc]" if slot in (EquipSlot.RING, EquipSlot.AMULET) else ""
-            slot_label = slot.name.replace("_", " ").title()
-            pyxel.text(x, y, f"{slot_label} {tag}:", COLOR_GRAY)
-            pyxel.text(x + 56, y, item_name[:10], COLOR_WHITE if item else COLOR_DARK_BLUE)
+            slot_label = slot.name.replace("_", " ").title()[:10]
+
+            # Highlight if selected
+            label_col = COLOR_WHITE if self.active_pane == "EQUIPMENT" and self.equip_cursor == i else COLOR_GRAY
+            pyxel.text(x, y, f"{cursor_str}{slot_label}:", label_col)
+            pyxel.text(x + 50, y, item_name[:10], COLOR_LIME if item else COLOR_DARK_BLUE)
 
         # 3-Slot Belt
-        pyxel.text(18, 116, "-- Belt (3 Quick Slots: Press [1-3] to Use) --", COLOR_YELLOW)
+        pyxel.text(10, 96, "-- Belt --", COLOR_YELLOW)
         for b_idx in range(MAX_BELT_SLOTS):
-            x = 18 + b_idx * 76
-            y = 128
+            x = 10 + b_idx * 78
+            y = 106
             b_item = inv.belt[b_idx]
             name = b_item.name if b_item else "Empty"
-            renderer.draw_box(x, y, 70, 18, bg_col=COLOR_NAVY, border_col=COLOR_WHITE)
+            renderer.draw_box(x, y, 74, 18, bg_col=COLOR_NAVY, border_col=COLOR_WHITE)
             pyxel.text(x + 4, y + 3, f"[{b_idx+1}]", COLOR_YELLOW)
             if b_item:
-                pyxel.blt(x + 16, y + 2, 0, 64, 0, 8, 8, 0)
-                pyxel.text(x + 26, y + 3, name[:6], COLOR_WHITE)
-                pyxel.text(x + 26, y + 10, f"+{b_item.heal_amount}HP", COLOR_LIME)
+                pyxel.text(x + 18, y + 3, name[:8], COLOR_WHITE)
+                pyxel.text(x + 18, y + 10, f"+{b_item.heal_amount}HP", COLOR_LIME)
             else:
                 pyxel.text(x + 18, y + 6, name, COLOR_GRAY)
 
         # 10-Slot Pouch
-        pyxel.text(18, 154, f"-- Pouch ({len(inv.pouch)}/{MAX_POUCH_SLOTS} Slots) --", COLOR_YELLOW)
+        pouch_title_col = COLOR_YELLOW if self.active_pane == "POUCH" else COLOR_GRAY
+        pyxel.text(10, 130, f"-- Pouch ({len(inv.pouch)}/{MAX_POUCH_SLOTS}) --", pouch_title_col)
         for p_idx in range(MAX_POUCH_SLOTS):
             col = p_idx % 2
             row = p_idx // 2
-            x = 18 + col * 114
-            y = 166 + row * 13
+            x = 10 + col * 118
+            y = 142 + row * 14
+
+            cursor_str = "> " if self.active_pane == "POUCH" and self.pouch_cursor == p_idx else "  "
+
             if p_idx < len(inv.pouch):
                 p_item = inv.pouch[p_idx]
-                pyxel.text(x, y, f"{p_idx+1}. {p_item.name}", COLOR_WHITE)
-            else:
-                pyxel.text(x, y, f"{p_idx+1}. [Empty]", COLOR_DARK_BLUE)
+                item_col = COLOR_WHITE if self.active_pane == "POUCH" and self.pouch_cursor == p_idx else COLOR_GRAY
+                pyxel.text(x, y, f"{cursor_str}{p_item.name[:12]}", item_col)
 
-        pyxel.text(18, 236, "Press [I] or [ESC] to close inventory.", COLOR_PEACH)
+                # Show stats if equipment, heal if consumable
+                stats_str = ""
+                if isinstance(p_item, EquipmentItem):
+                    if p_item.stats_bonus.attack > 0: stats_str += f"A{p_item.stats_bonus.attack}"
+                    if p_item.stats_bonus.defense > 0: stats_str += f" D{p_item.stats_bonus.defense}"
+                    if p_item.stats_bonus.max_hp > 0: stats_str += f" H{p_item.stats_bonus.max_hp}"
+                elif isinstance(p_item, ConsumableItem):
+                    stats_str = f"+{p_item.heal_amount}HP"
+
+                if stats_str:
+                    pyxel.text(x + 12, y + 6, stats_str, COLOR_LIME)
+            else:
+                pyxel.text(x, y, f"{cursor_str}[Empty]", COLOR_DARK_BLUE)
+
+        # Bottom Panel Context Hints
+        y_bottom = 224
+        renderer.draw_box(10, y_bottom, SCREEN_WIDTH - 20, 24, bg_col=COLOR_NAVY, border_col=COLOR_WHITE)
+        if self.active_pane == "POUCH":
+            pyxel.text(14, y_bottom + 4, "[TAB] Focus Equip | [E] Equip/Use", COLOR_PEACH)
+            pyxel.text(14, y_bottom + 12, "[D] Drop | [1-3] Belt | [ESC] Close", COLOR_PEACH)
+        else:
+            pyxel.text(14, y_bottom + 4, "[TAB] Focus Pouch | [U] Unequip", COLOR_PEACH)
+            pyxel.text(14, y_bottom + 12, "[ESC] Close", COLOR_PEACH)
+
+        # Feedback Message
+        if self.feedback_message:
+            msg_col = COLOR_RED if "!" in self.feedback_message and "Equipped" not in self.feedback_message else COLOR_LIME
+            pyxel.text(14, y_bottom - 10, self.feedback_message, msg_col)
 
 
 class EventsView(View):
@@ -510,6 +631,100 @@ class AbilityChoiceView(View):
         pyxel.text(30, h - 35, "Press [1] or [2] to select. [ESC] to skip.", COLOR_PEACH)
 
 
+class LootView(View):
+    """Renders the post-combat loot screen."""
+
+    def update(self, game_state: GameState) -> None:
+        if pyxel.btnp(pyxel.KEY_1) and len(game_state.pending_loot) > 0:
+            self._take_loot(game_state, 0)
+        elif pyxel.btnp(pyxel.KEY_2) and len(game_state.pending_loot) > 1:
+            self._take_loot(game_state, 1)
+        elif pyxel.btnp(pyxel.KEY_3) and len(game_state.pending_loot) > 2:
+            self._take_loot(game_state, 2)
+        elif pyxel.btnp(pyxel.KEY_SPACE):
+            # Take all that can fit
+            for i in range(len(game_state.pending_loot) - 1, -1, -1):
+                self._take_loot(game_state, i, play_sound=False)
+            pyxel.play(0, 3) # Play click sound once for take all
+        elif pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_C):
+            self._exit_loot(game_state)
+
+    def _take_loot(self, game_state: GameState, index: int, play_sound: bool = True) -> None:
+        item = game_state.pending_loot[index]
+        if game_state.player.inventory.add_to_pouch(item):
+            game_state.pending_loot.pop(index)
+            if play_sound:
+                pyxel.play(0, 3) # SND_CLICK
+
+    def _exit_loot(self, game_state: GameState) -> None:
+        # Check transition priority
+        if game_state.player.pending_ability_choices:
+            game_state.switch_mode(GameMode.ABILITY_CHOICE)
+            return
+
+        current_node = game_state.map_graph.current_node
+        if current_node and current_node.node_type == NodeType.BOSS:
+            if game_state.act < 3:
+                game_state.act += 1
+                game_state.floor = 1
+                next_floors = 18 if game_state.act == 3 else 12
+                from src.systems.map_gen import generate_spire_map
+                game_state.map_graph = generate_spire_map(num_floors=next_floors, width_lanes=4)
+                game_state.player.heal(9999) # Full heal between acts
+                game_state.switch_mode(GameMode.MAP)
+            else:
+                game_state.switch_mode(GameMode.VICTORY)
+        else:
+            game_state.switch_mode(GameMode.MAP)
+
+    def draw(self, game_state: GameState, renderer: Renderer) -> None:
+        pyxel.cls(COLOR_BLACK)
+        w, h = SCREEN_WIDTH, SCREEN_HEIGHT
+        renderer.draw_hud(game_state.player, game_state.floor)
+
+        renderer.draw_box(10, 30, w - 20, h - 40, bg_col=COLOR_NAVY, border_col=COLOR_YELLOW)
+        pyxel.text(w // 2 - 40, 35, "VICTORY! Spoils of Battle", COLOR_YELLOW)
+
+        # Summary box
+        pyxel.text(20, 55, f"EXP Gained: {game_state.last_exp_earned}", COLOR_WHITE)
+        pyxel.text(120, 55, f"Gold: {game_state.last_gold_earned}", COLOR_YELLOW)
+
+        pouch_len = len(game_state.player.inventory.pouch)
+        from src.systems.inventory import MAX_POUCH_SLOTS
+        color = COLOR_RED if pouch_len >= MAX_POUCH_SLOTS else COLOR_LIME
+        pyxel.text(20, 70, f"Pouch Space: {pouch_len}/{MAX_POUCH_SLOTS}", color)
+
+        if pouch_len >= MAX_POUCH_SLOTS:
+            pyxel.text(140, 70, "Pouch Full!", COLOR_RED)
+
+        # Loot List
+        y_offset = 90
+        for i, item in enumerate(game_state.pending_loot):
+            renderer.draw_box(20, y_offset, w - 40, 25, bg_col=COLOR_DARK_BLUE, border_col=COLOR_WHITE)
+            pyxel.text(25, y_offset + 5, f"[{i+1}] {item.name}", COLOR_LIME)
+
+            from src.systems.inventory import EquipmentItem, ConsumableItem
+            if isinstance(item, EquipmentItem):
+                pyxel.text(25, y_offset + 15, f"{item.slot.value}", COLOR_GRAY)
+                # Display basic stats
+                stats = ""
+                if item.stats_bonus.attack > 0: stats += f" ATK+{item.stats_bonus.attack}"
+                if item.stats_bonus.defense > 0: stats += f" DEF+{item.stats_bonus.defense}"
+                if item.stats_bonus.speed > 0: stats += f" SPD+{item.stats_bonus.speed}"
+                pyxel.text(90, y_offset + 15, stats, COLOR_WHITE)
+            elif isinstance(item, ConsumableItem):
+                pyxel.text(25, y_offset + 15, "Consumable", COLOR_GRAY)
+                pyxel.text(90, y_offset + 15, f"Heals {item.heal_amount} HP", COLOR_GREEN)
+
+            y_offset += 30
+
+        if not game_state.pending_loot:
+            pyxel.text(20, y_offset, "No items remaining.", COLOR_GRAY)
+
+        pyxel.text(20, h - 25, "[1-3] Take Item | [SPACE] Take All", COLOR_PEACH)
+        pyxel.text(20, h - 15, "[ENTER]/[C] Continue", COLOR_PEACH)
+
+
 class ViewManager:
     """Manages view selection and delegates update/render calls."""
 
@@ -524,6 +739,7 @@ class ViewManager:
             GameMode.GAME_OVER: EndGameView(is_victory=False),
             GameMode.VICTORY: EndGameView(is_victory=True),
             GameMode.ABILITY_CHOICE: AbilityChoiceView(),
+            GameMode.LOOT: LootView(),
         }
 
     def update(self, game_state: GameState) -> None:

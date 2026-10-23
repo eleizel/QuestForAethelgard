@@ -2,11 +2,10 @@
 
 from src.entities.actor import Actor, Stats
 from src.entities.enemy import Enemy, EnemyTier, generate_enemy
-from src.entities.player import ClassPromotion, Player
+from src.entities.player import Player
 
 __all__ = [
     "Actor",
-    "ClassPromotion",
     "Enemy",
     "EnemyTier",
     "Player",

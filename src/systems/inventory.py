@@ -34,15 +34,20 @@ class EquipSlot(Enum):
 
     # 6 Primary Slots
     HEAD = "Head"
+    SHOULDERS = "Shoulders"
     CHEST = "Chest"
+    WAIST = "Waist"
     HANDS = "Hands"
     LEGS = "Legs"
     MAIN_HAND = "Main Hand"
     OFF_HAND = "Off Hand"
 
-    # +2 Accessory Slots
-    RING = "Ring"
-    AMULET = "Amulet"
+
+class WeaponType(Enum):
+    ONE_HANDED = auto()
+    TWO_HANDED = auto()
+    SHIELD = auto()
+    FOCUS = auto()
 
 
 @dataclass
@@ -63,6 +68,8 @@ class EquipmentItem(Item):
     slot: EquipSlot = EquipSlot.MAIN_HAND
     stats_bonus: Stats = field(default_factory=lambda: Stats(max_hp=0, attack=0, defense=0, speed=0, crit_chance=0.0))
     item_type: ItemType = ItemType.EQUIPMENT
+    weapon_type: WeaponType | None = None
+    required_class: str | None = None
 
 
 @dataclass
@@ -83,16 +90,13 @@ class ConsumableItem(Item):
 
 
 class Inventory:
-    """Player inventory containing 6+2 equipment, 10-slot pouch, and 3-slot belt."""
+    """Player inventory containing 8 equipment, 10-slot pouch, and 3-slot belt."""
 
     def __init__(self) -> None:
-        # 6 Primary + 2 Accessory slots
         self.equipment: dict[EquipSlot, EquipmentItem | None] = {
             slot: None for slot in EquipSlot
         }
-        # 10 general pouch slots
         self.pouch: list[Item] = []
-        # 3 quick-use belt slots
         self.belt: list[ConsumableItem | None] = [None] * MAX_BELT_SLOTS
 
     def get_equipment_stats(self) -> Stats:
@@ -151,6 +155,91 @@ class Inventory:
         if old_belt_item is not None:
             self.pouch.append(old_belt_item)
         return True
+
+    def can_equip(self, item: EquipmentItem, player: Actor | None = None) -> tuple[bool, str]:
+        if item.required_class is not None and player is not None:
+            if getattr(player, "class_id", None) != item.required_class:
+                return (False, f"Requires {item.required_class.capitalize()}!")
+
+        if item.weapon_type == WeaponType.TWO_HANDED and self.equipment[EquipSlot.OFF_HAND] is not None:
+            if len(self.pouch) >= MAX_POUCH_SLOTS:
+                return (False, "Pouch full! Cannot unequip off-hand.")
+
+        return (True, "OK")
+
+    def equip_from_pouch(self, pouch_index: int, player: Actor | None = None) -> tuple[bool, str]:
+        if not (0 <= pouch_index < len(self.pouch)):
+            return (False, "Invalid pouch slot.")
+
+        item = self.pouch[pouch_index]
+        if not isinstance(item, EquipmentItem):
+            return (False, "Item is not equipment.")
+
+        success, message = self.can_equip(item, player)
+        if not success:
+            return (success, message)
+
+        # For Two Handed weapon equipping logic
+        if item.weapon_type == WeaponType.TWO_HANDED and item.slot == EquipSlot.MAIN_HAND:
+            # First unequip off hand if there is something
+            off_hand = self.equipment[EquipSlot.OFF_HAND]
+            if off_hand is not None:
+                self.equipment[EquipSlot.OFF_HAND] = None
+                self.pouch.append(off_hand)
+
+        # If we are equipping something in MAIN_HAND or OFF_HAND, check if we had a TWO_HANDED weapon
+        # Wait, doing it in steps is safer. We will pop first anyway.
+        popped_item = self.pouch.pop(pouch_index)
+
+        if popped_item.slot in (EquipSlot.MAIN_HAND, EquipSlot.OFF_HAND):
+            current_main = self.equipment[EquipSlot.MAIN_HAND]
+            if current_main is not None and current_main.weapon_type == WeaponType.TWO_HANDED:
+                self.equipment[EquipSlot.MAIN_HAND] = None
+                self.pouch.append(current_main)
+
+        # Standard equip
+        old_item = self.equipment[popped_item.slot]
+        self.equipment[popped_item.slot] = popped_item
+        if old_item is not None:
+            self.pouch.append(old_item)
+
+        return (True, f"Equipped {popped_item.name}!")
+
+    def unequip_to_pouch(self, slot: EquipSlot) -> tuple[bool, str]:
+        item = self.equipment[slot]
+        if item is None:
+            return (False, "Slot is empty.")
+
+        if len(self.pouch) >= MAX_POUCH_SLOTS:
+            return (False, "Pouch full!")
+
+        self.equipment[slot] = None
+        self.pouch.append(item)
+        return (True, f"Unequipped {item.name}.")
+
+    def drop_from_pouch(self, pouch_index: int) -> tuple[bool, str]:
+        if not (0 <= pouch_index < len(self.pouch)):
+            return (False, "Invalid pouch index.")
+        item = self.pouch.pop(pouch_index)
+        return (True, f"Discarded {item.name}.")
+
+    def assign_pouch_to_belt(self, pouch_index: int, belt_index: int) -> tuple[bool, str]:
+        if not (0 <= belt_index < MAX_BELT_SLOTS):
+            return (False, "Invalid belt index.")
+        if not (0 <= pouch_index < len(self.pouch)):
+            return (False, "Invalid pouch index.")
+
+        item = self.pouch[pouch_index]
+        if not isinstance(item, ConsumableItem):
+            return (False, "Not a consumable.")
+
+        self.pouch.pop(pouch_index)
+        old_belt_item = self.belt[belt_index]
+        self.belt[belt_index] = item
+        if old_belt_item is not None:
+            self.pouch.append(old_belt_item)
+
+        return (True, f"Assigned {item.name} to Belt [{belt_index + 1}].")
 
     def use_belt_item(self, belt_index: int, target: Actor) -> bool:
         """Consume an item from the specified belt slot."""
