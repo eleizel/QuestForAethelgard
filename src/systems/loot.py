@@ -51,3 +51,67 @@ def generate_combat_loot(enemy_tier: EnemyTier, floor: int, player: Player) -> l
                 loot.append(random.choice(consumable_pool))
 
     return loot
+
+
+def generate_merchant_stock(floor: int, player: Player) -> list[tuple[Item, int]]:
+    """Generates the merchant's inventory and corresponding prices."""
+    catalog = get_catalog()
+    stock: list[tuple[Item, int]] = []
+
+    # 1. Consumables
+    consumable_pool = [item for item in catalog.values() if isinstance(item, ConsumableItem)]
+    num_consumables = random.randint(1, 2)
+
+    # Try to include health potions or stat elixirs
+    for _ in range(num_consumables):
+        item_id = random.choice([
+            "health_potion", "major_health_flask",
+            "elixir_vitality_minor", "elixir_strength_minor", "elixir_iron_minor", "elixir_celerity_minor", "elixir_precision_minor",
+            "elixir_vitality_greater", "elixir_strength_greater", "elixir_iron_greater", "elixir_celerity_greater", "elixir_precision_greater",
+            "elixir_of_quickness"
+        ])
+        if item_id in catalog:
+            item = catalog[item_id]
+            price = max(20, int(item.gold_value * (1.0 + floor * 0.1)))
+            if "minor" in item_id or "greater" in item_id or "quickness" in item_id:
+                price = random.randint(75, 120)
+            elif item_id == "health_potion":
+                price = 25
+            elif item_id == "major_health_flask":
+                price = 55
+            stock.append((item, price))
+
+    # 2. Equipment
+    equipment_pool = [item for item in catalog.values() if isinstance(item, EquipmentItem)]
+    valid_equip = []
+    for eq in equipment_pool:
+        if eq.required_class is not None and eq.required_class != player.class_id:
+            continue
+        # Duplicate prevention (don't offer gear already equipped)
+        is_equipped = False
+        for equipped_item in player.inventory.equipment.values():
+            if equipped_item is not None and equipped_item.id == eq.id:
+                is_equipped = True
+                break
+        if not is_equipped:
+            valid_equip.append(eq)
+
+    num_equip = random.randint(2, 3)
+    if valid_equip:
+        sample_size = min(num_equip, len(valid_equip))
+        sampled = random.sample(valid_equip, sample_size)
+        for eq in sampled:
+            price = max(20, int(eq.gold_value * (1.0 + floor * 0.1)))
+            stock.append((eq, price))
+
+    # 3. Rare/Quirky Item
+    quirky_ids = ["suspicious_pie", "goblin_cheese_wheel", "tax_audit_scroll"]
+    quirky_id = random.choice(quirky_ids)
+    if quirky_id in catalog:
+        item = catalog[quirky_id]
+        price = max(20, int(item.gold_value * (1.0 + floor * 0.1)))
+        if quirky_id == "suspicious_pie":
+            price = 45
+        stock.append((item, price))
+
+    return stock
