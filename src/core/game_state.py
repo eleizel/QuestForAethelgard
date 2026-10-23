@@ -186,14 +186,15 @@ class GameState:
         elif node.node_type == NodeType.REST:
             healed = self.player.heal(random.randint(25, 40))
             self.current_event_text = (
-                f"You discovered a sanctuary campfire. \nResting restores {healed} HP."
+                f"You discovered a sanctuary campfire. \n\nResting restores {healed} HP."
             )
             self.switch_mode(GameMode.EVENTS)
 
         elif node.node_type == NodeType.TREASURE:
-            self.player.gold += random.randint(25, 40)
+            gold = random.randint(25, 40)
+            self.player.gold += gold
             self.current_event_text = (
-                "You cracked open an ornate chest! \nObtained 35 Gold."
+                f"You cracked open an ornate chest! \n\nObtained {gold} Gold."
             )
             self.switch_mode(GameMode.EVENTS)
 
@@ -206,7 +207,7 @@ class GameState:
         else:  # NodeType.EVENT
             self.player.exp_multiplier = self.player.exp_multiplier + 0.05
             self.current_event_text = (
-                "An ancient shrine hums with mystical \nenergy as you pass by. \n Exp gained increased by 5%"
+                "An ancient shrine hums with mystical \nenergy as you pass by. \n\nExp gained increased by 5%"
             )
             self.switch_mode(GameMode.EVENTS)
 
