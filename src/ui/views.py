@@ -25,6 +25,7 @@ from src.config import (
 from src.core.game_state import GameMode, GameState
 from src.systems.combat import ACTION_THRESHOLD
 from src.systems.inventory import EquipSlot, MAX_BELT_SLOTS, MAX_POUCH_SLOTS
+from src.systems.abilities import Ability, AbilityRarity, AbilityType, get_random_abilities
 from src.systems.map_gen import NodeType
 from src.ui.renderer import Renderer
 
@@ -133,6 +134,16 @@ class CombatView(View):
                         f"{game_state.player.name} used belt slot [{idx+1}]!"
                     )
 
+        # Active Abilities: Keys [4, 5] (with 3-tick cooldown)
+        for idx, key in enumerate((pyxel.KEY_4, pyxel.KEY_5)):
+            if pyxel.btnp(key) and idx < len(game_state.player.abilities.active):
+                if game_state.combat.ability_cooldown <= 0:
+                    game_state.combat.queued_ability = game_state.player.abilities.active[idx]
+                    game_state.combat.ability_cooldown = 3
+                    game_state.combat.combat_logs.append(f"Queued {game_state.player.abilities.active[idx].name}!")
+                else:
+                    game_state.combat.combat_logs.append(f"Ability on cooldown ({game_state.combat.ability_cooldown} turns)!")
+
         # Advance combat: space or auto-tick
         if pyxel.btnp(pyxel.KEY_SPACE) or (pyxel.frame_count % 15 == 0):
             game_state.update_combat()
@@ -190,7 +201,7 @@ class CombatView(View):
         renderer.draw_bar(134, 118, 112, 5, combat.enemy_gauge, ACTION_THRESHOLD, fill_col=COLOR_ORANGE, bg_col=COLOR_BLACK)
 
         # In-Combat Quick Belt Display
-        renderer.draw_box(10, 128, SCREEN_WIDTH - 20, 22, bg_col=COLOR_NAVY, border_col=COLOR_DARK_BLUE)
+        renderer.draw_box(10, 128, SCREEN_WIDTH - 20, 32, bg_col=COLOR_NAVY, border_col=COLOR_DARK_BLUE)
         pyxel.text(14, 131, "BELT:", COLOR_YELLOW)
         inv = game_state.player.inventory
         for b_idx in range(MAX_BELT_SLOTS):
@@ -205,14 +216,23 @@ class CombatView(View):
             else:
                 pyxel.text(bx + 14, 132, name, COLOR_GRAY)
 
+        # Abilities panel
+        # Placed under the belt hotkeys
+        pyxel.text(14, 148, "SKILLS:", COLOR_YELLOW)
+        for a_idx, active_ab in enumerate(game_state.player.abilities.active):
+            x_pos = 46 + a_idx * 95
+            key_label = "4" if a_idx == 0 else "5"
+            queued_marker = "*" if game_state.combat and game_state.combat.queued_ability == active_ab else " "
+            pyxel.text(x_pos, 148, f"[{key_label}]{queued_marker} {active_ab.name[:15]}", COLOR_LIME)
+
         # Combat activity logs
         renderer.draw_combat_logs(
             logs=combat.combat_logs,
             x=10,
-            y=154,
+            y=164,
             w=SCREEN_WIDTH - 20,
-            h=94,
-            max_entries=8,
+            h=84,
+            max_entries=7,
         )
 
 
@@ -379,6 +399,117 @@ class CreditsView(View):
         pyxel.text(w // 2 - 45, 160, "Press [ENTER] to Return", COLOR_LIME)
 
 
+
+class AbilityChoiceView(View):
+    """Renders the ability selection screen when hitting milestone levels."""
+
+    def __init__(self) -> None:
+        self.choices: list[Ability] = []
+        self.pending_rarity: str = ""
+        self.replace_mode = False
+        self.selected_ability: Ability | None = None
+
+    def _init_choices(self, game_state: GameState) -> None:
+        if not game_state.player.pending_ability_choices:
+            return
+
+        self.pending_rarity = game_state.player.pending_ability_choices[0]
+        rarity_enum = AbilityRarity.STANDARD if self.pending_rarity == "STANDARD" else AbilityRarity.EPIC
+        known = [a.id for a in game_state.player.abilities.active + game_state.player.abilities.passive]
+        self.choices = get_random_abilities(rarity_enum, known, count=2)
+
+    def update(self, game_state: GameState) -> None:
+        if not self.choices and game_state.player.pending_ability_choices:
+            self._init_choices(game_state)
+
+        if self.replace_mode and self.selected_ability:
+            if pyxel.btnp(pyxel.KEY_1):
+                game_state.player.abilities.replace_ability(self.selected_ability, 0)
+                self._finish_choice(game_state)
+            elif pyxel.btnp(pyxel.KEY_2):
+                game_state.player.abilities.replace_ability(self.selected_ability, 1)
+                self._finish_choice(game_state)
+            elif pyxel.btnp(pyxel.KEY_ESCAPE):
+                self.replace_mode = False
+                self.selected_ability = None
+            return
+
+        if pyxel.btnp(pyxel.KEY_ESCAPE):
+            self._finish_choice(game_state)
+            return
+
+        if pyxel.btnp(pyxel.KEY_1) and len(self.choices) > 0:
+            self._handle_selection(game_state, self.choices[0])
+        elif pyxel.btnp(pyxel.KEY_2) and len(self.choices) > 1:
+            self._handle_selection(game_state, self.choices[1])
+
+    def _handle_selection(self, game_state: GameState, chosen: Ability) -> None:
+        added = game_state.player.abilities.add_ability(chosen)
+        if added:
+            self._finish_choice(game_state)
+        else:
+            self.replace_mode = True
+            self.selected_ability = chosen
+
+    def _finish_choice(self, game_state: GameState) -> None:
+        game_state.player.pending_ability_choices.pop(0)
+        self.choices = []
+        self.replace_mode = False
+        self.selected_ability = None
+
+        if game_state.player.pending_ability_choices:
+            self._init_choices(game_state)
+        else:
+            current_node = game_state.map_graph.current_node
+            if current_node and current_node.node_type == NodeType.BOSS:
+                if game_state.act < 3:
+                    game_state.act += 1
+                    game_state.floor = 1
+                    next_floors = 18 if game_state.act == 3 else 12
+                    from src.systems.map_gen import generate_spire_map
+                    game_state.map_graph = generate_spire_map(num_floors=next_floors, width_lanes=4)
+                    game_state.player.heal(9999) # Full heal between acts
+                    game_state.switch_mode(GameMode.MAP)
+                else:
+                    game_state.switch_mode(GameMode.VICTORY)
+            else:
+                game_state.switch_mode(GameMode.MAP)
+
+    def draw(self, game_state: GameState, renderer: Renderer) -> None:
+        pyxel.cls(COLOR_BLACK)
+        w, h = SCREEN_WIDTH, SCREEN_HEIGHT
+
+        renderer.draw_box(20, 20, w - 40, h - 40, bg_col=COLOR_NAVY, border_col=COLOR_YELLOW)
+
+        if self.replace_mode and self.selected_ability:
+            pyxel.text(30, 30, f"Replace a {self.selected_ability.ability_type.name} ability:", COLOR_YELLOW)
+            pyxel.text(30, 45, f"New: {self.selected_ability.name}", COLOR_LIME)
+
+            target_list = game_state.player.abilities.active if self.selected_ability.ability_type == AbilityType.ACTIVE else game_state.player.abilities.passive
+            for i, ab in enumerate(target_list):
+                pyxel.text(40, 70 + (i * 30), f"[{i+1}] {ab.name}: {ab.description[:30]}...", COLOR_WHITE)
+
+            pyxel.text(30, h - 40, "Press [1] or [2] to replace. [ESC] to cancel.", COLOR_PEACH)
+            return
+
+        pyxel.text(30, 30, f"LEVEL UP! {self.pending_rarity} ABILITY CHOICE", COLOR_YELLOW)
+
+        for i, ab in enumerate(self.choices):
+            y_offset = 60 + (i * 60)
+            renderer.draw_box(30, y_offset, w - 60, 50, bg_col=COLOR_DARK_BLUE, border_col=COLOR_WHITE)
+            pyxel.text(40, y_offset + 5, f"[{i+1}] {ab.name} ({ab.ability_type.name})", COLOR_LIME)
+
+            # Simple text wrap for description
+            desc = ab.description
+            if len(desc) > 35:
+                pyxel.text(40, y_offset + 18, desc[:35], COLOR_WHITE)
+                pyxel.text(40, y_offset + 28, desc[35:70], COLOR_WHITE)
+            else:
+                pyxel.text(40, y_offset + 18, desc, COLOR_WHITE)
+
+        pyxel.text(30, h - 35, "Press [1] or [2] to select. [ESC] to skip.", COLOR_PEACH)
+
+
 class ViewManager:
     """Manages view selection and delegates update/render calls."""
 
@@ -392,6 +523,7 @@ class ViewManager:
             GameMode.EVENTS: EventsView(),
             GameMode.GAME_OVER: EndGameView(is_victory=False),
             GameMode.VICTORY: EndGameView(is_victory=True),
+            GameMode.ABILITY_CHOICE: AbilityChoiceView(),
         }
 
     def update(self, game_state: GameState) -> None:

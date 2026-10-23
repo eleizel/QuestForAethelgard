@@ -39,6 +39,8 @@ class CombatSystem:
         # Action gauges (0 to ACTION_THRESHOLD)
         self.player_gauge: int = 0
         self.enemy_gauge: int = 0
+        self.queued_ability = None
+        self.ability_cooldown = 0
 
         self.current_tick: int = 0
         self.result: CombatResult = CombatResult.IN_PROGRESS
@@ -88,19 +90,36 @@ class CombatSystem:
         return self.result
 
     def _execute_player_attack(self) -> None:
-        """Execute a player strike against the enemy."""
+        """Execute a player strike against the enemy, or an ability if queued."""
         self.player_gauge -= ACTION_THRESHOLD
-        raw_dmg, is_crit = self.player.calculate_attack(self.rng)
-        crit_str = " (CRITICAL HIT!)" if is_crit else ""
-        dmg_dealt = self.enemy.take_damage(raw_dmg)
+        if self.ability_cooldown > 0:
+            self.ability_cooldown -= 1
 
-        # Audio feedback: Sound 1 (Crit) or Sound 0 (Hit)
-        pyxel.play(0, 1 if is_crit else 0)
+        if self.queued_ability:
+            # Execute queued active ability
+            log_str, dmg_dealt, is_crit = self.queued_ability.execute(self)
+            crit_str = " (CRITICAL HIT!)" if is_crit else ""
+            self.combat_logs.append(f"[Tick {self.current_tick}] {log_str}")
+            pyxel.play(0, 1 if is_crit else 0) # Base sound
+            self.queued_ability = None
+        else:
+            raw_dmg, is_crit = self.player.calculate_attack(self.rng)
+            crit_str = " (CRITICAL HIT!)" if is_crit else ""
+            dmg_dealt = self.enemy.take_damage(raw_dmg)
+            self.combat_logs.append(
+                f"[Tick {self.current_tick}] {self.player.name} attacks {self.enemy.name} "
+                f"for {dmg_dealt} dmg{crit_str}. ({self.enemy.current_hp}/{self.enemy.max_hp} HP)"
+            )
+            pyxel.play(0, 1 if is_crit else 0)
 
-        self.combat_logs.append(
-            f"[Tick {self.current_tick}] {self.player.name} attacks {self.enemy.name} "
-            f"for {dmg_dealt} dmg{crit_str}. ({self.enemy.current_hp}/{self.enemy.max_hp} HP)"
-        )
+        # Triggers passive hooks for attack dealt
+        for passive in self.player.abilities.passive:
+            passive.on_attack_dealt(self.player, self.enemy, dmg_dealt, is_crit)
+
+        has_veteran = any(a.id == "veterans_instincts" for a in self.player.abilities.passive)
+        if has_veteran and is_crit:
+            self.player_gauge += 20
+            self.combat_logs.append(f"{self.player.name}'s Veteran's Instincts restored 20 gauge!")
 
     def _execute_enemy_attack(self) -> None:
         """Execute an enemy strike against the player."""
@@ -122,7 +141,12 @@ class CombatSystem:
         exp = self.enemy.exp_reward
         gold = self.enemy.gold_reward
         self.player.gold += gold
-        leveled = self.player.gain_experience(exp)
+        leveled = self.player.gain_experience(exp, foe_type=self.enemy.name)
+
+        # Cleanup combat state
+        self.player.combat_def_buff = 0
+        if hasattr(self.player, "undying_will_used"):
+            self.player.undying_will_used = False
         self.combat_logs.append(f"Gained {exp} EXP and {gold} Gold.")
         if leveled:
             self.combat_logs.append(f"LEVEL UP! {self.player.name} reached Level {self.player.level}!")
