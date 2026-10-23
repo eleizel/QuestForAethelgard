@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import random
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
+from src.entities import Stats
 from src.entities.enemy import EnemyTier, generate_enemy
 from src.entities.player import Player
 from src.systems.combat import CombatResult, CombatSystem
@@ -52,8 +54,87 @@ class GameState:
             name="Bronze Blade",
             description="A dependable starting sword.",
             slot=EquipSlot.MAIN_HAND,
+            stats_bonus=Stats(
+                max_hp=0,
+                attack=1,
+                defense=0,
+                speed=0,
+                crit_chance=0.05
+            )
+
         )
+        shield = EquipmentItem(
+            id="bronze_shield",
+            name="Bronze Shield",
+            description="A dependable starting shield.",
+            slot=EquipSlot.OFF_HAND,
+            stats_bonus=Stats(
+                max_hp=1,
+                attack=0,
+                defense=1,
+                speed=0,
+                crit_chance=0
+            )
+        )
+        head = EquipmentItem(
+            id="bronze_helmet",
+            name="Bronze helmet",
+            description="A dependable starting helmet.",
+            slot=EquipSlot.HEAD,
+            stats_bonus=Stats(
+                max_hp=0,
+                attack=0,
+                defense=1,
+                speed=0,
+                crit_chance=0.05
+            )
+        )
+        chest = EquipmentItem(
+            id="bronze_chestplate",
+            name="Bronze Chestplate",
+            description="A dependable starting chestplate.",
+            slot=EquipSlot.CHEST,
+            stats_bonus=Stats(
+                max_hp=1,
+                attack=0,
+                defense=1,
+                speed=0,
+                crit_chance=0
+            )
+        )
+        hands = EquipmentItem(
+            id="leather_gloves",
+            name="Leather Gloves",
+            description="A pair of dependable starting gloves.",
+            slot=EquipSlot.HANDS,
+            stats_bonus=Stats(
+                max_hp=0,
+                attack=0,
+                defense=0,
+                speed=0,
+                crit_chance=0.05
+            )
+        )
+        legs = EquipmentItem(
+            id="leather_pants",
+            name="Leather Pants",
+            description="A pair of dependable starting pants.",
+            slot=EquipSlot.LEGS,
+            stats_bonus=Stats(
+                max_hp=0,
+                attack=0,
+                defense=0,
+                speed=1,
+                crit_chance=0
+            )
+        )
+
         self.player.inventory.equip(sword)
+        self.player.inventory.equip(shield)
+        self.player.inventory.equip(legs)
+        self.player.inventory.equip(chest)
+        self.player.inventory.equip(hands)
+        self.player.inventory.equip(head)
 
         potion = ConsumableItem(
             id="health_potion",
@@ -103,28 +184,29 @@ class GameState:
             self.switch_mode(GameMode.COMBAT)
 
         elif node.node_type == NodeType.REST:
-            healed = self.player.heal(40)
+            healed = self.player.heal(random.randint(25, 40))
             self.current_event_text = (
-                f"You discovered a sanctuary campfire. Resting restores {healed} HP."
+                f"You discovered a sanctuary campfire. \nResting restores {healed} HP."
             )
             self.switch_mode(GameMode.EVENTS)
 
         elif node.node_type == NodeType.TREASURE:
-            self.player.gold += 35
+            self.player.gold += random.randint(25, 40)
             self.current_event_text = (
-                "You cracked open an ornate chest! Obtained 35 Gold."
+                "You cracked open an ornate chest! \nObtained 35 Gold."
             )
             self.switch_mode(GameMode.EVENTS)
 
         elif node.node_type == NodeType.SHOP:
             self.current_event_text = (
-                "A wandering merchant greets you: 'Stay safe traveler.'"
+                "A wandering merchant greets you: \n'Stay safe traveler.'"
             )
             self.switch_mode(GameMode.EVENTS)
 
         else:  # NodeType.EVENT
+            self.player.exp_multiplier = self.player.exp_multiplier + 0.05
             self.current_event_text = (
-                "An ancient shrine hums with mystical energy as you pass by."
+                "An ancient shrine hums with mystical \nenergy as you pass by. \n Exp gained increased by 5%"
             )
             self.switch_mode(GameMode.EVENTS)
 
