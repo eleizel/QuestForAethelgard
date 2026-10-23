@@ -180,7 +180,13 @@ class CombatView(View):
             color_scheme=COLOR_DARK_BLUE,
         )
         # Hero sprite
-        pyxel.blt(100, 32, 0, 0, 0, 16, 16, 0)
+        sprite_map = {
+            "warrior": (0, 0),
+            "rogue": (0, 32),
+            "mage": (16, 32),
+        }
+        pu, pv = sprite_map.get(game_state.player.class_id, (0, 0))
+        pyxel.blt(100, 32, 0, pu, pv, 16, 16, 0)
 
         # Enemy Stat Panel
         renderer.draw_stat_panel(
@@ -468,14 +474,138 @@ class EndGameView(View):
         pyxel.text(w // 2 - 45, 150, "Press [ENTER] to Restart", COLOR_WHITE)
 
 
+
+class ClassSelectView(View):
+    """Interactive class selection screen allowing players to inspect and choose their hero."""
+
+    def __init__(self) -> None:
+        self.classes: list[str] = ["warrior", "rogue", "mage"]
+        self.selected_index: int = 0
+
+    def update(self, game_state: GameState) -> None:
+        from src.config import SND_CLICK, SND_VICTORY
+        if pyxel.btnp(pyxel.KEY_LEFT) or pyxel.btnp(pyxel.KEY_A):
+            self.selected_index = (self.selected_index - 1) % len(self.classes)
+            pyxel.play(0, SND_CLICK)
+        elif pyxel.btnp(pyxel.KEY_RIGHT) or pyxel.btnp(pyxel.KEY_D):
+            self.selected_index = (self.selected_index + 1) % len(self.classes)
+            pyxel.play(0, SND_CLICK)
+        elif pyxel.btnp(pyxel.KEY_1):
+            self.selected_index = 0
+            pyxel.play(0, SND_CLICK)
+        elif pyxel.btnp(pyxel.KEY_2):
+            self.selected_index = 1
+            pyxel.play(0, SND_CLICK)
+        elif pyxel.btnp(pyxel.KEY_3):
+            self.selected_index = 2
+            pyxel.play(0, SND_CLICK)
+        elif pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_SPACE):
+            pyxel.play(0, SND_VICTORY)
+            game_state.start_new_game(self.classes[self.selected_index])
+        elif pyxel.btnp(pyxel.KEY_ESCAPE):
+            game_state.switch_mode(GameMode.WELCOME)
+
+    def draw(self, game_state: GameState, renderer: Renderer) -> None:
+        pyxel.cls(COLOR_BLACK)
+
+        # Header
+        renderer.draw_box(0, 10, SCREEN_WIDTH, 20, bg_col=COLOR_NAVY, border_col=COLOR_GRAY)
+        title = "CHOOSE YOUR HERO"
+        pyxel.text(SCREEN_WIDTH // 2 - len(title) * 2, 16, title, COLOR_YELLOW)
+
+        # Class Cards
+        card_y = 34
+        card_w, card_h = 74, 84
+        x_offsets = [10, 91, 172]
+
+        from src.data.classes import CLASS_REGISTRY
+
+        for i, cls_id in enumerate(self.classes):
+            card_x = x_offsets[i]
+            is_selected = (i == self.selected_index)
+            border_col = COLOR_WHITE if is_selected else COLOR_GRAY
+
+            renderer.draw_box(card_x, card_y, card_w, card_h, bg_col=COLOR_NAVY, border_col=border_col)
+
+            cls_def = CLASS_REGISTRY[cls_id]
+            pyxel.text(card_x + 6, card_y + 6, cls_def.name, COLOR_YELLOW)
+
+            archetype = ""
+            if cls_id == "warrior":
+                archetype = "[Martial/Tank]"
+            elif cls_id == "rogue":
+                archetype = "[Agile/Crit]"
+            elif cls_id == "mage":
+                archetype = "[Arcane/Burst]"
+
+            pyxel.text(card_x + 6, card_y + 16, archetype, COLOR_GRAY)
+
+            sprite_map = {
+                "warrior": (0, 0),
+                "rogue": (0, 32),
+                "mage": (16, 32),
+            }
+            pu, pv = sprite_map.get(cls_id, (0, 0))
+            pyxel.blt(card_x + 29, card_y + 32, 0, pu, pv, 16, 16, 0)
+
+            if is_selected:
+                pyxel.text(card_x + card_w // 2 - 6, card_y - 8, "> <", COLOR_WHITE)
+                pyxel.text(card_x + card_w // 2 - 6, card_y + card_h + 2, "> <", COLOR_WHITE)
+
+        # Detail Panel
+        detail_y = 122
+        renderer.draw_box(10, detail_y, 236, 104, bg_col=COLOR_NAVY, border_col=COLOR_WHITE)
+
+        sel_cls_id = self.classes[self.selected_index]
+        sel_cls_def = CLASS_REGISTRY[sel_cls_id]
+
+        pyxel.text(16, detail_y + 6, sel_cls_def.name, COLOR_YELLOW)
+
+        # Word wrap description
+        desc = sel_cls_def.description
+        if len(desc) > 50:
+            parts = desc.split(" ")
+            line1 = ""
+            line2 = ""
+            for p in parts:
+                if len(line1) + len(p) < 45:
+                    line1 += p + " "
+                else:
+                    line2 += p + " "
+            pyxel.text(16, detail_y + 16, line1.strip(), COLOR_WHITE)
+            pyxel.text(16, detail_y + 24, line2.strip(), COLOR_WHITE)
+        else:
+            pyxel.text(16, detail_y + 16, desc, COLOR_WHITE)
+
+        stats = sel_cls_def.base_stats
+        growth = sel_cls_def.growth_per_level
+        pyxel.text(16, detail_y + 40, f"HP: {stats.max_hp} (+{growth.max_hp}/lvl) | ATK: {stats.attack} (+{growth.attack})", COLOR_GRAY)
+        pyxel.text(16, detail_y + 50, f"DEF: {stats.defense} (+{growth.defense}) | SPD: {stats.speed} (+{growth.speed})", COLOR_GRAY)
+        pyxel.text(16, detail_y + 60, f"CRIT: {int(stats.crit_chance * 100)}%", COLOR_GRAY)
+
+        from src.systems.abilities import get_ability_by_id
+        starting_skill_id = sel_cls_def.starting_abilities[0] if sel_cls_def.starting_abilities else "None"
+        skill = get_ability_by_id(starting_skill_id)
+        if skill:
+            pyxel.text(16, detail_y + 74, f"Skill: {skill.name}", COLOR_LIME)
+            pyxel.text(16, detail_y + 82, skill.description, COLOR_WHITE)
+
+        promotions = ", ".join(p.capitalize() for p in sel_cls_def.promotions)
+        pyxel.text(16, detail_y + 94, f"Promotions: {promotions}", COLOR_PEACH)
+
+        # Footer
+        footer_text = "[<- / ->] Select  |  [ENTER] Start Journey  |  [ESC] Back"
+        pyxel.text(SCREEN_WIDTH // 2 - len(footer_text) * 2, 234, footer_text, COLOR_GRAY)
+
+
 class WelcomeView(View):
     """Renders the high-atmosphere gothic fantasy title screen."""
 
     def update(self, game_state: GameState) -> None:
         if pyxel.btnp(pyxel.KEY_1):
-            pyxel.play(0, 4)
-            game_state.__init__()
-            game_state.switch_mode(GameMode.MAP)
+            from src.config import SND_CLICK
+            pyxel.play(0, SND_CLICK)
+            game_state.switch_mode(GameMode.CLASS_SELECT)
         elif pyxel.btnp(pyxel.KEY_2):
             pass
         elif pyxel.btnp(pyxel.KEY_3):
@@ -705,7 +835,12 @@ class AbilityChoiceView(View):
         self.pending_rarity = game_state.player.pending_ability_choices[0]
         rarity_enum = AbilityRarity.STANDARD if self.pending_rarity == "STANDARD" else AbilityRarity.EPIC
         known = [a.id for a in game_state.player.abilities.active + game_state.player.abilities.passive]
-        self.choices = get_random_abilities(rarity_enum, known, count=2)
+        self.choices = get_random_abilities(
+            rarity_enum,
+            known,
+            player_class=game_state.player.class_id,
+            count=2
+        )
 
     def update(self, game_state: GameState) -> None:
         if not self.choices and game_state.player.pending_ability_choices:
@@ -899,6 +1034,7 @@ class ViewManager:
     def __init__(self) -> None:
         self.views: dict[GameMode, View] = {
             GameMode.WELCOME: WelcomeView(),
+            GameMode.CLASS_SELECT: ClassSelectView(),
             GameMode.CREDITS: CreditsView(),
             GameMode.MAP: MapView(),
             GameMode.COMBAT: CombatView(),

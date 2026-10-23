@@ -21,6 +21,7 @@ class GameMode(Enum):
     """Core operational modes of the game engine."""
 
     WELCOME = auto()
+    CLASS_SELECT = auto()
     CREDITS = auto()
     MAP = auto()
     COMBAT = auto()
@@ -37,7 +38,7 @@ class GameState:
 
     def __init__(self) -> None:
         self.player: Player = Player(name="Sir Aethelgard")
-        self.map_graph: MapGraph = generate_spire_map(num_floors=12, width_lanes=4)
+        self.map_graph: MapGraph | None = None
         self.current_mode: GameMode = GameMode.WELCOME
         self.previous_mode: GameMode = GameMode.WELCOME
 
@@ -50,29 +51,27 @@ class GameState:
         self.last_gold_earned: int = 0
         self.last_exp_earned: int = 0
 
-        self._seed_starter_kit()
+    def start_new_game(self, class_id: str = "warrior") -> None:
+        """Initialize a new journey with the specified character class."""
+        self.player = Player(name="Sir Aethelgard", class_id=class_id)
 
-    def _seed_starter_kit(self) -> None:
-        """Provide initial gear and consumables for the journey."""
-        from src.data.items import get_item
-
-        sword = get_item("bronze_sword")
-        shield = get_item("bronze_shield")
-        head = get_item("bronze_helmet")
-        chest = get_item("bronze_chestplate")
-        hands = get_item("leather_gloves")
-        legs = get_item("leather_pants")
-
-        if sword: self.player.inventory.equip(sword)
-        if shield: self.player.inventory.equip(shield)
-        if head: self.player.inventory.equip(head)
-        if chest: self.player.inventory.equip(chest)
-        if hands: self.player.inventory.equip(hands)
-        if legs: self.player.inventory.equip(legs)
+        from src.data.items import get_starter_kit, get_item
+        starter_items = get_starter_kit(class_id)
+        for item in starter_items:
+            self.player.inventory.equip(item)
 
         potion = get_item("health_potion")
         if potion:
             self.player.inventory.belt[0] = potion
+
+        self.map_graph = generate_spire_map(num_floors=12, width_lanes=4)
+
+        self.floor = 1
+        self.act = 1
+        self.combat = None
+        self.pending_loot = []
+
+        self.switch_mode(GameMode.MAP)
 
     def switch_mode(self, new_mode: GameMode) -> None:
         """Transition the active game mode."""
