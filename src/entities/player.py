@@ -30,8 +30,16 @@ class Player(Actor):
         self.pending_ability_choices: list[str] = [] # "STANDARD" or "EPIC"
         self.combat_def_buff: int = 0
         self.abilities = PlayerAbilities()
-        self.abilities.add_ability(CROSS_CUT)
-        self.abilities.add_ability(PW_KILL)
+
+        from src.systems.abilities import get_ability_by_id
+        for ab_id in class_def.starting_abilities:
+            ability = get_ability_by_id(ab_id)
+            if ability:
+                self.abilities.add_ability(ability)
+
+    @property
+    def class_name(self) -> str:
+        return CLASS_REGISTRY[self.class_id].name
 
     @property
     def effective_stats(self) -> Stats:

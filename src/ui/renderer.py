@@ -46,7 +46,7 @@ class Renderer:
         self.draw_box(0, 0, SCREEN_WIDTH, 22, bg_col=COLOR_DARK_BLUE, border_col=COLOR_GRAY)
 
         # Hero name, class, and level
-        title_text = f"{player.name} ({player.class_id.capitalize()}) Lv.{player.level}"
+        title_text = f"{player.name} ({player.class_name}) Lv.{player.level}"
         pyxel.text(6, 4, title_text, COLOR_YELLOW)
 
         # Health bar
