@@ -33,6 +33,10 @@ jobs:
 
       - name: Package Pyxel App to HTML
         run: |
+          # Genera los assets necesarios
+          cd src/tools
+          python generate_assets.py
+          # Genera la carpeta dist
           mkdir dist
           # Empaqueta la carpeta raíz indicando tu script inicial (ej. main.py)
           pyxel package . main.py
