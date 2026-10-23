@@ -1,0 +1,57 @@
+name: Build and Deploy Pyxel Web
+
+on:
+  push:
+    branches: [ main ]  # O 'master' según tu rama
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies & Pyxel
+        run: |
+          pip install --upgrade pip
+          pip install pyxel
+
+      - name: Package Pyxel App to HTML
+        run: |
+          mkdir dist
+          # Empaqueta la carpeta raíz indicando tu script inicial (ej. main.py)
+          pyxel package . main.py
+          # Convierte el archivo .pyxapp a HTML autónomo dentro de /dist
+          pyxel app2html main.pyxapp
+          mv main.html dist/index.html
+
+      - name: Upload Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'dist'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
