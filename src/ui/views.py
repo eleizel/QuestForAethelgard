@@ -462,7 +462,15 @@ class AbilityChoiceView(View):
         else:
             current_node = game_state.map_graph.current_node
             if current_node and current_node.node_type == NodeType.BOSS:
-                game_state.switch_mode(GameMode.VICTORY)
+                if game_state.act < 3:
+                    game_state.act += 1
+                    game_state.floor = 1
+                    from src.systems.map_gen import generate_spire_map
+                    game_state.map_graph = generate_spire_map(num_floors=8, width_lanes=4)
+                    game_state.player.heal(9999) # Full heal between acts
+                    game_state.switch_mode(GameMode.MAP)
+                else:
+                    game_state.switch_mode(GameMode.VICTORY)
             else:
                 game_state.switch_mode(GameMode.MAP)
 
