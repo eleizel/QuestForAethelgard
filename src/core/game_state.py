@@ -29,6 +29,7 @@ class GameMode(Enum):
     GAME_OVER = auto()
     VICTORY = auto()
     ABILITY_CHOICE = auto()
+    LOOT = auto()
 
 
 class GameState:
@@ -45,104 +46,33 @@ class GameState:
         self.floor: int = 1
         self.act: int = 1
 
+        self.pending_loot: list[Item] = []
+        self.last_gold_earned: int = 0
+        self.last_exp_earned: int = 0
+
         self._seed_starter_kit()
 
     def _seed_starter_kit(self) -> None:
         """Provide initial gear and consumables for the journey."""
-        sword = EquipmentItem(
-            id="bronze_sword",
-            name="Bronze Blade",
-            description="A dependable starting sword.",
-            slot=EquipSlot.MAIN_HAND,
-            stats_bonus=Stats(
-                max_hp=0,
-                attack=1,
-                defense=0,
-                speed=0,
-                crit_chance=0.05
-            )
+        from src.data.items import get_item
 
-        )
-        shield = EquipmentItem(
-            id="bronze_shield",
-            name="Bronze Shield",
-            description="A dependable starting shield.",
-            slot=EquipSlot.OFF_HAND,
-            stats_bonus=Stats(
-                max_hp=1,
-                attack=0,
-                defense=1,
-                speed=0,
-                crit_chance=0
-            )
-        )
-        head = EquipmentItem(
-            id="bronze_helmet",
-            name="Bronze helmet",
-            description="A dependable starting helmet.",
-            slot=EquipSlot.HEAD,
-            stats_bonus=Stats(
-                max_hp=0,
-                attack=0,
-                defense=1,
-                speed=0,
-                crit_chance=0.05
-            )
-        )
-        chest = EquipmentItem(
-            id="bronze_chestplate",
-            name="Bronze Chestplate",
-            description="A dependable starting chestplate.",
-            slot=EquipSlot.CHEST,
-            stats_bonus=Stats(
-                max_hp=1,
-                attack=0,
-                defense=1,
-                speed=0,
-                crit_chance=0
-            )
-        )
-        hands = EquipmentItem(
-            id="leather_gloves",
-            name="Leather Gloves",
-            description="A pair of dependable starting gloves.",
-            slot=EquipSlot.HANDS,
-            stats_bonus=Stats(
-                max_hp=0,
-                attack=0,
-                defense=0,
-                speed=0,
-                crit_chance=0.05
-            )
-        )
-        legs = EquipmentItem(
-            id="leather_pants",
-            name="Leather Pants",
-            description="A pair of dependable starting pants.",
-            slot=EquipSlot.LEGS,
-            stats_bonus=Stats(
-                max_hp=0,
-                attack=0,
-                defense=0,
-                speed=1,
-                crit_chance=0
-            )
-        )
+        sword = get_item("bronze_sword")
+        shield = get_item("bronze_shield")
+        head = get_item("bronze_helmet")
+        chest = get_item("bronze_chestplate")
+        hands = get_item("leather_gloves")
+        legs = get_item("leather_pants")
 
-        self.player.inventory.equip(sword)
-        self.player.inventory.equip(shield)
-        self.player.inventory.equip(legs)
-        self.player.inventory.equip(chest)
-        self.player.inventory.equip(hands)
-        self.player.inventory.equip(head)
+        if sword: self.player.inventory.equip(sword)
+        if shield: self.player.inventory.equip(shield)
+        if head: self.player.inventory.equip(head)
+        if chest: self.player.inventory.equip(chest)
+        if hands: self.player.inventory.equip(hands)
+        if legs: self.player.inventory.equip(legs)
 
-        potion = ConsumableItem(
-            id="health_potion",
-            name="Health Draught",
-            description="Restores 35 hit points.",
-            heal_amount=35,
-        )
-        self.player.inventory.belt[0] = potion
+        potion = get_item("health_potion")
+        if potion:
+            self.player.inventory.belt[0] = potion
 
     def switch_mode(self, new_mode: GameMode) -> None:
         """Transition the active game mode."""
@@ -218,22 +148,24 @@ class GameState:
 
         result = self.combat.step()
         if result == CombatResult.PLAYER_VICTORY:
-            if self.player.pending_ability_choices:
-                self.switch_mode(GameMode.ABILITY_CHOICE)
-                return
+            # Rewards already processed in combat.py, but we can capture the specific amounts to show in LOOT mode
+            self.last_exp_earned = self.combat.enemy.exp_reward
+            self.last_gold_earned = self.combat.enemy.gold_reward
 
+            # Generate loot
+            from src.systems.loot import generate_combat_loot
+            from src.entities.enemy import EnemyTier
             current_node = self.map_graph.current_node
-            if current_node and current_node.node_type == NodeType.BOSS:
-                if self.act < 3:
-                    self.act += 1
-                    self.floor = 1
-                    next_floors = 18 if self.act == 3 else 12
-                    self.map_graph = generate_spire_map(num_floors=next_floors, width_lanes=4)
-                    self.player.heal(9999) # Full heal between acts
-                    self.switch_mode(GameMode.MAP)
-                else:
-                    self.switch_mode(GameMode.VICTORY)
-            else:
-                self.switch_mode(GameMode.MAP)
+
+            tier = EnemyTier.COMMON
+            if current_node:
+                if current_node.node_type == NodeType.ELITE:
+                    tier = EnemyTier.ELITE
+                elif current_node.node_type == NodeType.BOSS:
+                    tier = EnemyTier.BOSS
+
+            self.pending_loot = generate_combat_loot(tier, self.floor, self.player)
+            self.switch_mode(GameMode.LOOT)
+
         elif result == CombatResult.PLAYER_DEFEAT:
             self.switch_mode(GameMode.GAME_OVER)

@@ -47,9 +47,9 @@ class Actor:
 
     def take_damage(self, raw_damage: int) -> int:
         """Apply damage mitigated by defense. Returns actual damage suffered."""
+        from src.core.math_utils import calculate_damage
         effective_defense = max(0, self.base_stats.defense)
-        # Defense mitigation formula: damage = max(1, raw_damage - defense // 2)
-        mitigated = max(1, raw_damage - (effective_defense // 2))
+        mitigated = calculate_damage(raw_damage, effective_defense)
         actual_damage = min(self.current_hp, mitigated)
         self.current_hp -= actual_damage
         return actual_damage

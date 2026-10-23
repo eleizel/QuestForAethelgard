@@ -43,3 +43,21 @@ TEXT_COLOR_SUCCESS: Final[int] = COLOR_LIME
 HUD_HEIGHT: Final[int] = 24
 STATUS_PANEL_WIDTH: Final[int] = 80
 LOG_PANEL_HEIGHT: Final[int] = 64
+
+# Sound Channels & Effects
+SND_CH_SFX: Final[int] = 0
+SND_CH_UI: Final[int] = 1
+SND_HIT: Final[int] = 0
+SND_CRIT: Final[int] = 1
+SND_HEAL: Final[int] = 2
+SND_CLICK: Final[int] = 3
+SND_VICTORY: Final[int] = 4
+SND_DEFEAT: Final[int] = 5
+
+# System Limits & Combat
+ACTION_THRESHOLD: Final[int] = 100
+ABILITY_COOLDOWN_TICKS: Final[int] = 3
+MAX_POUCH_SLOTS: Final[int] = 10
+MAX_BELT_SLOTS: Final[int] = 3
+MAX_ACTIVE_ABILITIES: Final[int] = 2
+MAX_PASSIVE_ABILITIES: Final[int] = 2
