@@ -26,6 +26,9 @@ class Engine:
 
         )
 
+        if not self.headless:
+            pyxel.mouse(True)
+
         abs_resource_path = os.path.abspath(RESOURCE_PATH)
         if os.path.exists(abs_resource_path):
             try:

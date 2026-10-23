@@ -25,6 +25,34 @@ class Renderer:
     """Provides modular UI rendering utilities for game screens."""
 
     @staticmethod
+    def is_clicked(x: int, y: int, w: int, h: int) -> bool:
+        """Return True if left click / tap occurred within the bounding box."""
+        if pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
+            return (x <= pyxel.mouse_x < x + w) and (y <= pyxel.mouse_y < y + h)
+        return False
+
+    def draw_button(
+        self,
+        x: int,
+        y: int,
+        w: int,
+        h: int,
+        label: str,
+        bg_col: int = COLOR_NAVY,
+        border_col: int = COLOR_WHITE,
+        text_col: int = COLOR_YELLOW,
+    ) -> bool:
+        """Draw a touch button and return True if clicked/tapped this frame."""
+        clicked = self.is_clicked(x, y, w, h)
+        fill = COLOR_DARK_BLUE if clicked else bg_col
+        pyxel.rect(x, y, w, h, fill)
+        pyxel.rectb(x, y, w, h, border_col)
+        text_x = x + (w - len(label) * 4) // 2
+        text_y = y + (h - 6) // 2
+        pyxel.text(text_x, text_y, label, text_col)
+        return clicked
+
+    @staticmethod
     def draw_box(x: int, y: int, w: int, h: int, bg_col: int = COLOR_NAVY, border_col: int = COLOR_WHITE) -> None:
         """Render a bordered rectangular dialog frame."""
         pyxel.rect(x, y, w, h, bg_col)
@@ -59,6 +87,9 @@ class Renderer:
         pyxel.text(145, 13, gold_text, COLOR_YELLOW)
         floor_text = f"Floor {floor}"
         pyxel.text(210, 4, floor_text, COLOR_PEACH)
+
+        # Draw Inventory Button
+        self.draw_button(218, 3, 34, 16, "[INV]")
 
     def draw_stat_panel(
         self,
