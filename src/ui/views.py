@@ -113,6 +113,8 @@ class MapView(View):
                     pyxel.blt(x_pos + 3, y_pos + 1, 0, 88, 0, 8, 8, 0)
                 elif node.node_type == NodeType.TREASURE and not is_curr:
                     pyxel.blt(x_pos + 3, y_pos + 1, 0, 96, 0, 8, 8, 0)
+                elif node.node_type == NodeType.SHOP and not is_curr:
+                    pyxel.blt(x_pos + 3, y_pos + 1, 0, 104, 0, 8, 8, 0)
                 else:
                     pyxel.text(x_pos + 4, y_pos + 3, icon_char, color if not is_curr else COLOR_BLACK)
 
@@ -934,6 +936,147 @@ class AbilityChoiceView(View):
         pyxel.text(30, h - 35, "Press [1] or [2] to select. [ESC] to skip.", COLOR_PEACH)
 
 
+class ShopView(View):
+    """Interactive Merchant Shop View."""
+
+    def __init__(self) -> None:
+        self.active_tab: str = "BUY"
+        self.buy_cursor: int = 0
+        self.sell_cursor: int = 0
+        self.feedback_msg: str = ""
+
+    def update(self, game_state: GameState) -> None:
+        if pyxel.btnp(pyxel.KEY_ESCAPE) or pyxel.btnp(pyxel.KEY_SPACE):
+            game_state.switch_mode(GameMode.MAP)
+            return
+
+        if pyxel.btnp(pyxel.KEY_TAB):
+            self.active_tab = "SELL" if self.active_tab == "BUY" else "BUY"
+            self.feedback_msg = ""
+            return
+
+        up_pressed = pyxel.btnp(pyxel.KEY_UP) or pyxel.btnp(pyxel.KEY_W)
+        down_pressed = pyxel.btnp(pyxel.KEY_DOWN) or pyxel.btnp(pyxel.KEY_S)
+
+        if self.active_tab == "BUY":
+            stock = game_state.merchant_stock
+            if up_pressed:
+                self.buy_cursor = max(0, self.buy_cursor - 1)
+            elif down_pressed:
+                self.buy_cursor = min(max(0, len(stock) - 1), self.buy_cursor + 1)
+
+            if len(stock) > 0 and (pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_B)):
+                if 0 <= self.buy_cursor < len(stock):
+                    item, price = stock[self.buy_cursor]
+                    if game_state.player.gold < price:
+                        self.feedback_msg = "Not enough gold!"
+                    elif len(game_state.player.inventory.pouch) >= MAX_POUCH_SLOTS:
+                        self.feedback_msg = "Pouch full!"
+                    else:
+                        game_state.player.gold -= price
+                        game_state.player.inventory.add_to_pouch(item)
+                        stock.pop(self.buy_cursor)
+                        pyxel.play(0, 3)
+                        self.feedback_msg = f"Purchased {item.name}!"
+                        if self.buy_cursor >= len(stock):
+                            self.buy_cursor = max(0, len(stock) - 1)
+
+        elif self.active_tab == "SELL":
+            pouch = game_state.player.inventory.pouch
+            if up_pressed:
+                self.sell_cursor = max(0, self.sell_cursor - 1)
+            elif down_pressed:
+                self.sell_cursor = min(max(0, len(pouch) - 1), self.sell_cursor + 1)
+
+            if len(pouch) > 0 and (pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_S)):
+                if 0 <= self.sell_cursor < len(pouch):
+                    item = pouch[self.sell_cursor]
+                    sell_value = max(5, item.gold_value // 2)
+                    popped = game_state.player.inventory.remove_from_pouch(self.sell_cursor)
+                    if popped:
+                        game_state.player.gold += sell_value
+                        pyxel.play(0, 3)
+                        self.feedback_msg = f"Sold {popped.name} for {sell_value}G!"
+                        if self.sell_cursor >= len(game_state.player.inventory.pouch):
+                            self.sell_cursor = max(0, len(game_state.player.inventory.pouch) - 1)
+
+    def draw(self, game_state: GameState, renderer: Renderer) -> None:
+        renderer.draw_hud(game_state.player, game_state.floor)
+
+        # Header Box (y=24 to 52)
+        renderer.draw_box(4, 24, SCREEN_WIDTH - 8, 28, bg_col=COLOR_NAVY, border_col=COLOR_GRAY)
+        pyxel.blt(12, 28, 0, 32, 32, 16, 16, 0) # Merchant Sprite
+        pyxel.text(32, 30, "Wandering Merchant:", COLOR_YELLOW)
+        pyxel.text(32, 40, "'Gold buys steel and sorcery, traveler.'", COLOR_WHITE)
+
+        # Main Listing Frame (y=56 to 216)
+        renderer.draw_box(4, 56, SCREEN_WIDTH - 8, 160, bg_col=COLOR_BLACK, border_col=COLOR_GRAY)
+
+        # Tab Indicator
+        buy_color = COLOR_YELLOW if self.active_tab == "BUY" else COLOR_GRAY
+        sell_color = COLOR_YELLOW if self.active_tab == "SELL" else COLOR_GRAY
+        pyxel.text(12, 60, "[TAB] Mode:", COLOR_WHITE)
+        pyxel.text(60, 60, "[BUY]", buy_color)
+        pyxel.text(82, 60, "|", COLOR_WHITE)
+        pyxel.text(88, 60, "[SELL]", sell_color)
+        pyxel.line(4, 70, SCREEN_WIDTH - 5, 70, COLOR_GRAY)
+
+        if self.active_tab == "BUY":
+            stock = game_state.merchant_stock
+            if not stock:
+                pyxel.text(12, 80, "Out of stock.", COLOR_GRAY)
+            else:
+                for i, (item, price) in enumerate(stock):
+                    y = 75 + i * 16
+                    color = COLOR_WHITE
+                    if i == self.buy_cursor:
+                        pyxel.text(8, y, ">", COLOR_YELLOW)
+                        color = COLOR_YELLOW
+                    pyxel.text(16, y, item.name, color)
+
+                    # Try to display some stats/info if equipment
+                    from src.systems.inventory import EquipmentItem, ConsumableItem
+                    if isinstance(item, EquipmentItem):
+                        slot_str = item.slot.value
+                        pyxel.text(16, y + 8, f"[{slot_str}]", COLOR_GRAY)
+                    elif isinstance(item, ConsumableItem):
+                        pyxel.text(16, y + 8, f"Heals {item.heal_amount}", COLOR_LIME)
+
+                    # Price
+                    pyxel.blt(190, y, 0, 40, 24, 8, 8, 0)
+                    pyxel.text(200, y + 1, f"{price}G", COLOR_YELLOW)
+
+        elif self.active_tab == "SELL":
+            pouch = game_state.player.inventory.pouch
+            if not pouch:
+                pyxel.text(12, 80, "Your pouch is empty.", COLOR_GRAY)
+            else:
+                for i, item in enumerate(pouch):
+                    y = 75 + i * 14
+                    color = COLOR_WHITE
+                    if i == self.sell_cursor:
+                        pyxel.text(8, y, ">", COLOR_YELLOW)
+                        color = COLOR_YELLOW
+                    pyxel.text(16, y, item.name, color)
+
+                    sell_value = max(5, item.gold_value // 2)
+                    pyxel.text(190, y, f"{sell_value}G", COLOR_YELLOW)
+
+        # Footer Panel (y=222 to 252)
+        renderer.draw_box(4, 220, SCREEN_WIDTH - 8, 32, bg_col=COLOR_NAVY, border_col=COLOR_GRAY)
+
+        msg_color = COLOR_RED if "!" in self.feedback_msg and "Purchased" not in self.feedback_msg and "Sold" not in self.feedback_msg else COLOR_LIME
+        if self.feedback_msg:
+            pyxel.text(12, 226, self.feedback_msg, msg_color)
+
+        if self.active_tab == "BUY":
+            pyxel.text(12, 238, "[UP/DN] Select | [ENTER/B] Buy", COLOR_GRAY)
+            pyxel.text(12, 246, "[TAB] Sell Tab | [ESC] Leave", COLOR_GRAY)
+        else:
+            pyxel.text(12, 238, "[UP/DN] Select | [ENTER/S] Sell", COLOR_GRAY)
+            pyxel.text(12, 246, "[TAB] Buy Tab | [ESC] Leave", COLOR_GRAY)
+
+
 class LootView(View):
     """Renders the post-combat loot screen."""
 
@@ -1044,6 +1187,7 @@ class ViewManager:
             GameMode.VICTORY: EndGameView(is_victory=True),
             GameMode.ABILITY_CHOICE: AbilityChoiceView(),
             GameMode.LOOT: LootView(),
+            GameMode.SHOP: ShopView(),
         }
 
     def update(self, game_state: GameState) -> None:

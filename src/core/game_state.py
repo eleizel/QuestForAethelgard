@@ -31,6 +31,7 @@ class GameMode(Enum):
     VICTORY = auto()
     ABILITY_CHOICE = auto()
     LOOT = auto()
+    SHOP = auto()
 
 
 class GameState:
@@ -48,6 +49,7 @@ class GameState:
         self.act: int = 1
 
         self.pending_loot: list[Item] = []
+        self.merchant_stock: list[tuple[Item, int]] = []
         self.last_gold_earned: int = 0
         self.last_exp_earned: int = 0
 
@@ -128,10 +130,9 @@ class GameState:
             self.switch_mode(GameMode.EVENTS)
 
         elif node.node_type == NodeType.SHOP:
-            self.current_event_text = (
-                "A wandering merchant greets you: \n'Stay safe traveler.'"
-            )
-            self.switch_mode(GameMode.EVENTS)
+            from src.systems.loot import generate_merchant_stock
+            self.merchant_stock = generate_merchant_stock(self.floor, self.player)
+            self.switch_mode(GameMode.SHOP)
 
         else:  # NodeType.EVENT
             self.player.exp_multiplier = self.player.exp_multiplier + 0.05
