@@ -1,10 +1,22 @@
 """Automated asset generator for Quest for Aethelgard.
 
 Generates `assets/game.pyxres` containing:
-- Bank 0: 16x16 characters & monsters, 8x8 item icons, basic map markers
+- Bank 0:
+    - 16x16 Character Sprites:
+        - Warrior (Hero):      (0, 0)
+        - Skeleton:            (16, 0)
+        - Goblin:              (32, 0)
+        - Boss:                (48, 0)
+        - Rogue:               (0, 32)
+        - Mage:                (16, 32)
+    - 8x8 Item & Map Icons:
+        - Row y=0:  Potion (64, 0), Bronze Sword (72, 0), Bronze Shield (80, 0), Campfire (88, 0), Chest (96, 0)
+        - Row y=8:  Major Flask (64, 8), Quickness Elixir (72, 8), Bronze Helmet (80, 8), Chestplate (88, 8), Gloves (96, 8), Pants (104, 8)
+        - Row y=16: Mantle (0, 16), Pauldrons (8, 16), Belt (16, 16), Girdle (24, 16), Bandit Dagger (32, 16), Wand (40, 16), Grimoire (48, 16), Staff of Embers (56, 16), Claymore (64, 16)
+        - Row y=24: Worn Dagger (0, 24), Parrying Dirk (8, 24), Gnarled Wand (16, 24), Tattered Grimoire (24, 24), Stat Potion (32, 24)
 - Bank 1: High-detail title screen art:
-    - (0, 0, 144, 32):  Unified Gilded Title Plaque (No split, no bisecting sword)
-    - (144, 0, 24, 28): Humanoid Gothic Lich / Necromancer in flowing robes
+    - (0, 0, 144, 32):  Unified Gilded Title Plaque
+    - (144, 0, 24, 28): Humanoid Gothic Lich / Necromancer
     - (168, 0, 24, 32): Stone Gargoyle on Battlement
     - (192, 0, 8, 8):   Gothic Corner Skull
     - (200, 0, 8, 8):   Glowing Sword Cursor
@@ -27,7 +39,7 @@ def build_assets() -> None:
     # IMAGE BANK 0: CHARACTERS, ITEMS & MAP MARKERS
     # =========================================================================
 
-    # Hero (16x16) at (0, 0)
+    # Warrior Hero (16x16) at (0, 0)
     hero_sprite = [
         "00000aaa00000000",
         "0000aaaaa0000000",
@@ -111,7 +123,49 @@ def build_assets() -> None:
     ]
     pyxel.images[0].set(48, 0, boss_sprite)
 
-    # Item & Map Icons
+    # Rogue Character Sprite (16x16) at (0, 32)
+    rogue_sprite = [
+        "0000011100000000",
+        "0000111110000000",
+        "0000155510000000",
+        "0001180811000000",
+        "0001155511000000",
+        "0000111110000000",
+        "0070444440070000",
+        "07604ff440067000",
+        "0070444440070000",
+        "0000544450000000",
+        "0000444440000000",
+        "0000550550000000",
+        "0000110110000000",
+        "0000110110000000",
+        "0000550550000000",
+        "0000000000000000",
+    ]
+    pyxel.images[0].set(0, 32, rogue_sprite)
+
+    # Mage Character Sprite (16x16) at (16, 32)
+    mage_sprite = [
+        "0000002000000000",
+        "0000022200000000",
+        "0000022200000000",
+        "0000222220000000",
+        "0002aaaaa2000000",
+        "002222222220c000",
+        "000077777000c700",
+        "00007878700a4a00",
+        "0000777770004000",
+        "00022ccc22004000",
+        "00222ccc22204000",
+        "0022222222204000",
+        "0002220222004000",
+        "0002220222004000",
+        "0001110111004000",
+        "0000000000000000",
+    ]
+    pyxel.images[0].set(16, 32, mage_sprite)
+
+    # Item & Map Icons (y=0, 8, 16)
     pyxel.images[0].set(64, 0, ["00044000","00077000","00766700","07888870","07878870","07888870","00788700","00077000"])
     pyxel.images[0].set(72, 0, ["00000007","000000aa","00000a90","00009400","05094000","00550000","04005000","40000000"])
     pyxel.images[0].set(80, 0, ["0aaaaaa0","a999999a","a949949a","a949949a","a994499a","0a9999a0","00a99a00","000aa000"])
@@ -135,44 +189,59 @@ def build_assets() -> None:
     pyxel.images[0].set(56, 16, ["00000989","000008e8","00000989","00004000","00040000","00400000","04000000","40000000"])
     pyxel.images[0].set(64, 16, ["00000077","00000766","00007660","00076600","05766000","55550000","04005000","40000000"])
 
+    # Row y=24: Starter Kit Weapons & Stat Potion (8x8)
+    # Worn Dagger at (0, 24)
+    pyxel.images[0].set(0, 24, [
+        "00000007", "00000067", "00000650", "00006500",
+        "00444000", "04040000", "40000000", "00000000"
+    ])
+    # Parrying Dirk at (8, 24)
+    pyxel.images[0].set(8, 24, [
+        "00000006", "00000056", "00000550", "00505500",
+        "00055000", "05555500", "00400500", "04000000"
+    ])
+    # Gnarled Wand at (16, 24)
+    pyxel.images[0].set(16, 24, [
+        "000000cc", "00000cc7", "000004c0", "00004000",
+        "00040000", "00400000", "04000000", "40000000"
+    ])
+    # Tattered Grimoire at (24, 24)
+    pyxel.images[0].set(24, 24, [
+        "04444440", "4fffffff", "4f44444f", "4f4cc44f",
+        "4f4cc44f", "4f44444f", "4fffffff", "04444440"
+    ])
+    # Permanent Stat Elixir at (32, 24)
+    pyxel.images[0].set(32, 24, [
+        "00077000", "000aa000", "00799700", "07aaaa70",
+        "07a7aa70", "07aaaa70", "007aa700", "00077000"
+    ])
+
     # =========================================================================
     # IMAGE BANK 1: REFINED GOTHIC TITLE ASSETS
     # =========================================================================
 
-    # 1. Unified Gilded Title Plaque (144x32 at 0, 0 in Bank 1)
     def create_title_banner():
         W, H = 144, 32
         g = [["0" for _ in range(W)] for _ in range(H)]
-
-        # Solid dark navy background
         for y in range(2, 30):
             for x in range(4, W - 4):
                 g[y][x] = "1"
-
-        # Outer gold border
         for x in range(4, W - 4):
             g[2][x] = "a"; g[3][x] = "9"
             g[28][x] = "9"; g[29][x] = "a"
         for y in range(2, 30):
             g[y][4] = "a"; g[y][5] = "9"
             g[y][W - 6] = "9"; g[y][W - 5] = "a"
-
-        # Inner etched border
         for x in range(8, W - 8):
             g[5][x] = "4"; g[26][x] = "4"
         for y in range(5, 27):
             g[y][8] = "4"; g[y][W - 9] = "4"
-
-        # Corner jewels
         for cy, cx in [(2, 4), (2, W - 6), (28, 4), (28, W - 6)]:
             g[cy][cx] = "7"
-
-        # Side filigree accents
         for dx in range(12):
             g[16][12 + dx] = "a" if dx % 2 == 0 else "9"
             g[16][W - 13 - dx] = "a" if dx % 2 == 0 else "9"
 
-        # "QUEST FOR" centered on line 1
         FONT_4x5 = {
             'Q': ["aaa0", "a0aa", "a0aa", "aaa0", "00aa"],
             'U': ["a00a", "a00a", "a00a", "a00a", "0aa0"],
@@ -194,7 +263,6 @@ def build_assets() -> None:
                         g[8 + r][qx + c] = bm[r][c]
             qx += 5
 
-        # "AETHELGARD" as a unified single continuous word on line 2
         FONT_5x7 = {
             'A': ["07770", "70007", "70007", "77777", "70007", "70007", "70007"],
             'E': ["77777", "70000", "77770", "70000", "70000", "70000", "77777"],
@@ -219,36 +287,29 @@ def build_assets() -> None:
 
     pyxel.images[1].set(0, 0, create_title_banner())
 
-    # 2. Humanoid Gothic Lich / Necromancer (24x28 at 144, 0 in Bank 1)
     def create_humanoid_lich():
         W, H = 24, 28
         g = [["0" for _ in range(W)] for _ in range(H)]
-
-        # Crystal Staff on right
         g[2][20] = "c"; g[2][21] = "7"; g[1][20] = "c"; g[1][21] = "c"
         g[3][19] = "a"; g[3][22] = "a"; g[4][20] = "a"; g[4][21] = "a"
         for sy in range(5, 27):
             g[sy][21] = "4"
-        g[13][21] = "7"; g[14][21] = "7"  # Bony hand gripping staff
+        g[13][21] = "7"; g[14][21] = "7"
 
-        # Dark Cowl / Hood
         for x in range(9, 14): g[3][x] = "1"
         for x in range(8, 15): g[4][x] = "1"
         g[4][10] = "2"; g[4][11] = "2"; g[4][12] = "2"
         g[2][11] = "1"; g[1][11] = "a"
 
-        # Inner shadow
         for y in range(5, 10):
             for x in range(9, 14):
                 g[y][x] = "0"
 
-        # Bone Skull
         g[5][10] = "7"; g[5][11] = "7"; g[5][12] = "7"
-        g[6][10] = "e"; g[6][11] = "7"; g[6][12] = "e"  # Glowing red/pink eye sockets
+        g[6][10] = "e"; g[6][11] = "7"; g[6][12] = "e"
         g[7][10] = "7"; g[7][11] = "0"; g[7][12] = "7"
         g[8][10] = "7"; g[8][11] = "5"; g[8][12] = "7"
 
-        # Shoulder mantle & golden clasp
         for y in range(9, 12):
             w = (y - 8) * 3 + 2
             for x in range(11 - w // 2, 11 + w // 2 + 1):
@@ -256,14 +317,12 @@ def build_assets() -> None:
                     g[y][x] = "2" if (x + y) % 2 == 0 else "1"
         g[10][11] = "a"; g[11][11] = "9"
 
-        # Outstretched skeletal arm casting cyan sparks
         g[11][7] = "2"; g[11][6] = "1"; g[12][6] = "2"; g[12][5] = "1"
         g[13][5] = "2"; g[13][4] = "1"
         g[12][3] = "7"; g[12][4] = "7"
         g[11][2] = "7"; g[12][1] = "c"; g[13][2] = "7"
         g[11][0] = "c"; g[12][0] = "7"; g[13][1] = "c"
 
-        # Flowing Robes
         for y in range(12, 18):
             for x in range(8, 15):
                 if g[y][x] == "0":
@@ -278,7 +337,6 @@ def build_assets() -> None:
                 if 0 <= x < W and g[y][x] == "0":
                     g[y][x] = "2" if (x + y) % 3 != 0 else "1"
 
-        # Tattered hem
         for x in range(4, 19):
             if (x * 7) % 3 == 0:
                 g[26][x] = "0"; g[27][x] = "0"
@@ -289,7 +347,6 @@ def build_assets() -> None:
 
     pyxel.images[1].set(144, 0, create_humanoid_lich())
 
-    # 3. Stone Gargoyle on Battlement (24x32 at 168, 0 in Bank 1)
     def create_gargoyle():
         W, H = 24, 32
         g = [["0" for _ in range(W)] for _ in range(H)]
@@ -334,13 +391,13 @@ def build_assets() -> None:
 
     pyxel.images[1].set(168, 0, create_gargoyle())
 
-    # 4. Corner Skull (8x8 at 192, 0 in Bank 1)
+    # Corner Skull at (192, 0)
     pyxel.images[1].set(192, 0, [
         "07777770", "77777777", "78777787", "70777707",
         "07700770", "00777700", "00755700", "00000000"
     ])
 
-    # 5. Glowing Sword Cursor (8x8 at 200, 0 in Bank 1)
+    # Sword Cursor at (200, 0)
     pyxel.images[1].set(200, 0, [
         "00000007", "0000007c", "000007c0", "0a007c00",
         "0aa7c000", "00aa0000", "040aa000", "4000a000"
