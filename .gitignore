@@ -1,3 +1,4 @@
 # Cache de Python
 __pycache__/
 *.pyc
+/assets/game.pyxres
