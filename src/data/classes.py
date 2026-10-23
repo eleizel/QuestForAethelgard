@@ -32,7 +32,8 @@ CLASS_REGISTRY: Final[dict[str, ClassDefinition]] = {
         base_stats=Stats(max_hp=80, attack=14, defense=2, speed=15, crit_chance=0.10),
         growth_per_level=Stats(max_hp=10, attack=3, defense=1, speed=2, crit_chance=0.01),
         promotions=["assassin", "duelist"],
-        description="A nimble and deadly striking expert."
+        description="A nimble and deadly striking expert.",
+        starting_abilities=["shadow_strike"]
     ),
     "mage": ClassDefinition(
         id="mage",
@@ -41,7 +42,8 @@ CLASS_REGISTRY: Final[dict[str, ClassDefinition]] = {
         base_stats=Stats(max_hp=70, attack=18, defense=1, speed=8, crit_chance=0.05),
         growth_per_level=Stats(max_hp=8, attack=4, defense=1, speed=1, crit_chance=0.005),
         promotions=["archmage", "warlock"],
-        description="A fragile but destructive spellcaster."
+        description="A fragile but destructive spellcaster.",
+        starting_abilities=["arcane_bolt"]
     ),
     "paladin": ClassDefinition(
         id="paladin",
