@@ -49,4 +49,23 @@ TRANSLATIONS_EN = {
     "combat_veteran": "{player}'s Veteran's Instincts restored 20 gauge!",
     "combat_queued": "Queued {ability}!",
     "combat_cooldown": "Ability on cooldown ({cooldown} turns)!",
+
+    # Consumables
+    "health_potion": "Health P. S",
+    "major_health_flask": "Health P. M",
+    "divine_nectar": "Health P. L",
+    "elixir_vitality_minor": "HP Elixir S",
+    "elixir_strength_minor": "ATK Elixir S",
+    "elixir_iron_minor": "DEF Elixir S",
+    "elixir_celerity_minor": "SPD Elixir S",
+    "elixir_precision_minor": "CRIT Elixir S",
+    "elixir_vitality_greater": "HP Elixir M",
+    "elixir_strength_greater": "ATK Elixir M",
+    "elixir_iron_greater": "DEF Elixir M",
+    "elixir_celerity_greater": "SPD Elixir M",
+    "elixir_precision_greater": "CRIT Elixir M",
+    "elixir_of_quickness": "Speed Potion",
+    "suspicious_pie": "Meat Pie",
+    "goblin_cheese_wheel": "Stink-Cheese",
+
 }

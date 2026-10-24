@@ -139,70 +139,70 @@ ITEM_CATALOG: Final[dict[str, Item]] = {
     # 4. RESTORATIVE & STAT-BOOSTING CONSUMABLES
     # =========================================================================
     "health_potion": ConsumableItem(
-        id="health_potion", name="Health Draught", description="Restores 35 hit points.", heal_amount=35,
+        id="health_potion", name="Health P. S", description="Restores 35 hit points.", heal_amount=35,
     ),
     "major_health_flask": ConsumableItem(
-        id="major_health_flask", name="Major Health Flask", description="Restores 80 hit points.", heal_amount=80,
+        id="major_health_flask", name="Health P. M", description="Restores 80 hit points.", heal_amount=80,
     ),
     "divine_nectar": ConsumableItem(
-        id="divine_nectar", name="Divine Nectar", description="Restores 180 hit points.", heal_amount=180,
+        id="divine_nectar", name="Health P. L", description="Restores 180 hit points.", heal_amount=180,
     ),
 
     # --- Minor Permanent Elixirs (+1 Stat / +10 HP) ---
     "elixir_vitality_minor": StatPotion(
-        id="elixir_vitality_minor", name="Minor Vitality Draught",
+        id="elixir_vitality_minor", name="HP Elixir S",
         description="Permanently grants +10 Max HP.", heal_amount=10,
         stat_bonus=Stats(max_hp=10, attack=0, defense=0, speed=0, crit_chance=0.0),
     ),
     "elixir_strength_minor": StatPotion(
-        id="elixir_strength_minor", name="Minor Brawn Draught",
+        id="elixir_strength_minor", name="ATK Elixir S",
         description="Permanently grants +1 Attack.", heal_amount=0,
         stat_bonus=Stats(max_hp=0, attack=1, defense=0, speed=0, crit_chance=0.0),
     ),
     "elixir_iron_minor": StatPotion(
-        id="elixir_iron_minor", name="Minor Ironbark Draught",
+        id="elixir_iron_minor", name="DEF Elixir S",
         description="Permanently grants +1 Defense.", heal_amount=0,
         stat_bonus=Stats(max_hp=0, attack=0, defense=1, speed=0, crit_chance=0.0),
     ),
     "elixir_celerity_minor": StatPotion(
-        id="elixir_celerity_minor", name="Minor Windstride Draught",
+        id="elixir_celerity_minor", name="SPD Elixir S",
         description="Permanently grants +1 Speed.", heal_amount=0,
         stat_bonus=Stats(max_hp=0, attack=0, defense=0, speed=1, crit_chance=0.0),
     ),
     "elixir_precision_minor": StatPotion(
-        id="elixir_precision_minor", name="Minor Eagle-Eye Draught",
+        id="elixir_precision_minor", name="CRIT Elixir S",
         description="Permanently grants +1% Crit Chance.", heal_amount=0,
         stat_bonus=Stats(max_hp=0, attack=0, defense=0, speed=0, crit_chance=0.01),
     ),
 
     # --- Greater Permanent Elixirs (+3 Stats / +25 HP) ---
     "elixir_vitality_greater": StatPotion(
-        id="elixir_vitality_greater", name="Greater Draught of Colossi",
+        id="elixir_vitality_greater", name="HP Elixir M",
         description="Permanently grants +25 Max HP.", heal_amount=25,
         stat_bonus=Stats(max_hp=25, attack=0, defense=0, speed=0, crit_chance=0.0),
     ),
     "elixir_strength_greater": StatPotion(
-        id="elixir_strength_greater", name="Greater Draught of Warlords",
+        id="elixir_strength_greater", name="ATK Elixir M",
         description="Permanently grants +3 Attack.", heal_amount=0,
         stat_bonus=Stats(max_hp=0, attack=3, defense=0, speed=0, crit_chance=0.0),
     ),
     "elixir_iron_greater": StatPotion(
-        id="elixir_iron_greater", name="Greater Draught of Bastions",
+        id="elixir_iron_greater", name="DEF Elixir M",
         description="Permanently grants +3 Defense.", heal_amount=0,
         stat_bonus=Stats(max_hp=0, attack=0, defense=3, speed=0, crit_chance=0.0),
     ),
     "elixir_celerity_greater": StatPotion(
-        id="elixir_celerity_greater", name="Greater Draught of Tempests",
+        id="elixir_celerity_greater", name="SPD Elixir M",
         description="Permanently grants +3 Speed.", heal_amount=0,
         stat_bonus=Stats(max_hp=0, attack=0, defense=0, speed=3, crit_chance=0.0),
     ),
     "elixir_precision_greater": StatPotion(
-        id="elixir_precision_greater", name="Greater Draught of Killers",
+        id="elixir_precision_greater", name="CRIT Elixir M",
         description="Permanently grants +3% Crit Chance.", heal_amount=0,
         stat_bonus=Stats(max_hp=0, attack=0, defense=0, speed=0, crit_chance=0.03),
     ),
     "elixir_of_quickness": StatPotion(
-        id="elixir_of_quickness", name="Elixir of Quickness",
+        id="elixir_of_quickness", name="Speed Potion",
         description="Heals 10 HP and permanently grants +3 SPD.", heal_amount=10,
         stat_bonus=Stats(max_hp=0, attack=0, defense=0, speed=3, crit_chance=0.0),
     ),
@@ -482,11 +482,11 @@ ITEM_CATALOG: Final[dict[str, Item]] = {
     # 9. FUNNY, QUIRKY & STRANGE DUNGEON FINDS
     # =========================================================================
     "suspicious_pie": ConsumableItem(
-        id="suspicious_pie", name="Suspicious Meat Pie",
+        id="suspicious_pie", name="Meat Pie",
         description="Warm, moist, and smells like dungeon lichen. Restores 45 HP (probably).", heal_amount=45,
     ),
     "goblin_cheese_wheel": ConsumableItem(
-        id="goblin_cheese_wheel", name="Goblin Stink-Cheese",
+        id="goblin_cheese_wheel", name="Stink-Cheese",
         description="So pungent it makes your eyes water. Restores 15 HP and grants +1 ATK from pure rage.",
         heal_amount=15,
     ),
