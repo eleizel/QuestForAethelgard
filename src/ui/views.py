@@ -110,6 +110,81 @@ class View:
         pass
 
 
+class BiomeSelectView(View):
+    """Renders the biome route selection screen."""
+
+    def update(self, game_state: GameState) -> None:
+        from src.data.biomes import ACT_BIOMES
+        if game_state.act not in ACT_BIOMES:
+            return
+
+        biome_a_id, biome_b_id = ACT_BIOMES[game_state.act]
+
+        if pyxel.btnp(pyxel.KEY_1) or Renderer.is_clicked(12, 42, 110, 170):
+            pyxel.play(0, 3) # SND_CLICK
+            game_state.advance_act(target_biome_id=biome_a_id)
+        elif pyxel.btnp(pyxel.KEY_2) or Renderer.is_clicked(134, 42, 110, 170):
+            pyxel.play(0, 3) # SND_CLICK
+            game_state.advance_act(target_biome_id=biome_b_id)
+
+    def draw(self, game_state: GameState, renderer: Renderer) -> None:
+        pyxel.cls(COLOR_BLACK)
+
+        # Header
+        renderer.draw_box(0, 12, SCREEN_WIDTH, 20, bg_col=COLOR_NAVY, border_col=COLOR_GRAY)
+        title = f"ACT {game_state.act} EXPEDITION ROUTE"
+        pyxel.text(SCREEN_WIDTH // 2 - len(title) * 2, 18, title, COLOR_YELLOW)
+
+        from src.data.biomes import ACT_BIOMES, get_biome
+        if game_state.act not in ACT_BIOMES:
+            return
+
+        biome_a_id, biome_b_id = ACT_BIOMES[game_state.act]
+        biome_a = get_biome(biome_a_id)
+        biome_b = get_biome(biome_b_id)
+
+        biomes = [(biome_a, 12), (biome_b, 134)]
+
+        for biome, x_offset in biomes:
+            if not biome:
+                continue
+
+            # Card
+            renderer.draw_box(x_offset, 42, 110, 170, bg_col=COLOR_DARK_BLUE, border_col=biome.ambient_color)
+
+            # Content
+            pyxel.text(x_offset + 4, 46, biome.name, COLOR_YELLOW)
+            pyxel.text(x_offset + 4, 56, biome.theme_tags, COLOR_GRAY)
+
+            # Wrap description (naive split)
+            words = biome.description.split()
+            lines = []
+            current_line = ""
+            for word in words:
+                if len(current_line) + len(word) < 24:
+                    current_line += word + " "
+                else:
+                    lines.append(current_line)
+                    current_line = word + " "
+            if current_line:
+                lines.append(current_line)
+
+            for i, line in enumerate(lines):
+                pyxel.text(x_offset + 4, 70 + i * 10, line.strip(), COLOR_WHITE)
+
+            pyxel.text(x_offset + 4, 120, "Threats:", COLOR_ORANGE)
+            if len(biome.basic_enemies) >= 2:
+                pyxel.text(x_offset + 4, 130, f"- {biome.basic_enemies[0].replace('_', ' ').title()}", COLOR_GRAY)
+                pyxel.text(x_offset + 4, 140, f"- {biome.basic_enemies[1].replace('_', ' ').title()}", COLOR_GRAY)
+
+            pyxel.text(x_offset + 4, 155, "Bosses:", COLOR_RED)
+            if len(biome.bosses) >= 2:
+                pyxel.text(x_offset + 4, 165, f"- {biome.bosses[0].replace('_', ' ').title()}", COLOR_WHITE)
+                pyxel.text(x_offset + 4, 175, f"- {biome.bosses[1].replace('_', ' ').title()}", COLOR_WHITE)
+
+            renderer.draw_button(x_offset + 8, 188, 94, 16, "[CHOOSE ROUTE]", bg_col=COLOR_BLACK, text_col=COLOR_WHITE)
+
+
 class MapView(View):
     """Visualizes the Spire node tree and node selection."""
 
@@ -144,7 +219,12 @@ class MapView(View):
         renderer.draw_hud(game_state.player, game_state.floor)
 
         renderer.draw_box(10, 28, SCREEN_WIDTH - 20, SCREEN_HEIGHT - 38, bg_col=COLOR_BLACK, border_col=COLOR_DARK_BLUE)
-        pyxel.text(18, 34, "-- Spire of Aethelgard --", COLOR_YELLOW)
+        from src.data.biomes import get_biome
+        biome = get_biome(game_state.current_biome)
+        if biome:
+            pyxel.text(18, 34, f"-- Act {game_state.act}: {biome.name} --", COLOR_YELLOW)
+        else:
+            pyxel.text(18, 34, "-- Spire of Aethelgard --", COLOR_YELLOW)
         pyxel.text(18, 44, "Select path: [1-4] Choose Node | [I] Inventory", COLOR_GRAY)
 
         floors = game_state.map_graph.floors
@@ -240,14 +320,12 @@ class CombatView(View):
                 else:
                     game_state.combat.combat_logs.append(f"Ability on cooldown ({game_state.combat.ability_cooldown} turns)!")
 
-    def get_enemy_sprite(self, enemy: Enemy) -> tuple[int, int]:
+    def _get_enemy_sprite(self, enemy: Enemy) -> tuple[int, int]:
         """Resolve Bank 0 (u, v) tile coordinates for any enemy instance."""
-        # 1. Match by archetype_id if present
         arch_id = getattr(enemy, "archetype_id", None)
         if arch_id and arch_id in ENEMY_SPRITE_COORDS:
             return ENEMY_SPRITE_COORDS[arch_id]
 
-        # 2. Fuzzy match against name if spawned via legacy methods
         name_lower = enemy.name.lower()
         for key, coords in ENEMY_SPRITE_COORDS.items():
             if key.replace("_", " ") in name_lower:
@@ -260,9 +338,6 @@ class CombatView(View):
         if "goblin" in name_lower or "scavenger" in name_lower or "cultist" in name_lower:
             return (32, 0)
         return (16, 0)
-
-    def _get_enemy_sprite(self, enemy: Enemy) -> tuple[int, int]:
-        return self.get_enemy_sprite(enemy)
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
         renderer.draw_hud(game_state.player, game_state.floor)
@@ -617,9 +692,15 @@ class ClassSelectView(View):
     def __init__(self) -> None:
         self.classes: list[str] = ["warrior", "rogue", "mage"]
         self.selected_index: int = 0
+        self.route_mode: str = "FATE"
 
     def update(self, game_state: GameState) -> None:
         from src.config import SND_CLICK, SND_VICTORY
+
+        # Toggle Route Mode
+        if pyxel.btnp(pyxel.KEY_B) or pyxel.btnp(pyxel.KEY_T) or Renderer.is_clicked(70, 230, 76, 16):
+            self.route_mode = "PATHFINDER" if self.route_mode == "FATE" else "FATE"
+            pyxel.play(0, SND_CLICK)
 
         # Check for card clicks
         card_w, card_h = 74, 84
@@ -631,7 +712,7 @@ class ClassSelectView(View):
                 if self.selected_index == i:
                     # Double click / confirm
                     pyxel.play(0, SND_VICTORY)
-                    game_state.start_new_game(self.classes[self.selected_index])
+                    game_state.start_new_game(self.classes[self.selected_index], route_mode=self.route_mode)
                     return
                 else:
                     self.selected_index = i
@@ -652,10 +733,10 @@ class ClassSelectView(View):
         elif pyxel.btnp(pyxel.KEY_3):
             self.selected_index = 2
             pyxel.play(0, SND_CLICK)
-        elif pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_SPACE) or Renderer.is_clicked(SCREEN_WIDTH - 110, 230, 100, 16):
+        elif pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_SPACE) or Renderer.is_clicked(152, 230, 96, 16):
             pyxel.play(0, SND_VICTORY)
-            game_state.start_new_game(self.classes[self.selected_index])
-        elif pyxel.btnp(pyxel.KEY_ESCAPE) or Renderer.is_clicked(10, 230, 50, 16):
+            game_state.start_new_game(self.classes[self.selected_index], route_mode=self.route_mode)
+        elif pyxel.btnp(pyxel.KEY_ESCAPE) or Renderer.is_clicked(8, 230, 48, 16):
             game_state.switch_mode(GameMode.WELCOME)
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
@@ -747,10 +828,12 @@ class ClassSelectView(View):
         pyxel.text(16, detail_y + 94, f"Promotions: {promotions}", COLOR_PEACH)
 
         # Footer
-        renderer.draw_button(10, 230, 50, 16, "[BACK]", bg_col=COLOR_BLACK, border_col=COLOR_GRAY)
-        footer_text = "[<- / ->] Select"
-        pyxel.text(SCREEN_WIDTH // 2 - len(footer_text) * 2, 234, footer_text, COLOR_GRAY)
-        renderer.draw_button(SCREEN_WIDTH - 110, 230, 100, 16, "[BEGIN JOURNEY]", bg_col=COLOR_DARK_BLUE, border_col=COLOR_YELLOW)
+        renderer.draw_button(8, 230, 48, 16, "[BACK]", bg_col=COLOR_BLACK, border_col=COLOR_GRAY)
+
+        mode_label = f"ROUTE: {self.route_mode}"
+        renderer.draw_button(70, 230, 76, 16, mode_label, bg_col=COLOR_BLACK, text_col=COLOR_YELLOW if self.route_mode == "PATHFINDER" else COLOR_WHITE)
+
+        renderer.draw_button(152, 230, 96, 16, "[BEGIN JOURNEY]", bg_col=COLOR_DARK_BLUE, border_col=COLOR_YELLOW)
 
 
 class WelcomeView(View):
@@ -1044,11 +1127,10 @@ class AbilityChoiceView(View):
                 if game_state.act < 3:
                     game_state.act += 1
                     game_state.floor = 1
-                    next_floors = 18 if game_state.act == 3 else 12
-                    from src.systems.map_gen import generate_spire_map
-                    game_state.map_graph = generate_spire_map(num_floors=next_floors, width_lanes=4)
-                    game_state.player.heal(9999) # Full heal between acts
-                    game_state.switch_mode(GameMode.MAP)
+                    if game_state.biome_route_mode == "PATHFINDER":
+                        game_state.switch_mode(GameMode.BIOME_SELECT)
+                    else:
+                        game_state.advance_act()
                 else:
                     game_state.switch_mode(GameMode.VICTORY)
             else:
@@ -1302,11 +1384,10 @@ class LootView(View):
             if game_state.act < 3:
                 game_state.act += 1
                 game_state.floor = 1
-                next_floors = 18 if game_state.act == 3 else 12
-                from src.systems.map_gen import generate_spire_map
-                game_state.map_graph = generate_spire_map(num_floors=next_floors, width_lanes=4)
-                game_state.player.heal(9999) # Full heal between acts
-                game_state.switch_mode(GameMode.MAP)
+                if game_state.biome_route_mode == "PATHFINDER":
+                    game_state.switch_mode(GameMode.BIOME_SELECT)
+                else:
+                    game_state.advance_act()
             else:
                 game_state.switch_mode(GameMode.VICTORY)
         else:
@@ -1369,6 +1450,7 @@ class ViewManager:
             GameMode.WELCOME: WelcomeView(),
             GameMode.CLASS_SELECT: ClassSelectView(),
             GameMode.CREDITS: CreditsView(),
+            GameMode.BIOME_SELECT: BiomeSelectView(),
             GameMode.MAP: MapView(),
             GameMode.COMBAT: CombatView(),
             GameMode.INVENTORY: InventoryView(),

@@ -23,6 +23,7 @@ class GameMode(Enum):
     WELCOME = auto()
     CLASS_SELECT = auto()
     CREDITS = auto()
+    BIOME_SELECT = auto()
     MAP = auto()
     COMBAT = auto()
     INVENTORY = auto()
@@ -47,15 +48,18 @@ class GameState:
         self.current_event_text: str = ""
         self.floor: int = 1
         self.act: int = 1
+        self.biome_route_mode: str = "FATE"
+        self.current_biome: str = "arboretum"
 
         self.pending_loot: list[Item] = []
         self.merchant_stock: list[tuple[Item, int]] = []
         self.last_gold_earned: int = 0
         self.last_exp_earned: int = 0
 
-    def start_new_game(self, class_id: str = "warrior") -> None:
+    def start_new_game(self, class_id: str = "warrior", route_mode: str = "FATE") -> None:
         """Initialize a new journey with the specified character class."""
         self.player = Player(name="Sir Aethelgard", class_id=class_id)
+        self.biome_route_mode = route_mode
 
         from src.data.items import get_starter_kit, get_item
         starter_items = get_starter_kit(class_id)
@@ -66,13 +70,30 @@ class GameState:
         if potion:
             self.player.inventory.belt[0] = potion
 
-        self.map_graph = generate_spire_map(num_floors=12, width_lanes=4)
-
         self.floor = 1
         self.act = 1
         self.combat = None
         self.pending_loot = []
 
+        if self.biome_route_mode == "FATE":
+            from src.data.biomes import ACT_BIOMES
+            self.current_biome = random.choice(ACT_BIOMES[1])
+            self.map_graph = generate_spire_map(num_floors=12, width_lanes=4)
+            self.switch_mode(GameMode.MAP)
+        elif self.biome_route_mode == "PATHFINDER":
+            self.switch_mode(GameMode.BIOME_SELECT)
+
+    def advance_act(self, target_biome_id: str | None = None) -> None:
+        """Advance to the next act and select the biome."""
+        if target_biome_id is not None:
+            self.current_biome = target_biome_id
+        elif self.biome_route_mode == "FATE":
+            from src.data.biomes import ACT_BIOMES
+            self.current_biome = random.choice(ACT_BIOMES[self.act])
+
+        self.player.heal(9999)
+        num_floors = 18 if self.act == 3 else 12
+        self.map_graph = generate_spire_map(num_floors=num_floors, width_lanes=4)
         self.switch_mode(GameMode.MAP)
 
     def switch_mode(self, new_mode: GameMode) -> None:
@@ -110,7 +131,7 @@ class GameState:
                 tier = EnemyTier.BOSS
 
             effective_floor = self.floor + (12 if self.act == 2 else (24 if self.act == 3 else 0))
-            enemy = generate_enemy(tier=tier, floor=effective_floor)
+            enemy = generate_enemy(tier=tier, floor=effective_floor, biome_id=self.current_biome)
             self.combat = CombatSystem(player=self.player, enemy=enemy)
             self.switch_mode(GameMode.COMBAT)
 
