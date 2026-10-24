@@ -339,9 +339,6 @@ class CombatView(View):
             return (32, 0)
         return (16, 0)
 
-    def _get_enemy_sprite(self, enemy: Enemy) -> tuple[int, int]:
-        return self.get_enemy_sprite(enemy)
-
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
         renderer.draw_hud(game_state.player, game_state.floor)
 

@@ -2,7 +2,7 @@ name: Build and Deploy Pyxel Web
 
 on:
   push:
-    branches: [ feat/biome-progression-5680891783018994435 ]  # O 'master' según tu rama
+    branches: [ master ]  # O 'master' según tu rama
   workflow_dispatch:
 
 permissions:
