@@ -24,6 +24,9 @@ from src.config import (
 )
 from src.core.game_state import GameMode
 from typing import TYPE_CHECKING
+
+from src.entities import Enemy
+
 if TYPE_CHECKING:
     from src.core.game_state import GameState
 from src.systems.combat import ACTION_THRESHOLD
@@ -32,6 +35,70 @@ from src.systems.abilities import Ability, AbilityRarity, AbilityType, get_rando
 from src.systems.map_gen import NodeType
 from src.ui.renderer import Renderer
 
+# =============================================================================
+# BIOME ENEMY SPRITE COORDINATE MAP (Bank 0)
+# =============================================================================
+ENEMY_SPRITE_COORDS: dict[str, tuple[int, int]] = {
+    # Act 1A: The Wilted Arboretum (y=48)
+    "thornvein_creeper": (0, 48),
+    "spore_pod": (16, 48),
+    "bramble_hound": (32, 48),
+    "rotting_woodwose": (48, 48),
+    "mandragora_matron": (64, 48),
+    "corpse_treant": (80, 48),
+    "malignant_belladonna": (96, 48),
+    "verdant_abomination": (112, 48),
+
+    # Act 1B: The Desecrated Cathedral (y=64)
+    "cathedral_imp": (0, 64),
+    "possessed_grimoire": (16, 64),
+    "candelabra_fiend": (32, 64),
+    "penitent_zealot": (48, 64),
+    "belltower_gargoyle": (64, 64),
+    "inquisitor_automaton": (80, 64),
+    "blind_archbishop": (96, 64),
+    "chorus_of_damned": (112, 64),
+
+    # Act 2A: The Drowned Ossuary (y=80)
+    "mire_ghoul": (0, 80),
+    "drowned_skulls": (16, 80),
+    "leech_husk": (32, 80),
+    "crypt_lurker": (48, 80),
+    "tide_gravekeeper": (64, 80),
+    "carrion_behemoth": (80, 80),
+    "drowned_patriarch": (96, 80),
+    "scylla_bone_weaver": (112, 80),
+
+    # Act 2B: The Foundry of Torment (y=96)
+    "slag_homunculus": (0, 96),
+    "cinder_sprite": (16, 96),
+    "clockwork_flayer": (32, 96),
+    "ashen_overseer": (48, 96),
+    "furnace_warden": (64, 96),
+    "retching_alchemist": (80, 96),
+    "ironforge_tyrant": (96, 96),
+    "molten_sovereign": (112, 96),
+
+    # Act 3A: The Astral Observatory (y=112)
+    "void_mirror": (0, 112),
+    "stareater_wisp": (16, 112),
+    "comet_stalker": (32, 112),
+    "celestial_hermit": (48, 112),
+    "rift_warden": (64, 112),
+    "null_singularity": (80, 112),
+    "chronomancer_praetor": (96, 112),
+    "devouring_constellation": (112, 112),
+
+    # Act 3B: The Blood Sanctum (y=128)
+    "sanguine_thrall": (0, 128),
+    "crimson_gargoyle": (16, 128),
+    "hemomancer_acolyte": (32, 128),
+    "flayed_duelist": (48, 128),
+    "baroness_vespera": (64, 128),
+    "amalgam_of_veins": (80, 128),
+    "high_lord_carmilla": (96, 128),
+    "blood_god_avatar": (112, 128),
+}
 
 class View:
     """Base abstract interface for game screens."""
@@ -173,13 +240,29 @@ class CombatView(View):
                 else:
                     game_state.combat.combat_logs.append(f"Ability on cooldown ({game_state.combat.ability_cooldown} turns)!")
 
-    def _get_enemy_sprite_u(self, enemy_name: str, tier_val: int) -> int:
-        name_lower = enemy_name.lower()
+    def get_enemy_sprite(self, enemy: Enemy) -> tuple[int, int]:
+        """Resolve Bank 0 (u, v) tile coordinates for any enemy instance."""
+        # 1. Match by archetype_id if present
+        arch_id = getattr(enemy, "archetype_id", None)
+        if arch_id and arch_id in ENEMY_SPRITE_COORDS:
+            return ENEMY_SPRITE_COORDS[arch_id]
+
+        # 2. Fuzzy match against name if spawned via legacy methods
+        name_lower = enemy.name.lower()
+        for key, coords in ENEMY_SPRITE_COORDS.items():
+            if key.replace("_", " ") in name_lower:
+                return coords
+
+        # 3. Fallback to default legacy row (y=0)
+        tier_val = enemy.tier.value if hasattr(enemy.tier, "value") else int(enemy.tier)
         if tier_val >= 4 or "lich" in name_lower or "dragon" in name_lower:
-            return 48  # Boss sprite
+            return (48, 0)
         if "goblin" in name_lower or "scavenger" in name_lower or "cultist" in name_lower:
-            return 32  # Goblin sprite
-        return 16      # Skeleton Warrior sprite
+            return (32, 0)
+        return (16, 0)
+
+    def _get_enemy_sprite(self, enemy: Enemy) -> tuple[int, int]:
+        return self.get_enemy_sprite(enemy)
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
         renderer.draw_hud(game_state.player, game_state.floor)
@@ -201,6 +284,7 @@ class CombatView(View):
             max_hp=game_state.player.max_hp,
             color_scheme=COLOR_DARK_BLUE,
         )
+
         # Hero sprite
         sprite_map = {
             "warrior": (0, 0),
@@ -222,14 +306,17 @@ class CombatView(View):
             max_hp=combat.enemy.max_hp,
             color_scheme=COLOR_RED if combat.enemy.tier.value >= 3 else COLOR_NAVY,
         )
-        # Enemy sprite
-        enemy_u = self._get_enemy_sprite_u(combat.enemy.name, combat.enemy.tier.value)
-        pyxel.blt(224, 32, 0, enemy_u, 0, 16, 16, 0)
+
+        # Dynamic Biome Enemy Sprite
+        eu, ev = self._get_enemy_sprite(combat.enemy)
+        pyxel.blt(224, 32, 0, eu, ev, 16, 16, 0)
 
         # Action Tick Meter (Player vs Enemy)
         pyxel.text(10, 110, "Tick Gauges:", COLOR_YELLOW)
-        renderer.draw_bar(10, 118, 112, 5, combat.player_gauge, ACTION_THRESHOLD, fill_col=COLOR_LIGHT_BLUE, bg_col=COLOR_BLACK)
-        renderer.draw_bar(134, 118, 112, 5, combat.enemy_gauge, ACTION_THRESHOLD, fill_col=COLOR_ORANGE, bg_col=COLOR_BLACK)
+        renderer.draw_bar(10, 118, 112, 5, combat.player_gauge, ACTION_THRESHOLD, fill_col=COLOR_LIGHT_BLUE,
+                          bg_col=COLOR_BLACK)
+        renderer.draw_bar(134, 118, 112, 5, combat.enemy_gauge, ACTION_THRESHOLD, fill_col=COLOR_ORANGE,
+                          bg_col=COLOR_BLACK)
 
         # In-Combat Quick Belt Display
         renderer.draw_box(10, 128, SCREEN_WIDTH - 20, 32, bg_col=COLOR_NAVY, border_col=COLOR_DARK_BLUE)
