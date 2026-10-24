@@ -153,33 +153,43 @@ class BiomeSelectView(View):
             # Card
             renderer.draw_box(x_offset, 42, 116, 172, bg_col=COLOR_DARK_BLUE, border_col=biome.ambient_color)
 
-            # Content
-            renderer.draw_text(x_offset + 4, 46, biome.name, COLOR_YELLOW)
+            # Dynamic Card Layout
+            curr_y = 42 + 8
+            renderer.draw_text(x_offset + 6, curr_y, biome.name[:17], COLOR_YELLOW)
+            curr_y += 11
 
-            tags_lines = renderer.wrap_text(biome.theme_tags, max_chars_per_line=18)
-            for i, line in enumerate(tags_lines):
-                renderer.draw_text(x_offset + 4, 56 + (i * 10), line, COLOR_GRAY)
+            # Tags
+            for tag_line in renderer.wrap_text(biome.theme_tags, max_chars_per_line=18):
+                renderer.draw_text(x_offset + 6, curr_y, tag_line, 3) # COLOR_CYAN / 3
+                curr_y += 9
+            curr_y += 3
 
-            desc_lines = renderer.wrap_text(biome.description, max_chars_per_line=18)
+            # Description
+            for desc_line in renderer.wrap_text(biome.description, max_chars_per_line=18):
+                renderer.draw_text(x_offset + 6, curr_y, desc_line, COLOR_WHITE)
+                curr_y += 9
+            curr_y += 4
 
-            for i, line in enumerate(desc_lines):
-                renderer.draw_text(x_offset + 4, 76 + i * 10, line, COLOR_WHITE)
+            # Threats
+            renderer.draw_text(x_offset + 6, curr_y, "Threats:", COLOR_ORANGE)
+            curr_y += 9
 
-            renderer.draw_text(x_offset + 4, 120, "Threats:", COLOR_ORANGE)
-            if len(biome.basic_enemies) >= 2:
-                renderer.draw_text(x_offset + 4, 130, f"- {biome.basic_enemies[0].replace('_', ' ').title()[:14]}", COLOR_GRAY)
-                renderer.draw_text(x_offset + 4, 140, f"- {biome.basic_enemies[1].replace('_', ' ').title()[:14]}", COLOR_GRAY)
+            from src.data.enemies import ENEMY_CATALOG
+            for e_id in biome.basic_enemies[:2]:
+                e_name = ENEMY_CATALOG[e_id].name[:16] if e_id in ENEMY_CATALOG else e_id.replace('_', ' ').title()[:16]
+                renderer.draw_text(x_offset + 8, curr_y, f"- {e_name}", COLOR_GRAY)
+                curr_y += 9
+            curr_y += 4
 
-            renderer.draw_text(x_offset + 4, 155, "Bosses:", COLOR_RED)
-            if len(biome.bosses) >= 2:
-                b1_name = biome.bosses[0].replace('_', ' ').title()
-                b1_name = b1_name if len(b1_name) <= 16 else b1_name[:14] + '..'
-                b2_name = biome.bosses[1].replace('_', ' ').title()
-                b2_name = b2_name if len(b2_name) <= 16 else b2_name[:14] + '..'
-                renderer.draw_text(x_offset + 4, 165, f"- {b1_name}", COLOR_WHITE)
-                renderer.draw_text(x_offset + 4, 175, f"- {b2_name}", COLOR_WHITE)
+            # Bosses
+            renderer.draw_text(x_offset + 6, curr_y, "Bosses:", 14) # COLOR_PINK / 14
+            curr_y += 9
+            for b_id in biome.bosses:
+                b_name = ENEMY_CATALOG[b_id].name[:16] if b_id in ENEMY_CATALOG else b_id.replace('_', ' ').title()[:16]
+                renderer.draw_text(x_offset + 8, curr_y, f"- {b_name}", COLOR_GRAY)
+                curr_y += 9
 
-            renderer.draw_button(x_offset + 10, 188, 96, 16, "[CHOOSE ROUTE]", bg_col=COLOR_BLACK, text_col=COLOR_WHITE)
+            renderer.draw_button(x_offset + 10, 42 + 172 - 22, 96, 16, "[CHOOSE ROUTE]", bg_col=COLOR_BLACK, text_col=COLOR_WHITE)
 
 
 class MapView(View):
@@ -281,7 +291,7 @@ class MapView(View):
                     renderer.draw_text(x_pos + 4, y_pos + 3, icon_char, color if not is_curr else COLOR_BLACK)
 
                 if is_avail:
-                    renderer.draw_text(x_pos + 3, y_pos - 7, f"[{option_index}]", COLOR_YELLOW)
+                    renderer.draw_text(x_pos + 3, y_pos - 9, f"[{option_index}]", COLOR_YELLOW)
                     option_index += 1
 
 
@@ -297,9 +307,10 @@ class CombatView(View):
             game_state.update_combat()
 
         # In-combat quick belt triggers: Keys [1, 2, 3] or Tap
+        slot_positions = [40, 110, 180]
         for idx, key in enumerate((pyxel.KEY_1, pyxel.KEY_2, pyxel.KEY_3)):
-            bx = 42 + idx * 70
-            if pyxel.btnp(key) or Renderer.is_clicked(bx, 130, 64, 18):
+            bx = slot_positions[idx] if idx < len(slot_positions) else 40 + idx * 70
+            if pyxel.btnp(key) or Renderer.is_clicked(bx, 130, 66, 18):
                 if game_state.player.inventory.use_belt_item(idx, game_state.player):
                     pyxel.play(1, 2)  # Sound 2: Potion Heal chime
                     game_state.combat.combat_logs.append(
@@ -395,18 +406,24 @@ class CombatView(View):
         renderer.draw_box(10, 126, SCREEN_WIDTH - 20, 36, bg_col=COLOR_NAVY, border_col=COLOR_DARK_BLUE)
         renderer.draw_text(14, 129, t("belt"), COLOR_YELLOW)
         inv = game_state.player.inventory
+
+        slot_positions = [40, 110, 180]
+
         for b_idx in range(MAX_BELT_SLOTS):
-            bx = 42 + b_idx * 70
-            b_item = inv.belt[b_idx]
-            name = b_item.name[:7] if b_item else "Empty"
-            renderer.draw_text(bx, 129, f"[{b_idx+1}]", COLOR_YELLOW)
-            if b_item:
-                pyxel.blt(bx + 14, 127, 0, 64, 0, 8, 8, 0)  # Potion sprite
-                renderer.draw_text(bx + 24, 129, name, COLOR_WHITE)
-                hp_x = bx + 24 + len(name) * 6
-                renderer.draw_text(hp_x, 129, f"+{b_item.heal_amount}", COLOR_LIME)
+            if b_idx < len(slot_positions):
+                bx = slot_positions[b_idx]
             else:
-                renderer.draw_text(bx + 14, 129, name, COLOR_GRAY)
+                bx = 40 + b_idx * 70
+
+            b_item = inv.belt[b_idx]
+            name = b_item.name[:9] if b_item else "Empty"
+
+            # Line 1: [i+1] and Item Name
+            renderer.draw_text(bx, 129, f"[{b_idx+1}] {name}", COLOR_WHITE if b_item else COLOR_GRAY)
+
+            # Line 2: Heal effect (if present)
+            if b_item:
+                renderer.draw_text(bx, 137, f"+{b_item.heal_amount}HP", COLOR_LIME)
 
         # Abilities panel
         # Placed under the belt hotkeys
@@ -470,7 +487,7 @@ class InventoryView(View):
             col = p_idx % 2
             row = p_idx // 2
             x = 10 + col * 118
-            y = 142 + row * 14
+            y = 142 + row * 15
             if Renderer.is_clicked(x, y, 100, 12):
                 self.active_pane = "POUCH"
                 self.pouch_cursor = p_idx
@@ -569,12 +586,17 @@ class InventoryView(View):
 
             item = inv.equipment.get(slot)
             item_name = item.name if item else "(Empty)"
-            slot_label = slot.name.replace("_", " ").title()[:10]
+            slot_label_map = {
+                "HEAD": "Head:", "SHOULDERS": "Shld:", "CHEST": "Chest:",
+                "WAIST": "Waist:", "HANDS": "Hands:", "LEGS": "Legs:",
+                "MAIN_HAND": "Main:", "OFF_HAND": "Off:"
+            }
+            slot_label = slot_label_map.get(slot.name, slot.name)
 
             # Highlight if selected
             label_col = COLOR_WHITE if self.active_pane == "EQUIPMENT" and self.equip_cursor == i else COLOR_GRAY
-            renderer.draw_text(x, y, f"{cursor_str}{slot_label}:", label_col)
-            renderer.draw_text(x + 50, y, item_name[:10], COLOR_LIME if item else COLOR_DARK_BLUE)
+            renderer.draw_text(x, y, f"{cursor_str}{slot_label}", label_col)
+            renderer.draw_text(x + 40, y, item_name[:11], COLOR_LIME if item else COLOR_DARK_BLUE)
 
         # 3-Slot Belt
         renderer.draw_text(10, 96, "-- Belt --", COLOR_YELLOW)
@@ -586,8 +608,8 @@ class InventoryView(View):
             renderer.draw_box(x, y, 74, 18, bg_col=COLOR_NAVY, border_col=COLOR_WHITE)
             renderer.draw_text(x + 4, y + 3, f"[{b_idx+1}]", COLOR_YELLOW)
             if b_item:
-                renderer.draw_text(x + 18, y + 3, name[:8], COLOR_WHITE)
-                renderer.draw_text(x + 18, y + 10, f"+{b_item.heal_amount}HP", COLOR_LIME)
+                renderer.draw_text(x + 18, y + 3, name[:11], COLOR_WHITE)
+                renderer.draw_text(x + 18, y + 9, f"+{b_item.heal_amount}HP", COLOR_LIME)
             else:
                 renderer.draw_text(x + 18, y + 6, name, COLOR_GRAY)
 
@@ -598,14 +620,14 @@ class InventoryView(View):
             col = p_idx % 2
             row = p_idx // 2
             x = 10 + col * 118
-            y = 142 + row * 14
+            y = 142 + row * 15
 
             cursor_str = "> " if self.active_pane == "POUCH" and self.pouch_cursor == p_idx else "  "
 
             if p_idx < len(inv.pouch):
                 p_item = inv.pouch[p_idx]
                 item_col = COLOR_WHITE if self.active_pane == "POUCH" and self.pouch_cursor == p_idx else COLOR_GRAY
-                renderer.draw_text(x, y, f"{cursor_str}{p_item.name[:12]}", item_col)
+                renderer.draw_text(x, y, f"{cursor_str}{p_item.name[:10]}", item_col)
 
                 # Show stats if equipment, heal if consumable
                 stats_str = ""
@@ -617,7 +639,7 @@ class InventoryView(View):
                     stats_str = f"+{p_item.heal_amount}HP"
 
                 if stats_str:
-                    renderer.draw_text(x + 12, y + 6, stats_str, COLOR_LIME)
+                    renderer.draw_text(x + 12, y + 8, stats_str, COLOR_LIME)
             else:
                 renderer.draw_text(x, y, f"{cursor_str}[Empty]", COLOR_DARK_BLUE)
 
@@ -782,7 +804,8 @@ class ClassSelectView(View):
             pyxel.blt(card_x + 29, card_y + 32, 0, pu, pv, 16, 16, 0)
 
             if is_selected:
-                renderer.draw_text(card_x + card_w // 2 - 6, card_y + 2, "> <", COLOR_WHITE)
+                import pyxel
+                pyxel.rectb(card_x + 1, card_y + 1, card_w - 2, card_h - 2, 9) # COLOR_YELLOW is 9
 
         # Detail Panel
         detail_y = 122
@@ -791,30 +814,30 @@ class ClassSelectView(View):
         sel_cls_id = self.classes[self.selected_index]
         sel_cls_def = CLASS_REGISTRY[sel_cls_id]
 
-        renderer.draw_text(16, detail_y + 6, sel_cls_def.name, COLOR_YELLOW)
+        renderer.draw_text(16, detail_y + 4, sel_cls_def.name, COLOR_YELLOW)
 
         # Word wrap description
         desc_lines = renderer.wrap_text(sel_cls_def.description, max_chars_per_line=36)
         for i, line in enumerate(desc_lines):
-            renderer.draw_text(16, detail_y + 16 + (i * 8), line, COLOR_WHITE)
+            renderer.draw_text(16, detail_y + 14 + (i * 9), line, COLOR_WHITE)
 
         stats = sel_cls_def.base_stats
         growth = sel_cls_def.growth_per_level
-        renderer.draw_text(16, detail_y + 40, f"HP: {stats.max_hp} (+{growth.max_hp}/lvl) | ATK: {stats.attack} (+{growth.attack})", COLOR_GRAY)
-        renderer.draw_text(16, detail_y + 50, f"DEF: {stats.defense} (+{growth.defense}) | SPD: {stats.speed} (+{growth.speed})", COLOR_GRAY)
-        renderer.draw_text(16, detail_y + 60, f"CRIT: {int(stats.crit_chance * 100)}%", COLOR_GRAY)
+        renderer.draw_text(16, detail_y + 34, f"HP: {stats.max_hp} (+{growth.max_hp}/lvl) | ATK: {stats.attack} (+{growth.attack})", COLOR_GRAY)
+        renderer.draw_text(16, detail_y + 43, f"DEF: {stats.defense} (+{growth.defense}) | SPD: {stats.speed} (+{growth.speed})", COLOR_GRAY)
+        renderer.draw_text(16, detail_y + 52, f"CRIT: {int(stats.crit_chance * 100)}%", COLOR_GRAY)
 
         from src.systems.abilities import get_ability_by_id
         starting_skill_id = sel_cls_def.starting_abilities[0] if sel_cls_def.starting_abilities else "None"
         skill = get_ability_by_id(starting_skill_id)
         if skill:
-            renderer.draw_text(16, detail_y + 74, f"Skill: {skill.name}", COLOR_LIME)
+            renderer.draw_text(16, detail_y + 62, f"Skill: {skill.name}", COLOR_LIME)
             skill_lines = renderer.wrap_text(skill.description, max_chars_per_line=36)
             for i, line in enumerate(skill_lines):
-                renderer.draw_text(16, detail_y + 82 + (i * 8), line, COLOR_WHITE)
+                renderer.draw_text(16, detail_y + 71 + (i * 9), line, COLOR_WHITE)
 
         promotions = ", ".join(p.capitalize() for p in sel_cls_def.promotions)
-        renderer.draw_text(16, detail_y + 104, f"Promotions: {promotions}", COLOR_PEACH)
+        renderer.draw_text(16, detail_y + 83, f"Promotions: {promotions}", COLOR_PEACH)
 
         # Footer
         renderer.draw_button(6, 230, 44, 18, "[BACK]", bg_col=COLOR_BLACK, border_col=COLOR_GRAY)
@@ -1429,8 +1452,19 @@ class LootView(View):
                 if item.stats_bonus.speed > 0: stats += f" SPD+{item.stats_bonus.speed}"
                 renderer.draw_text(90, y_offset + 15, stats, COLOR_WHITE)
             elif isinstance(item, ConsumableItem):
-                renderer.draw_text(25, y_offset + 15, "Consumable", COLOR_GRAY)
-                renderer.draw_text(90, y_offset + 15, f"Heals {item.heal_amount} HP", COLOR_GREEN)
+                from src.data.items import StatPotion
+                if isinstance(item, StatPotion):
+                    renderer.draw_text(25, y_offset + 15, "Permanent Elixir", 15) # COLOR_PEACH / 15
+                    bonus_str = ""
+                    if item.stat_bonus.attack > 0: bonus_str = f"+{item.stat_bonus.attack} ATK"
+                    elif item.stat_bonus.defense > 0: bonus_str = f"+{item.stat_bonus.defense} DEF"
+                    elif item.stat_bonus.speed > 0: bonus_str = f"+{item.stat_bonus.speed} SPD"
+                    elif item.stat_bonus.max_hp > 0: bonus_str = f"+{item.stat_bonus.max_hp} HP"
+                    elif item.stat_bonus.crit_chance > 0: bonus_str = f"+{int(item.stat_bonus.crit_chance * 100)}% CRIT"
+                    renderer.draw_text(110, y_offset + 15, bonus_str, COLOR_LIME)
+                else:
+                    renderer.draw_text(25, y_offset + 15, "Consumable", COLOR_GRAY)
+                    renderer.draw_text(90, y_offset + 15, f"Heals {item.heal_amount} HP", COLOR_GREEN)
 
             y_offset += 30
 

@@ -49,4 +49,23 @@ TRANSLATIONS_ES = {
     "combat_veteran": "¡Instintos de Veterano restauraron 20 de medidor!",
     "combat_queued": "¡En cola: {ability}!",
     "combat_cooldown": "¡Habilidad en enfriamiento ({cooldown} turnos)!",
+
+    # Consumables
+    "health_potion": "Poc. Vida S",
+    "major_health_flask": "Poc. Vida M",
+    "divine_nectar": "Poc. Vida L",
+    "elixir_vitality_minor": "Elixir PV S",
+    "elixir_strength_minor": "Elixir ATQ S",
+    "elixir_iron_minor": "Elixir DEF S",
+    "elixir_celerity_minor": "Elixir VEL S",
+    "elixir_precision_minor": "Elixir CRT S",
+    "elixir_vitality_greater": "Elixir PV M",
+    "elixir_strength_greater": "Elixir ATQ M",
+    "elixir_iron_greater": "Elixir DEF M",
+    "elixir_celerity_greater": "Elixir VEL M",
+    "elixir_precision_greater": "Elixir CRT M",
+    "elixir_of_quickness": "Poc. Veloc.",
+    "suspicious_pie": "Pastel Carne",
+    "goblin_cheese_wheel": "Queso Fétido",
+
 }
