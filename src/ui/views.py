@@ -804,7 +804,6 @@ class ClassSelectView(View):
             pyxel.blt(card_x + 29, card_y + 32, 0, pu, pv, 16, 16, 0)
 
             if is_selected:
-                import pyxel
                 pyxel.rectb(card_x + 1, card_y + 1, card_w - 2, card_h - 2, 9) # COLOR_YELLOW is 9
 
         # Detail Panel
