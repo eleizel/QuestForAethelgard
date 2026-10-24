@@ -8,12 +8,17 @@ from typing import TYPE_CHECKING, Final
 
 import pyxel
 
+
 if TYPE_CHECKING:
     from src.entities.enemy import Enemy
     from src.entities.player import Player
 
 ACTION_THRESHOLD: Final[int] = 100
 
+
+def _t(key: str, **kwargs) -> str:
+    from src.core.i18n import t
+    return t(key, **kwargs)
 
 class CombatResult(Enum):
     """Possible outcomes of an encounter."""
@@ -45,7 +50,7 @@ class CombatSystem:
         self.current_tick: int = 0
         self.result: CombatResult = CombatResult.IN_PROGRESS
         self.combat_logs: list[str] = [
-            f"Battle commenced: {player.name} vs {enemy.name}!"
+            _t("combat_start", player=player.name, enemy=enemy.name)
         ]
 
     def is_active(self) -> bool:
@@ -79,12 +84,12 @@ class CombatSystem:
         # Check win/loss state
         if not self.enemy.is_alive:
             self.result = CombatResult.PLAYER_VICTORY
-            self.combat_logs.append(f"{self.enemy.name} was defeated!")
+            self.combat_logs.append(_t("combat_enemy_defeat", enemy=self.enemy.name))
             self._distribute_rewards()
             pyxel.play(0, 4)  # Sound 4: Victory fanfare
         elif not self.player.is_alive:
             self.result = CombatResult.PLAYER_DEFEAT
-            self.combat_logs.append(f"{self.player.name} succumbed to injuries...")
+            self.combat_logs.append(_t("combat_player_defeat", player=self.player.name))
             pyxel.play(0, 5)  # Sound 5: Defeat sting
 
         return self.result
@@ -104,12 +109,11 @@ class CombatSystem:
             self.queued_ability = None
         else:
             raw_dmg, is_crit = self.player.calculate_attack(self.rng)
-            crit_str = " (CRITICAL HIT!)" if is_crit else ""
             dmg_dealt = self.enemy.take_damage(raw_dmg)
-            self.combat_logs.append(
-                f"[Tick {self.current_tick}] {self.player.name} attacks {self.enemy.name} "
-                f"for {dmg_dealt} dmg{crit_str}. ({self.enemy.current_hp}/{self.enemy.max_hp} HP)"
-            )
+            if is_crit:
+                self.combat_logs.append(_t("combat_crit", actor=self.player.name, target=self.enemy.name, damage=dmg_dealt))
+            else:
+                self.combat_logs.append(_t("combat_hit", actor=self.player.name, target=self.enemy.name, damage=dmg_dealt))
             pyxel.play(0, 1 if is_crit else 0)
 
         # Triggers passive hooks for attack dealt
@@ -119,22 +123,21 @@ class CombatSystem:
         has_veteran = any(a.id == "veterans_instincts" for a in self.player.abilities.passive)
         if has_veteran and is_crit:
             self.player_gauge += 20
-            self.combat_logs.append(f"{self.player.name}'s Veteran's Instincts restored 20 gauge!")
+            self.combat_logs.append(_t("combat_veteran", player=self.player.name))
 
     def _execute_enemy_attack(self) -> None:
         """Execute an enemy strike against the player."""
         self.enemy_gauge -= ACTION_THRESHOLD
         raw_dmg, is_crit = self.enemy.calculate_attack(self.rng)
-        crit_str = " (CRITICAL HIT!)" if is_crit else ""
         dmg_dealt = self.player.take_damage(raw_dmg)
 
         # Audio feedback: Sound 1 (Crit) or Sound 0 (Hit)
         pyxel.play(0, 1 if is_crit else 0)
 
-        self.combat_logs.append(
-            f"[Tick {self.current_tick}] {self.enemy.name} strikes {self.player.name} "
-            f"for {dmg_dealt} dmg{crit_str}. ({self.player.current_hp}/{self.player.max_hp} HP)"
-        )
+        if is_crit:
+            self.combat_logs.append(_t("combat_crit", actor=self.enemy.name, target=self.player.name, damage=dmg_dealt))
+        else:
+            self.combat_logs.append(_t("combat_hit", actor=self.enemy.name, target=self.player.name, damage=dmg_dealt))
 
     def _distribute_rewards(self) -> None:
         """Grant spoils of victory to the player."""
@@ -147,9 +150,9 @@ class CombatSystem:
         self.player.combat_def_buff = 0
         if hasattr(self.player, "undying_will_used"):
             self.player.undying_will_used = False
-        self.combat_logs.append(f"Gained {exp} EXP and {gold} Gold.")
+        self.combat_logs.append(_t("combat_rewards", exp=exp, gold=gold))
         if leveled:
-            self.combat_logs.append(f"LEVEL UP! {self.player.name} reached Level {self.player.level}!")
+            self.combat_logs.append(_t("combat_level_up", player=self.player.name, level=self.player.level))
 
     def resolve_all(self, max_ticks: int = 1000) -> CombatResult:
         """Run the simulation to completion or until maximum ticks reached."""
