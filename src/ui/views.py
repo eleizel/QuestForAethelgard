@@ -121,10 +121,10 @@ class BiomeSelectView(View):
 
         biome_a_id, biome_b_id = ACT_BIOMES[game_state.act]
 
-        if pyxel.btnp(pyxel.KEY_1) or Renderer.is_clicked(12, 42, 110, 170):
+        if pyxel.btnp(pyxel.KEY_1) or Renderer.is_clicked(8, 42, 116, 172):
             pyxel.play(0, 3) # SND_CLICK
             game_state.advance_act(target_biome_id=biome_a_id)
-        elif pyxel.btnp(pyxel.KEY_2) or Renderer.is_clicked(134, 42, 110, 170):
+        elif pyxel.btnp(pyxel.KEY_2) or Renderer.is_clicked(132, 42, 116, 172):
             pyxel.play(0, 3) # SND_CLICK
             game_state.advance_act(target_biome_id=biome_b_id)
 
@@ -144,46 +144,42 @@ class BiomeSelectView(View):
         biome_a = get_biome(biome_a_id)
         biome_b = get_biome(biome_b_id)
 
-        biomes = [(biome_a, 12), (biome_b, 134)]
+        biomes = [(biome_a, 8), (biome_b, 132)]
 
         for biome, x_offset in biomes:
             if not biome:
                 continue
 
             # Card
-            renderer.draw_box(x_offset, 42, 110, 170, bg_col=COLOR_DARK_BLUE, border_col=biome.ambient_color)
+            renderer.draw_box(x_offset, 42, 116, 172, bg_col=COLOR_DARK_BLUE, border_col=biome.ambient_color)
 
             # Content
             renderer.draw_text(x_offset + 4, 46, biome.name, COLOR_YELLOW)
-            renderer.draw_text(x_offset + 4, 56, biome.theme_tags, COLOR_GRAY)
 
-            # Wrap description (naive split)
-            words = biome.description.split()
-            lines = []
-            current_line = ""
-            for word in words:
-                if len(current_line) + len(word) < 24:
-                    current_line += word + " "
-                else:
-                    lines.append(current_line)
-                    current_line = word + " "
-            if current_line:
-                lines.append(current_line)
+            tags_lines = renderer.wrap_text(biome.theme_tags, max_chars_per_line=18)
+            for i, line in enumerate(tags_lines):
+                renderer.draw_text(x_offset + 4, 56 + (i * 10), line, COLOR_GRAY)
 
-            for i, line in enumerate(lines):
-                renderer.draw_text(x_offset + 4, 70 + i * 10, line.strip(), COLOR_WHITE)
+            desc_lines = renderer.wrap_text(biome.description, max_chars_per_line=18)
+
+            for i, line in enumerate(desc_lines):
+                renderer.draw_text(x_offset + 4, 76 + i * 10, line, COLOR_WHITE)
 
             renderer.draw_text(x_offset + 4, 120, "Threats:", COLOR_ORANGE)
             if len(biome.basic_enemies) >= 2:
-                renderer.draw_text(x_offset + 4, 130, f"- {biome.basic_enemies[0].replace('_', ' ').title()}", COLOR_GRAY)
-                renderer.draw_text(x_offset + 4, 140, f"- {biome.basic_enemies[1].replace('_', ' ').title()}", COLOR_GRAY)
+                renderer.draw_text(x_offset + 4, 130, f"- {biome.basic_enemies[0].replace('_', ' ').title()[:14]}", COLOR_GRAY)
+                renderer.draw_text(x_offset + 4, 140, f"- {biome.basic_enemies[1].replace('_', ' ').title()[:14]}", COLOR_GRAY)
 
             renderer.draw_text(x_offset + 4, 155, "Bosses:", COLOR_RED)
             if len(biome.bosses) >= 2:
-                renderer.draw_text(x_offset + 4, 165, f"- {biome.bosses[0].replace('_', ' ').title()}", COLOR_WHITE)
-                renderer.draw_text(x_offset + 4, 175, f"- {biome.bosses[1].replace('_', ' ').title()}", COLOR_WHITE)
+                b1_name = biome.bosses[0].replace('_', ' ').title()
+                b1_name = b1_name if len(b1_name) <= 16 else b1_name[:14] + '..'
+                b2_name = biome.bosses[1].replace('_', ' ').title()
+                b2_name = b2_name if len(b2_name) <= 16 else b2_name[:14] + '..'
+                renderer.draw_text(x_offset + 4, 165, f"- {b1_name}", COLOR_WHITE)
+                renderer.draw_text(x_offset + 4, 175, f"- {b2_name}", COLOR_WHITE)
 
-            renderer.draw_button(x_offset + 8, 188, 94, 16, "[CHOOSE ROUTE]", bg_col=COLOR_BLACK, text_col=COLOR_WHITE)
+            renderer.draw_button(x_offset + 10, 188, 96, 16, "[CHOOSE ROUTE]", bg_col=COLOR_BLACK, text_col=COLOR_WHITE)
 
 
 class MapView(View):
@@ -297,7 +293,7 @@ class CombatView(View):
             return
 
         # Advance combat: space, auto-tick, or tap anywhere on arena / combat log
-        if pyxel.btnp(pyxel.KEY_SPACE) or (pyxel.frame_count % 15 == 0) or Renderer.is_clicked(0, 164, SCREEN_WIDTH, 84) or Renderer.is_clicked(0, 20, SCREEN_WIDTH, 100):
+        if pyxel.btnp(pyxel.KEY_SPACE) or (pyxel.frame_count % 15 == 0) or Renderer.is_clicked(0, 166, SCREEN_WIDTH, 82) or Renderer.is_clicked(0, 20, SCREEN_WIDTH, 100):
             game_state.update_combat()
 
         # In-combat quick belt triggers: Keys [1, 2, 3] or Tap
@@ -371,12 +367,13 @@ class CombatView(View):
         pyxel.blt(100, 32, 0, pu, pv, 16, 16, 0)
 
         # Enemy Stat Panel
+        enemy_display = combat.enemy.name if len(combat.enemy.name) <= 14 else combat.enemy.name[:13] + "."
         renderer.draw_stat_panel(
             x=134,
             y=28,
             w=112,
             h=78,
-            title=f"{combat.enemy.name}",
+            title=enemy_display,
             stats=combat.enemy.base_stats,
             hp=combat.enemy.current_hp,
             max_hp=combat.enemy.max_hp,
@@ -395,20 +392,21 @@ class CombatView(View):
                           bg_col=COLOR_BLACK)
 
         # In-Combat Quick Belt Display
-        renderer.draw_box(10, 128, SCREEN_WIDTH - 20, 32, bg_col=COLOR_NAVY, border_col=COLOR_DARK_BLUE)
-        renderer.draw_text(14, 131, t("belt"), COLOR_YELLOW)
+        renderer.draw_box(10, 126, SCREEN_WIDTH - 20, 36, bg_col=COLOR_NAVY, border_col=COLOR_DARK_BLUE)
+        renderer.draw_text(14, 129, t("belt"), COLOR_YELLOW)
         inv = game_state.player.inventory
         for b_idx in range(MAX_BELT_SLOTS):
             bx = 42 + b_idx * 70
             b_item = inv.belt[b_idx]
             name = b_item.name[:7] if b_item else "Empty"
-            renderer.draw_text(bx, 132, f"[{b_idx+1}]", COLOR_YELLOW)
+            renderer.draw_text(bx, 129, f"[{b_idx+1}]", COLOR_YELLOW)
             if b_item:
-                pyxel.blt(bx + 14, 130, 0, 64, 0, 8, 8, 0)  # Potion sprite
-                renderer.draw_text(bx + 24, 132, name, COLOR_WHITE)
-                renderer.draw_text(bx + 24, 140, f"+{b_item.heal_amount}HP", COLOR_LIME)
+                pyxel.blt(bx + 14, 127, 0, 64, 0, 8, 8, 0)  # Potion sprite
+                renderer.draw_text(bx + 24, 129, name, COLOR_WHITE)
+                hp_x = bx + 24 + len(name) * 6
+                renderer.draw_text(hp_x, 129, f"+{b_item.heal_amount}", COLOR_LIME)
             else:
-                renderer.draw_text(bx + 14, 132, name, COLOR_GRAY)
+                renderer.draw_text(bx + 14, 129, name, COLOR_GRAY)
 
         # Abilities panel
         # Placed under the belt hotkeys
@@ -417,15 +415,15 @@ class CombatView(View):
             x_pos = 46 + a_idx * 95
             key_label = "4" if a_idx == 0 else "5"
             queued_marker = "*" if game_state.combat and game_state.combat.queued_ability == active_ab else " "
-            renderer.draw_text(x_pos, 148, f"[{key_label}]{queued_marker} {active_ab.name[:15]}", COLOR_LIME)
+            renderer.draw_text(x_pos, 148, f"[{key_label}]{queued_marker} {active_ab.name[:14]}", COLOR_LIME)
 
         # Combat activity logs
         renderer.draw_combat_logs(
             logs=combat.combat_logs,
             x=10,
-            y=164,
+            y=166,
             w=SCREEN_WIDTH - 20,
-            h=84,
+            h=82,
             max_entries=7,
         )
 
@@ -699,7 +697,7 @@ class ClassSelectView(View):
         from src.config import SND_CLICK, SND_VICTORY
 
         # Toggle Route Mode
-        if pyxel.btnp(pyxel.KEY_B) or pyxel.btnp(pyxel.KEY_T) or Renderer.is_clicked(70, 230, 76, 16):
+        if pyxel.btnp(pyxel.KEY_B) or pyxel.btnp(pyxel.KEY_T) or Renderer.is_clicked(54, 230, 104, 18):
             self.route_mode = "PATHFINDER" if self.route_mode == "FATE" else "FATE"
             pyxel.play(0, SND_CLICK)
 
@@ -734,10 +732,10 @@ class ClassSelectView(View):
         elif pyxel.btnp(pyxel.KEY_3):
             self.selected_index = 2
             pyxel.play(0, SND_CLICK)
-        elif pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_SPACE) or Renderer.is_clicked(152, 230, 96, 16):
+        elif pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_SPACE) or Renderer.is_clicked(162, 230, 88, 18):
             pyxel.play(0, SND_VICTORY)
             game_state.start_new_game(self.classes[self.selected_index], route_mode=self.route_mode)
-        elif pyxel.btnp(pyxel.KEY_ESCAPE) or Renderer.is_clicked(8, 230, 48, 16):
+        elif pyxel.btnp(pyxel.KEY_ESCAPE) or Renderer.is_clicked(6, 230, 44, 18):
             game_state.switch_mode(GameMode.WELCOME)
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
@@ -784,8 +782,7 @@ class ClassSelectView(View):
             pyxel.blt(card_x + 29, card_y + 32, 0, pu, pv, 16, 16, 0)
 
             if is_selected:
-                renderer.draw_text(card_x + card_w // 2 - 6, card_y - 8, "> <", COLOR_WHITE)
-                renderer.draw_text(card_x + card_w // 2 - 6, card_y + card_h + 2, "> <", COLOR_WHITE)
+                renderer.draw_text(card_x + card_w // 2 - 6, card_y + 2, "> <", COLOR_WHITE)
 
         # Detail Panel
         detail_y = 122
@@ -797,20 +794,9 @@ class ClassSelectView(View):
         renderer.draw_text(16, detail_y + 6, sel_cls_def.name, COLOR_YELLOW)
 
         # Word wrap description
-        desc = sel_cls_def.description
-        if len(desc) > 50:
-            parts = desc.split(" ")
-            line1 = ""
-            line2 = ""
-            for p in parts:
-                if len(line1) + len(p) < 45:
-                    line1 += p + " "
-                else:
-                    line2 += p + " "
-            renderer.draw_text(16, detail_y + 16, line1.strip(), COLOR_WHITE)
-            renderer.draw_text(16, detail_y + 24, line2.strip(), COLOR_WHITE)
-        else:
-            renderer.draw_text(16, detail_y + 16, desc, COLOR_WHITE)
+        desc_lines = renderer.wrap_text(sel_cls_def.description, max_chars_per_line=36)
+        for i, line in enumerate(desc_lines):
+            renderer.draw_text(16, detail_y + 16 + (i * 8), line, COLOR_WHITE)
 
         stats = sel_cls_def.base_stats
         growth = sel_cls_def.growth_per_level
@@ -823,18 +809,20 @@ class ClassSelectView(View):
         skill = get_ability_by_id(starting_skill_id)
         if skill:
             renderer.draw_text(16, detail_y + 74, f"Skill: {skill.name}", COLOR_LIME)
-            renderer.draw_text(16, detail_y + 82, skill.description, COLOR_WHITE)
+            skill_lines = renderer.wrap_text(skill.description, max_chars_per_line=36)
+            for i, line in enumerate(skill_lines):
+                renderer.draw_text(16, detail_y + 82 + (i * 8), line, COLOR_WHITE)
 
         promotions = ", ".join(p.capitalize() for p in sel_cls_def.promotions)
-        renderer.draw_text(16, detail_y + 94, f"Promotions: {promotions}", COLOR_PEACH)
+        renderer.draw_text(16, detail_y + 104, f"Promotions: {promotions}", COLOR_PEACH)
 
         # Footer
-        renderer.draw_button(8, 230, 48, 16, "[BACK]", bg_col=COLOR_BLACK, border_col=COLOR_GRAY)
+        renderer.draw_button(6, 230, 44, 18, "[BACK]", bg_col=COLOR_BLACK, border_col=COLOR_GRAY)
 
         mode_label = t("route_fate") if self.route_mode == "FATE" else t("route_pathfinder")
-        renderer.draw_button(70, 230, 76, 16, mode_label, bg_col=COLOR_BLACK, text_col=COLOR_YELLOW if self.route_mode == "PATHFINDER" else COLOR_WHITE)
+        renderer.draw_button(54, 230, 104, 18, mode_label, bg_col=COLOR_BLACK, text_col=COLOR_YELLOW if self.route_mode == "PATHFINDER" else COLOR_WHITE)
 
-        renderer.draw_button(152, 230, 96, 16, t("btn_start_journey"), bg_col=COLOR_DARK_BLUE, border_col=COLOR_YELLOW)
+        renderer.draw_button(162, 230, 88, 18, t("btn_start_journey"), bg_col=COLOR_DARK_BLUE, border_col=COLOR_YELLOW)
 
 
 class WelcomeView(View):
@@ -842,7 +830,7 @@ class WelcomeView(View):
 
     def update(self, game_state: GameState) -> None:
         from src.config import SND_CLICK
-        if Renderer.is_clicked(184, 8, 64, 16) or pyxel.btnp(pyxel.KEY_L):
+        if Renderer.is_clicked(6, 6, 44, 14) or pyxel.btnp(pyxel.KEY_L):
             i18n.toggle_language()
             pyxel.play(0, 3)
         elif pyxel.btnp(pyxel.KEY_1) or Renderer.is_clicked(36, 158, 184, 16):
@@ -1041,8 +1029,8 @@ class WelcomeView(View):
             renderer.draw_text(w // 2 - len(prompt) * 2, 236, prompt, COLOR_LIME)
 
         renderer.draw_button(
-            184, 8, 64, 16,
-            f"LANG: {i18n.locale.upper()}",
+            6, 6, 44, 14,
+            f"[{i18n.locale.upper()}]",
             bg_col=COLOR_NAVY,
             border_col=COLOR_WHITE,
             text_col=COLOR_YELLOW,
@@ -1370,12 +1358,12 @@ class LootView(View):
             self._take_loot(game_state, 1)
         elif (pyxel.btnp(pyxel.KEY_3) or Renderer.is_clicked(20, 150, SCREEN_WIDTH - 40, 25)) and len(game_state.pending_loot) > 2:
             self._take_loot(game_state, 2)
-        elif pyxel.btnp(pyxel.KEY_SPACE) or Renderer.is_clicked(SCREEN_WIDTH - 150, SCREEN_HEIGHT - 30, 60, 16):
+        elif pyxel.btnp(pyxel.KEY_SPACE) or Renderer.is_clicked(96, SCREEN_HEIGHT - 30, 68, 16):
             # Take all that can fit
             for i in range(len(game_state.pending_loot) - 1, -1, -1):
                 self._take_loot(game_state, i, play_sound=False)
             pyxel.play(0, 3) # Play click sound once for take all
-        elif pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_C) or Renderer.is_clicked(SCREEN_WIDTH - 80, SCREEN_HEIGHT - 30, 70, 16):
+        elif pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_C) or Renderer.is_clicked(170, SCREEN_HEIGHT - 30, 74, 16):
             self._exit_loot(game_state)
 
     def _take_loot(self, game_state: GameState, index: int, play_sound: bool = True) -> None:
@@ -1449,9 +1437,9 @@ class LootView(View):
         if not game_state.pending_loot:
             renderer.draw_text(20, y_offset, "No items remaining.", COLOR_GRAY)
 
-        renderer.draw_text(20, h - 30, "[1-3] Take Item", COLOR_PEACH)
-        renderer.draw_button(w - 150, h - 30, 60, 16, t("btn_take_all"), bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
-        renderer.draw_button(w - 80, h - 30, 70, 16, t("btn_continue"), bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
+        renderer.draw_text(14, h - 30, "[1-3] Take Item", COLOR_PEACH)
+        renderer.draw_button(96, h - 30, 68, 16, t("btn_take_all"), bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
+        renderer.draw_button(170, h - 30, 74, 16, t("btn_continue"), bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
 
 
 class ViewManager:
@@ -1477,7 +1465,7 @@ class ViewManager:
     def update(self, game_state: GameState) -> None:
         # Check for inventory toggle only if in gameplay modes where HUD is shown
         if game_state.current_mode in (GameMode.MAP, GameMode.COMBAT, GameMode.EVENTS, GameMode.INVENTORY, GameMode.LOOT, GameMode.SHOP):
-            inv_clicked = Renderer.is_clicked(218, 3, 34, 16)
+            inv_clicked = Renderer.is_clicked(222, 3, 30, 16)
             if pyxel.btnp(pyxel.KEY_I) or inv_clicked or (game_state.current_mode == GameMode.INVENTORY and pyxel.btnp(pyxel.KEY_ESCAPE)):
                 game_state.toggle_inventory()
                 return

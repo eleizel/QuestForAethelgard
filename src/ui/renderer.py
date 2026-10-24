@@ -46,6 +46,11 @@ class Renderer:
             return (x <= pyxel.mouse_x < x + w) and (y <= pyxel.mouse_y < y + h)
         return False
 
+    def get_text_width(self, text: str) -> int:
+        """Return pixel width of text based on current font."""
+        char_w = 6 if self.font else 4
+        return len(text) * char_w
+
     def draw_button(
         self,
         x: int,
@@ -62,8 +67,9 @@ class Renderer:
         fill = COLOR_DARK_BLUE if clicked else bg_col
         pyxel.rect(x, y, w, h, fill)
         pyxel.rectb(x, y, w, h, border_col)
-        text_x = x + (w - len(label) * 4) // 2
-        text_y = y + (h - 6) // 2
+        tw = self.get_text_width(label)
+        text_x = x + max(1, (w - tw) // 2)
+        text_y = y + (h - 8) // 2
         self.draw_text(text_x, text_y, label, text_col)
         return clicked
 
@@ -93,16 +99,16 @@ class Renderer:
         # Health bar
         hp_str = t("stat_hp", current=player.current_hp, max=player.max_hp)
         self.draw_text(6, 13, hp_str, COLOR_WHITE)
-        self.draw_bar(70, 13, 60, 6, player.current_hp, player.max_hp, fill_col=COLOR_GREEN, bg_col=COLOR_RED)
+        self.draw_bar(68, 13, 54, 6, player.current_hp, player.max_hp, fill_col=COLOR_GREEN, bg_col=COLOR_RED)
 
         # Gold & Dungeon Floor
         gold_text = t("hud_gold", gold=player.gold)
-        self.draw_text(145, 13, gold_text, COLOR_YELLOW)
+        self.draw_text(128, 13, gold_text, COLOR_YELLOW)
         floor_text = t("hud_floor", floor=floor)
-        self.draw_text(210, 4, floor_text, COLOR_PEACH)
+        self.draw_text(174, 4, floor_text, COLOR_PEACH)
 
         # Draw Inventory Button
-        self.draw_button(218, 3, 34, 16, t("inv_title"))
+        self.draw_button(222, 3, 30, 16, t("inv_title"))
 
     def draw_stat_panel(
         self,
@@ -132,7 +138,7 @@ class Renderer:
         self.draw_text(x + 6, y + 66, t("stat_crit", val=crit_pct), COLOR_WHITE)
 
     @staticmethod
-    def wrap_text(text: str, max_chars_per_line: int = 44) -> list[str]:
+    def wrap_text(text: str, max_chars_per_line: int = 38) -> list[str]:
         words = text.split(" ")
         wrapped_lines: list[str] = []
         current_line = ""
