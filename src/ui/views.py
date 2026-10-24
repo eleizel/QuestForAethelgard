@@ -859,14 +859,6 @@ class WelcomeView(View):
         w, h = SCREEN_WIDTH, SCREEN_HEIGHT
         fc = pyxel.frame_count
 
-        renderer.draw_button(
-            184, 8, 64, 16,
-            f"LANG: {i18n.locale.upper()}",
-            bg_col=COLOR_NAVY,
-            border_col=COLOR_WHITE,
-            text_col=COLOR_YELLOW,
-        )
-
         # =============================================================
         # 1. MOONLIT SKY GRADIENT & CELESTIALS
         # =============================================================
@@ -1047,6 +1039,14 @@ class WelcomeView(View):
         if (fc // 15) % 2 == 0:
             prompt = t("menu_prompt")
             renderer.draw_text(w // 2 - len(prompt) * 2, 236, prompt, COLOR_LIME)
+
+        renderer.draw_button(
+            184, 8, 64, 16,
+            f"LANG: {i18n.locale.upper()}",
+            bg_col=COLOR_NAVY,
+            border_col=COLOR_WHITE,
+            text_col=COLOR_YELLOW,
+        )
 
 
 class CreditsView(View):
