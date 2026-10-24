@@ -174,7 +174,7 @@ class BiomeSelectView(View):
             renderer.draw_text(x_offset + 6, curr_y, "Threats:", COLOR_ORANGE)
             curr_y += 9
 
-            from src.data.enemies import ENEMY_CATALOG
+            from src.entities.enemy import ENEMY_CATALOG
             for e_id in biome.basic_enemies[:2]:
                 e_name = ENEMY_CATALOG[e_id].name[:16] if e_id in ENEMY_CATALOG else e_id.replace('_', ' ').title()[:16]
                 renderer.draw_text(x_offset + 8, curr_y, f"- {e_name}", COLOR_GRAY)
