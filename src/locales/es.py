@@ -1,0 +1,52 @@
+"""Spanish localization catalog."""
+
+TRANSLATIONS_ES = {
+    # Menus & Navigation
+    "menu_new_game": "> [1] NUEVA PARTIDA",
+    "menu_load_game": "  [2] CARGAR",
+    "menu_credits": "  [3] CRÉDITOS",
+    "menu_prompt": "- PULSA [1] PARA COMENZAR TU VIAJE -",
+    "btn_back": "[VOLVER]",
+    "btn_start_journey": "[COMENZAR]",
+    "btn_close": "[CERRAR]",
+    "btn_continue": "[CONTINUAR]",
+    "btn_restart": "[REINICIAR]",
+    "btn_take_all": "[TOMAR TODO]",
+    "btn_equip_use": "[EQUIPAR/USAR]",
+    "btn_unequip": "[DESEQUIPAR]",
+    "btn_drop": "[TIRAR]",
+    "btn_buy": "[COMPRAR]",
+    "btn_sell": "[VENDER]",
+    "btn_leave_shop": "[SALIR]",
+    "route_fate": "RUTA: AZAR",
+    "route_pathfinder": "RUTA: ELECCIÓN",
+    "inv_title": "[INV]",
+
+    "tick_gauges": "Medidores:",
+    "belt": "CINTO:",
+    "skills": "HABILIDADES:",
+    "wandering_merchant": "Mercader Errante:",
+    # HUD & Stats
+    "hud_floor": "Piso {floor}",
+    "hud_gold": "Oro: {gold}",
+    "stat_hp": "PV: {current}/{max}",
+    "stat_atk": "ATQ: {val}",
+    "stat_def": "DEF: {val}",
+    "stat_spd": "VEL: {val}",
+    "stat_crit": "CRÍT: {val}%",
+
+    # Combat Activity Feed
+    "combat_log_header": "-- Registro de Batalla --",
+    "combat_awaiting": "Esperando acción...",
+    "combat_start": "¡Comienza el combate: {player} vs {enemy}!",
+    "combat_hit": "{actor} golpea a {target} por {damage} de daño.",
+    "combat_crit": "¡CRÍTICO! {actor} hiere a {target} por {damage} daño.",
+    "combat_enemy_defeat": "¡{enemy} ha sido derrotado!",
+    "combat_player_defeat": "{player} sucumbió a sus heridas...",
+    "combat_rewards": "Obtuviste {exp} EXP y {gold} de Oro.",
+    "combat_level_up": "¡SUBIDA DE NIVEL! ¡{player} alcanzó el Nivel {level}!",
+    "combat_belt_use": "¡{player} usó el cinto [{slot}]!",
+    "combat_veteran": "¡Instintos de Veterano restauraron 20 de medidor!",
+    "combat_queued": "¡En cola: {ability}!",
+    "combat_cooldown": "¡Habilidad en enfriamiento ({cooldown} turnos)!",
+}

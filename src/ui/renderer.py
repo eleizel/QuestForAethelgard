@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import pyxel
-
+import os
+from src.core.i18n import t
 from src.config import (
     COLOR_BLACK,
     COLOR_DARK_BLUE,
@@ -23,6 +24,20 @@ from src.entities.player import Player
 
 class Renderer:
     """Provides modular UI rendering utilities for game screens."""
+
+    def __init__(self):
+        bdf_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+            "assets",
+            "spleen-5x8.bdf",
+        )
+        self.font = pyxel.Font(bdf_path) if os.path.exists(bdf_path) else None
+
+    def draw_text(self, x: int, y: int, text: str, col: int) -> None:
+        if self.font:
+            pyxel.text(x, y, text, col, self.font)
+        else:
+            pyxel.text(x, y, text, col)
 
     @staticmethod
     def is_clicked(x: int, y: int, w: int, h: int) -> bool:
@@ -49,17 +64,15 @@ class Renderer:
         pyxel.rectb(x, y, w, h, border_col)
         text_x = x + (w - len(label) * 4) // 2
         text_y = y + (h - 6) // 2
-        pyxel.text(text_x, text_y, label, text_col)
+        self.draw_text(text_x, text_y, label, text_col)
         return clicked
 
-    @staticmethod
-    def draw_box(x: int, y: int, w: int, h: int, bg_col: int = COLOR_NAVY, border_col: int = COLOR_WHITE) -> None:
+    def draw_box(self, x: int, y: int, w: int, h: int, bg_col: int = COLOR_NAVY, border_col: int = COLOR_WHITE) -> None:
         """Render a bordered rectangular dialog frame."""
         pyxel.rect(x, y, w, h, bg_col)
         pyxel.rectb(x, y, w, h, border_col)
 
-    @staticmethod
-    def draw_bar(x: int, y: int, w: int, h: int, current: int, maximum: int, fill_col: int = COLOR_LIME, bg_col: int = COLOR_RED) -> None:
+    def draw_bar(self, x: int, y: int, w: int, h: int, current: int, maximum: int, fill_col: int = COLOR_LIME, bg_col: int = COLOR_RED) -> None:
         """Render a percentage-filled meter bar (e.g., HP gauge, tick meter)."""
         pyxel.rect(x, y, w, h, bg_col)
         if maximum > 0:
@@ -75,21 +88,21 @@ class Renderer:
 
         # Hero name, class, and level
         title_text = f"{player.name} ({player.class_name}) Lv.{player.level}"
-        pyxel.text(6, 4, title_text, COLOR_YELLOW)
+        self.draw_text(6, 4, title_text, COLOR_YELLOW)
 
         # Health bar
-        hp_str = f"HP {player.current_hp}/{player.max_hp}"
-        pyxel.text(6, 13, hp_str, COLOR_WHITE)
+        hp_str = t("stat_hp", current=player.current_hp, max=player.max_hp)
+        self.draw_text(6, 13, hp_str, COLOR_WHITE)
         self.draw_bar(70, 13, 60, 6, player.current_hp, player.max_hp, fill_col=COLOR_GREEN, bg_col=COLOR_RED)
 
         # Gold & Dungeon Floor
-        gold_text = f"Gold: {player.gold}"
-        pyxel.text(145, 13, gold_text, COLOR_YELLOW)
-        floor_text = f"Floor {floor}"
-        pyxel.text(210, 4, floor_text, COLOR_PEACH)
+        gold_text = t("hud_gold", gold=player.gold)
+        self.draw_text(145, 13, gold_text, COLOR_YELLOW)
+        floor_text = t("hud_floor", floor=floor)
+        self.draw_text(210, 4, floor_text, COLOR_PEACH)
 
         # Draw Inventory Button
-        self.draw_button(218, 3, 34, 16, "[INV]")
+        self.draw_button(218, 3, 34, 16, t("inv_title"))
 
     def draw_stat_panel(
         self,
@@ -105,18 +118,34 @@ class Renderer:
     ) -> None:
         """Render actor statistics box."""
         self.draw_box(x, y, w, h, bg_col=color_scheme, border_col=COLOR_WHITE)
-        pyxel.text(x + 6, y + 6, title, COLOR_YELLOW)
+        self.draw_text(x + 6, y + 6, title, COLOR_YELLOW)
 
         # HP bar
         self.draw_bar(x + 6, y + 18, w - 12, 6, hp, max_hp, fill_col=COLOR_GREEN, bg_col=COLOR_RED)
-        pyxel.text(x + 6, y + 26, f"HP: {hp}/{max_hp}", COLOR_WHITE)
+        self.draw_text(x + 6, y + 26, t("stat_hp", current=hp, max=max_hp), COLOR_WHITE)
 
         # Attributes
-        pyxel.text(x + 6, y + 36, f"ATK: {stats.attack}", COLOR_WHITE)
-        pyxel.text(x + 6, y + 46, f"DEF: {stats.defense}", COLOR_WHITE)
-        pyxel.text(x + 6, y + 56, f"SPD: {stats.speed}", COLOR_WHITE)
+        self.draw_text(x + 6, y + 36, t("stat_atk", val=stats.attack), COLOR_WHITE)
+        self.draw_text(x + 6, y + 46, t("stat_def", val=stats.defense), COLOR_WHITE)
+        self.draw_text(x + 6, y + 56, t("stat_spd", val=stats.speed), COLOR_WHITE)
         crit_pct = int(stats.crit_chance * 100)
-        pyxel.text(x + 6, y + 66, f"CRIT: {crit_pct}%", COLOR_WHITE)
+        self.draw_text(x + 6, y + 66, t("stat_crit", val=crit_pct), COLOR_WHITE)
+
+    @staticmethod
+    def wrap_text(text: str, max_chars_per_line: int = 44) -> list[str]:
+        words = text.split(" ")
+        wrapped_lines: list[str] = []
+        current_line = ""
+        for word in words:
+            if len(current_line) + len(word) + (1 if current_line else 0) <= max_chars_per_line:
+                current_line = f"{current_line} {word}".strip()
+            else:
+                if current_line:
+                    wrapped_lines.append(current_line)
+                current_line = word
+        if current_line:
+            wrapped_lines.append(current_line)
+        return wrapped_lines
 
     def draw_combat_logs(
         self,
@@ -125,16 +154,19 @@ class Renderer:
         y: int,
         w: int,
         h: int,
-        max_entries: int = 5,
+        max_entries: int = 7,
     ) -> None:
         """Render recent battle activity feed."""
         self.draw_box(x, y, w, h, bg_col=COLOR_BLACK, border_col=COLOR_GRAY)
-        pyxel.text(x + 6, y + 4, "-- Combat Log --", COLOR_YELLOW)
+        self.draw_text(x + 6, y + 4, t("combat_log_header"), COLOR_YELLOW)
 
-        recent = logs[-max_entries:] if logs else ["Awaiting action..."]
+        recent_logs = logs if logs else [t("combat_awaiting")]
+        wrapped_logs = []
+        for log in recent_logs:
+            wrapped_logs.extend(self.wrap_text(log))
+
+        recent = wrapped_logs[-max_entries:] if wrapped_logs else []
         line_y = y + 14
-        for line in recent:
-            # Clip or wrap line to fit within width
-            disp = line if len(line) <= 52 else line[:49] + "..."
-            pyxel.text(x + 6, line_y, disp, COLOR_WHITE)
+        for disp in recent:
+            self.draw_text(x + 6, line_y, disp, COLOR_WHITE)
             line_y += 9

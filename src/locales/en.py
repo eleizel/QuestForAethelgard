@@ -1,0 +1,52 @@
+"""English localization catalog."""
+
+TRANSLATIONS_EN = {
+    # Menus & Navigation
+    "menu_new_game": "> [1] NEW GAME",
+    "menu_load_game": "  [2] LOAD GAME",
+    "menu_credits": "  [3] CREDITS",
+    "menu_prompt": "- PRESS [1] TO BEGIN YOUR JOURNEY -",
+    "btn_back": "[BACK]",
+    "btn_start_journey": "[BEGIN JOURNEY]",
+    "btn_close": "[CLOSE]",
+    "btn_continue": "[CONTINUE]",
+    "btn_restart": "[RESTART]",
+    "btn_take_all": "[TAKE ALL]",
+    "btn_equip_use": "[EQUIP / USE]",
+    "btn_unequip": "[UNEQUIP]",
+    "btn_drop": "[DROP]",
+    "btn_buy": "[BUY]",
+    "btn_sell": "[SELL]",
+    "btn_leave_shop": "[LEAVE SHOP]",
+    "route_fate": "ROUTE: FATE",
+    "route_pathfinder": "ROUTE: PATHFINDER",
+    "inv_title": "[INV]",
+
+    "tick_gauges": "Tick Gauges:",
+    "belt": "BELT:",
+    "skills": "SKILLS:",
+    "wandering_merchant": "Wandering Merchant:",
+    # HUD & Stats
+    "hud_floor": "Floor {floor}",
+    "hud_gold": "Gold: {gold}",
+    "stat_hp": "HP: {current}/{max}",
+    "stat_atk": "ATK: {val}",
+    "stat_def": "DEF: {val}",
+    "stat_spd": "SPD: {val}",
+    "stat_crit": "CRIT: {val}%",
+
+    # Combat Activity Feed
+    "combat_log_header": "-- Combat Log --",
+    "combat_awaiting": "Awaiting action...",
+    "combat_start": "Battle commenced: {player} vs {enemy}!",
+    "combat_hit": "{actor} strikes {target} for {damage} dmg.",
+    "combat_crit": "CRIT! {actor} strikes {target} for {damage} dmg!",
+    "combat_enemy_defeat": "{enemy} was defeated!",
+    "combat_player_defeat": "{player} succumbed to injuries...",
+    "combat_rewards": "Gained {exp} EXP and {gold} Gold.",
+    "combat_level_up": "LEVEL UP! {player} reached Level {level}!",
+    "combat_belt_use": "{player} used belt slot [{slot}]!",
+    "combat_veteran": "{player}'s Veteran's Instincts restored 20 gauge!",
+    "combat_queued": "Queued {ability}!",
+    "combat_cooldown": "Ability on cooldown ({cooldown} turns)!",
+}
