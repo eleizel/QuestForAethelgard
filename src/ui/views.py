@@ -171,7 +171,7 @@ class BiomeSelectView(View):
             curr_y += 4
 
             # Threats
-            renderer.draw_text(x_offset + 6, curr_y, "Threats:", COLOR_ORANGE)
+            renderer.draw_text(x_offset + 6, curr_y, t("biome_threats"), COLOR_ORANGE)
             curr_y += 9
 
             from src.entities.enemy import ENEMY_CATALOG
@@ -182,14 +182,14 @@ class BiomeSelectView(View):
             curr_y += 4
 
             # Bosses
-            renderer.draw_text(x_offset + 6, curr_y, "Bosses:", 14) # COLOR_PINK / 14
+            renderer.draw_text(x_offset + 6, curr_y, t("biome_bosses"), 14) # COLOR_PINK / 14
             curr_y += 9
             for b_id in biome.bosses:
                 b_name = ENEMY_CATALOG[b_id].name[:16] if b_id in ENEMY_CATALOG else b_id.replace('_', ' ').title()[:16]
                 renderer.draw_text(x_offset + 8, curr_y, f"- {b_name}", COLOR_GRAY)
                 curr_y += 9
 
-            renderer.draw_button(x_offset + 10, 42 + 172 - 22, 96, 16, "[CHOOSE ROUTE]", bg_col=COLOR_BLACK, text_col=COLOR_WHITE)
+            renderer.draw_button(x_offset + 10, 42 + 172 - 22, 96, 16, t("btn_choose_route"), bg_col=COLOR_BLACK, text_col=COLOR_WHITE)
 
 
 class MapView(View):
@@ -229,10 +229,10 @@ class MapView(View):
         from src.data.biomes import get_biome
         biome = get_biome(game_state.current_biome)
         if biome:
-            renderer.draw_text(18, 34, f"-- Act {game_state.act}: {biome.name} --", COLOR_YELLOW)
+            renderer.draw_text(18, 34, t("act_header", act=game_state.act, biome_name=biome.name), COLOR_YELLOW)
         else:
-            renderer.draw_text(18, 34, "-- Spire of Aethelgard --", COLOR_YELLOW)
-        renderer.draw_text(18, 44, "Select path: [1-4] Choose Node | [I] Inventory", COLOR_GRAY)
+            renderer.draw_text(18, 34, t("spire_header"), COLOR_YELLOW)
+        renderer.draw_text(18, 44, t("select_path_prompt"), COLOR_GRAY)
 
         floors = game_state.map_graph.floors
         available_ids = {n.id for n in game_state.map_graph.get_available_nodes()}
@@ -573,7 +573,7 @@ class InventoryView(View):
 
         # Equipment Section
         equip_title_col = COLOR_YELLOW if self.active_pane == "EQUIPMENT" else COLOR_GRAY
-        renderer.draw_text(10, 32, "-- Equipment --", equip_title_col)
+        renderer.draw_text(10, 32, t("equip_header"), equip_title_col)
 
         equip_order = list(EquipSlot)
         for i, slot in enumerate(equip_order):
@@ -599,7 +599,7 @@ class InventoryView(View):
             renderer.draw_text(x + 40, y, item_name[:11], COLOR_LIME if item else COLOR_DARK_BLUE)
 
         # 3-Slot Belt
-        renderer.draw_text(10, 96, "-- Belt --", COLOR_YELLOW)
+        renderer.draw_text(10, 96, t("belt_header"), COLOR_YELLOW)
         for b_idx in range(MAX_BELT_SLOTS):
             x = 10 + b_idx * 78
             y = 106
@@ -615,7 +615,7 @@ class InventoryView(View):
 
         # 10-Slot Pouch
         pouch_title_col = COLOR_YELLOW if self.active_pane == "POUCH" else COLOR_GRAY
-        renderer.draw_text(10, 130, f"-- Pouch ({len(inv.pouch)}/{MAX_POUCH_SLOTS}) --", pouch_title_col)
+        renderer.draw_text(10, 130, t("pouch_header", current=len(inv.pouch), max=MAX_POUCH_SLOTS), pouch_title_col)
         for p_idx in range(MAX_POUCH_SLOTS):
             col = p_idx % 2
             row = p_idx // 2
@@ -641,16 +641,16 @@ class InventoryView(View):
                 if stats_str:
                     renderer.draw_text(x + 12, y + 8, stats_str, COLOR_LIME)
             else:
-                renderer.draw_text(x, y, f"{cursor_str}[Empty]", COLOR_DARK_BLUE)
+                renderer.draw_text(x, y, f"{cursor_str}{t('empty_slot')}", COLOR_DARK_BLUE)
 
         # Bottom Panel Context Hints
         y_bottom = 224
         renderer.draw_box(10, y_bottom, SCREEN_WIDTH - 20, 24, bg_col=COLOR_NAVY, border_col=COLOR_WHITE)
         if self.active_pane == "POUCH":
             renderer.draw_button(14, y_bottom + 4, 80, 16, t("btn_equip_use"), bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
-            renderer.draw_button(100, y_bottom + 4, 16, 16, "B1", bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
-            renderer.draw_button(120, y_bottom + 4, 16, 16, "B2", bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
-            renderer.draw_button(140, y_bottom + 4, 16, 16, "B3", bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
+            renderer.draw_button(100, y_bottom + 4, 16, 16, t("btn_belt_1"), bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
+            renderer.draw_button(120, y_bottom + 4, 16, 16, t("btn_belt_2"), bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
+            renderer.draw_button(140, y_bottom + 4, 16, 16, t("btn_belt_3"), bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
             renderer.draw_button(160, y_bottom + 4, 46, 16, t("btn_drop"), bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
         else:
             renderer.draw_button(14, y_bottom + 4, 70, 16, t("btn_unequip"), bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
@@ -674,7 +674,7 @@ class EventsView(View):
         renderer.draw_hud(game_state.player, game_state.floor)
 
         renderer.draw_box(20, 50, SCREEN_WIDTH - 40, 140, bg_col=COLOR_DARK_BLUE, border_col=COLOR_WHITE)
-        renderer.draw_text(30, 65, "-- Room Encounter --", COLOR_YELLOW)
+        renderer.draw_text(30, 65, t("room_encounter_header"), COLOR_YELLOW)
         renderer.draw_text(30, 90, game_state.current_event_text, COLOR_WHITE)
 
         renderer.draw_button(SCREEN_WIDTH // 2 - 40, 150, 80, 16, t("btn_continue"), bg_col=COLOR_NAVY, text_col=COLOR_LIME)
@@ -696,12 +696,12 @@ class EndGameView(View):
 
         if self.is_victory:
             renderer.draw_box(20, 60, w - 40, 120, bg_col=COLOR_NAVY, border_col=COLOR_YELLOW)
-            renderer.draw_text(w // 2 - 40, 80, "VICTORY ACHIEVED!", COLOR_YELLOW)
-            renderer.draw_text(35, 110, "You conquered the Spire of Aethelgard!", COLOR_WHITE)
+            renderer.draw_text(w // 2 - 40, 80, t("victory_achieved"), COLOR_YELLOW)
+            renderer.draw_text(35, 110, t("victory_desc"), COLOR_WHITE)
         else:
             renderer.draw_box(20, 60, w - 40, 120, bg_col=COLOR_RED, border_col=COLOR_WHITE)
-            renderer.draw_text(w // 2 - 24, 80, "YOU DIED", COLOR_WHITE)
-            renderer.draw_text(35, 110, "Your bones join the endless dungeon...", COLOR_PEACH)
+            renderer.draw_text(w // 2 - 24, 80, t("you_died"), COLOR_WHITE)
+            renderer.draw_text(35, 110, t("death_desc"), COLOR_PEACH)
 
         renderer.draw_button(w // 2 - 45, 145, 90, 16, t("btn_restart"), bg_col=COLOR_BLACK, border_col=COLOR_WHITE, text_col=COLOR_WHITE)
 
@@ -765,7 +765,7 @@ class ClassSelectView(View):
 
         # Header
         renderer.draw_box(0, 10, SCREEN_WIDTH, 20, bg_col=COLOR_NAVY, border_col=COLOR_GRAY)
-        title = "CHOOSE YOUR HERO"
+        title = t("choose_hero")
         renderer.draw_text(SCREEN_WIDTH // 2 - len(title) * 2, 16, title, COLOR_YELLOW)
 
         # Class Cards
@@ -787,11 +787,11 @@ class ClassSelectView(View):
 
             archetype = ""
             if cls_id == "warrior":
-                archetype = "[Martial/Tank]"
+                archetype = t("arch_warrior")
             elif cls_id == "rogue":
-                archetype = "[Agile/Crit]"
+                archetype = t("arch_rogue")
             elif cls_id == "mage":
-                archetype = "[Arcane/Burst]"
+                archetype = t("arch_mage")
 
             renderer.draw_text(card_x + 6, card_y + 16, archetype, COLOR_GRAY)
 
@@ -822,24 +822,24 @@ class ClassSelectView(View):
 
         stats = sel_cls_def.base_stats
         growth = sel_cls_def.growth_per_level
-        renderer.draw_text(16, detail_y + 34, f"HP: {stats.max_hp} (+{growth.max_hp}/lvl) | ATK: {stats.attack} (+{growth.attack})", COLOR_GRAY)
-        renderer.draw_text(16, detail_y + 43, f"DEF: {stats.defense} (+{growth.defense}) | SPD: {stats.speed} (+{growth.speed})", COLOR_GRAY)
-        renderer.draw_text(16, detail_y + 52, f"CRIT: {int(stats.crit_chance * 100)}%", COLOR_GRAY)
+        renderer.draw_text(16, detail_y + 34, t("stat_hp_atk", max_hp=stats.max_hp, g_hp=growth.max_hp, atk=stats.attack, g_atk=growth.attack), COLOR_GRAY)
+        renderer.draw_text(16, detail_y + 43, t("stat_def_spd", def_=stats.defense, g_def=growth.defense, spd=stats.speed, g_spd=growth.speed), COLOR_GRAY)
+        renderer.draw_text(16, detail_y + 52, t("stat_crit_val", crit=int(stats.crit_chance * 100)), COLOR_GRAY)
 
         from src.systems.abilities import get_ability_by_id
         starting_skill_id = sel_cls_def.starting_abilities[0] if sel_cls_def.starting_abilities else "None"
         skill = get_ability_by_id(starting_skill_id)
         if skill:
-            renderer.draw_text(16, detail_y + 62, f"Skill: {skill.name}", COLOR_LIME)
+            renderer.draw_text(16, detail_y + 62, t("stat_skill", skill_name=skill.name), COLOR_LIME)
             skill_lines = renderer.wrap_text(skill.description, max_chars_per_line=36)
             for i, line in enumerate(skill_lines):
                 renderer.draw_text(16, detail_y + 71 + (i * 9), line, COLOR_WHITE)
 
         promotions = ", ".join(p.capitalize() for p in sel_cls_def.promotions)
-        renderer.draw_text(16, detail_y + 83, f"Promotions: {promotions}", COLOR_PEACH)
+        renderer.draw_text(16, detail_y + 83, t("class_promotions", promotions=promotions), COLOR_PEACH)
 
         # Footer
-        renderer.draw_button(6, 230, 44, 18, "[BACK]", bg_col=COLOR_BLACK, border_col=COLOR_GRAY)
+        renderer.draw_button(6, 230, 44, 18, t("btn_back"), bg_col=COLOR_BLACK, border_col=COLOR_GRAY)
 
         mode_label = t("route_fate") if self.route_mode == "FATE" else t("route_pathfinder")
         renderer.draw_button(54, 230, 104, 18, mode_label, bg_col=COLOR_BLACK, text_col=COLOR_YELLOW if self.route_mode == "PATHFINDER" else COLOR_WHITE)
@@ -1071,9 +1071,9 @@ class CreditsView(View):
         w, h = SCREEN_WIDTH, SCREEN_HEIGHT
 
         renderer.draw_box(20, 60, w - 40, 120, bg_col=COLOR_NAVY, border_col=COLOR_YELLOW)
-        renderer.draw_text(w // 2 - 20, 80, "CREDITS", COLOR_YELLOW)
-        renderer.draw_text(35, 110, "Developed by Sergio Esperalta", COLOR_WHITE)
-        renderer.draw_text(35, 130, "Assisted by AI (Gemini)", COLOR_WHITE)
+        renderer.draw_text(w // 2 - 20, 80, t("credits_title"), COLOR_YELLOW)
+        renderer.draw_text(35, 110, t("credits_dev"), COLOR_WHITE)
+        renderer.draw_text(35, 130, t("credits_ai"), COLOR_WHITE)
 
         renderer.draw_button(w // 2 - 50, 155, 100, 16, t("btn_back"), bg_col=COLOR_NAVY, text_col=COLOR_LIME)
 
@@ -1165,8 +1165,8 @@ class AbilityChoiceView(View):
         renderer.draw_box(20, 20, w - 40, h - 40, bg_col=COLOR_NAVY, border_col=COLOR_YELLOW)
 
         if self.replace_mode and self.selected_ability:
-            renderer.draw_text(30, 30, f"Replace a {self.selected_ability.ability_type.name} ability:", COLOR_YELLOW)
-            renderer.draw_text(30, 45, f"New: {self.selected_ability.name}", COLOR_LIME)
+            renderer.draw_text(30, 30, t("replace_ability_prompt", type=self.selected_ability.ability_type.name), COLOR_YELLOW)
+            renderer.draw_text(30, 45, t("replace_ability_new", name=self.selected_ability.name), COLOR_LIME)
 
             target_list = game_state.player.abilities.active if self.selected_ability.ability_type == AbilityType.ACTIVE else game_state.player.abilities.passive
             for i, ab in enumerate(target_list):
@@ -1174,11 +1174,11 @@ class AbilityChoiceView(View):
                 renderer.draw_box(30, y_pos, w - 60, 25, bg_col=COLOR_DARK_BLUE, border_col=COLOR_WHITE)
                 renderer.draw_text(40, y_pos + 8, f"[{i+1}] {ab.name}: {ab.description[:30]}...", COLOR_WHITE)
 
-            renderer.draw_button(w - 80, h - 30, 70, 16, "[CANCEL]", bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
-            renderer.draw_text(30, h - 30, "Press [1] or [2] to replace.", COLOR_PEACH)
+            renderer.draw_button(w - 80, h - 30, 70, 16, t("btn_cancel"), bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
+            renderer.draw_text(30, h - 30, t("replace_ability_instruction"), COLOR_PEACH)
             return
 
-        renderer.draw_text(30, 30, f"LEVEL UP! {self.pending_rarity} ABILITY CHOICE", COLOR_YELLOW)
+        renderer.draw_text(30, 30, t("levelup_ability_choice", rarity=self.pending_rarity), COLOR_YELLOW)
 
         for i, ab in enumerate(self.choices):
             y_offset = 60 + (i * 60)
@@ -1193,8 +1193,8 @@ class AbilityChoiceView(View):
             else:
                 renderer.draw_text(40, y_offset + 18, desc, COLOR_WHITE)
 
-        renderer.draw_button(w - 80, h - 30, 70, 16, "[SKIP]", bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
-        renderer.draw_text(30, h - 30, "Press [1] or [2] to select.", COLOR_PEACH)
+        renderer.draw_button(w - 80, h - 30, 70, 16, t("btn_skip"), bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
+        renderer.draw_text(30, h - 30, t("select_ability_instruction"), COLOR_PEACH)
 
 
 class ShopView(View):
@@ -1298,7 +1298,7 @@ class ShopView(View):
         renderer.draw_box(4, 24, SCREEN_WIDTH - 8, 28, bg_col=COLOR_NAVY, border_col=COLOR_GRAY)
         pyxel.blt(12, 28, 0, 32, 32, 16, 16, 0) # Merchant Sprite
         renderer.draw_text(32, 30, t("wandering_merchant"), COLOR_YELLOW)
-        renderer.draw_text(32, 40, "'Gold buys steel and sorcery, traveler.'", COLOR_WHITE)
+        renderer.draw_text(32, 40, t("merchant_quote"), COLOR_WHITE)
 
         # Main Listing Frame (y=56 to 216)
         renderer.draw_box(4, 56, SCREEN_WIDTH - 8, 160, bg_col=COLOR_BLACK, border_col=COLOR_GRAY)
@@ -1306,7 +1306,7 @@ class ShopView(View):
         # Tab Indicator
         buy_color = COLOR_YELLOW if self.active_tab == "BUY" else COLOR_GRAY
         sell_color = COLOR_YELLOW if self.active_tab == "SELL" else COLOR_GRAY
-        renderer.draw_text(12, 60, "[TAB] Mode:", COLOR_WHITE)
+        renderer.draw_text(12, 60, t("merchant_tab_mode"), COLOR_WHITE)
         renderer.draw_text(60, 60, t("btn_buy"), buy_color)
         renderer.draw_text(82, 60, "|", COLOR_WHITE)
         renderer.draw_text(88, 60, t("btn_sell"), sell_color)
@@ -1315,7 +1315,7 @@ class ShopView(View):
         if self.active_tab == "BUY":
             stock = game_state.merchant_stock
             if not stock:
-                renderer.draw_text(12, 80, "Out of stock.", COLOR_GRAY)
+                renderer.draw_text(12, 80, t("merchant_out_of_stock"), COLOR_GRAY)
             else:
                 for i, (item, price) in enumerate(stock):
                     y = 75 + i * 16
@@ -1331,7 +1331,7 @@ class ShopView(View):
                         slot_str = item.slot.value
                         renderer.draw_text(16, y + 8, f"[{slot_str}]", COLOR_GRAY)
                     elif isinstance(item, ConsumableItem):
-                        renderer.draw_text(16, y + 8, f"Heals {item.heal_amount}", COLOR_LIME)
+                        renderer.draw_text(16, y + 8, t("merchant_heals", amount=item.heal_amount), COLOR_LIME)
 
                     # Price
                     pyxel.blt(190, y, 0, 40, 24, 8, 8, 0)
@@ -1340,7 +1340,7 @@ class ShopView(View):
         elif self.active_tab == "SELL":
             pouch = game_state.player.inventory.pouch
             if not pouch:
-                renderer.draw_text(12, 80, "Your pouch is empty.", COLOR_GRAY)
+                renderer.draw_text(12, 80, t("merchant_empty_pouch"), COLOR_GRAY)
             else:
                 for i, item in enumerate(pouch):
                     y = 75 + i * 14
@@ -1362,10 +1362,10 @@ class ShopView(View):
 
         if self.active_tab == "BUY":
             renderer.draw_button(12, 230, 40, 16, t("btn_buy"), bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
-            renderer.draw_text(60, 234, "[TAB] Sell Tab", COLOR_GRAY)
+            renderer.draw_text(60, 234, t("merchant_sell_tab"), COLOR_GRAY)
         else:
             renderer.draw_button(12, 230, 40, 16, t("btn_sell"), bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
-            renderer.draw_text(60, 234, "[TAB] Buy Tab", COLOR_GRAY)
+            renderer.draw_text(60, 234, t("merchant_buy_tab"), COLOR_GRAY)
 
         renderer.draw_button(SCREEN_WIDTH - 90, 230, 80, 16, t("btn_leave_shop"), bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
 
@@ -1421,19 +1421,19 @@ class LootView(View):
         renderer.draw_hud(game_state.player, game_state.floor)
 
         renderer.draw_box(10, 30, w - 20, h - 40, bg_col=COLOR_NAVY, border_col=COLOR_YELLOW)
-        renderer.draw_text(w // 2 - 40, 35, "VICTORY! Spoils of Battle", COLOR_YELLOW)
+        renderer.draw_text(w // 2 - 40, 35, t("spoils_title"), COLOR_YELLOW)
 
         # Summary box
-        renderer.draw_text(20, 55, f"EXP Gained: {game_state.last_exp_earned}", COLOR_WHITE)
-        renderer.draw_text(120, 55, f"Gold: {game_state.last_gold_earned}", COLOR_YELLOW)
+        renderer.draw_text(20, 55, t("spoils_exp", exp=game_state.last_exp_earned), COLOR_WHITE)
+        renderer.draw_text(120, 55, t("spoils_gold", gold=game_state.last_gold_earned), COLOR_YELLOW)
 
         pouch_len = len(game_state.player.inventory.pouch)
         from src.systems.inventory import MAX_POUCH_SLOTS
         color = COLOR_RED if pouch_len >= MAX_POUCH_SLOTS else COLOR_LIME
-        renderer.draw_text(20, 70, f"Pouch Space: {pouch_len}/{MAX_POUCH_SLOTS}", color)
+        renderer.draw_text(20, 70, t("spoils_pouch_space", current=pouch_len, max=MAX_POUCH_SLOTS), color)
 
         if pouch_len >= MAX_POUCH_SLOTS:
-            renderer.draw_text(140, 70, "Pouch Full!", COLOR_RED)
+            renderer.draw_text(140, 70, t("spoils_pouch_full"), COLOR_RED)
 
         # Loot List
         y_offset = 90
@@ -1453,7 +1453,7 @@ class LootView(View):
             elif isinstance(item, ConsumableItem):
                 from src.data.items import StatPotion
                 if isinstance(item, StatPotion):
-                    renderer.draw_text(25, y_offset + 15, "Permanent Elixir", 15) # COLOR_PEACH / 15
+                    renderer.draw_text(25, y_offset + 15, t("spoils_perm_elixir"), 15) # COLOR_PEACH / 15
                     bonus_str = ""
                     if item.stat_bonus.attack > 0: bonus_str = f"+{item.stat_bonus.attack} ATK"
                     elif item.stat_bonus.defense > 0: bonus_str = f"+{item.stat_bonus.defense} DEF"
@@ -1462,15 +1462,15 @@ class LootView(View):
                     elif item.stat_bonus.crit_chance > 0: bonus_str = f"+{int(item.stat_bonus.crit_chance * 100)}% CRIT"
                     renderer.draw_text(110, y_offset + 15, bonus_str, COLOR_LIME)
                 else:
-                    renderer.draw_text(25, y_offset + 15, "Consumable", COLOR_GRAY)
-                    renderer.draw_text(90, y_offset + 15, f"Heals {item.heal_amount} HP", COLOR_GREEN)
+                    renderer.draw_text(25, y_offset + 15, t("spoils_consumable"), COLOR_GRAY)
+                    renderer.draw_text(90, y_offset + 15, t("merchant_heals", amount=f"{item.heal_amount} HP"), COLOR_GREEN)
 
             y_offset += 30
 
         if not game_state.pending_loot:
-            renderer.draw_text(20, y_offset, "No items remaining.", COLOR_GRAY)
+            renderer.draw_text(20, y_offset, t("spoils_no_items"), COLOR_GRAY)
 
-        renderer.draw_text(14, h - 30, "[1-3] Take Item", COLOR_PEACH)
+        renderer.draw_text(14, h - 30, t("spoils_take_item"), COLOR_PEACH)
         renderer.draw_button(96, h - 30, 68, 16, t("btn_take_all"), bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
         renderer.draw_button(170, h - 30, 74, 16, t("btn_continue"), bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
 
