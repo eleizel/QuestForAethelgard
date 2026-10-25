@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+import secrets
 from dataclasses import dataclass
 
 
@@ -115,7 +116,7 @@ class Actor:
 
     def calculate_attack(self, rng: random.Random | None = None) -> tuple[int, bool]:
         """Compute outgoing damage and whether the attack was a critical hit."""
-        rand = rng if rng is not None else random.Random()
+        rand = rng if rng is not None else secrets.SystemRandom()
         is_crit = rand.random() < self.base_stats.crit_chance
         variance = rand.uniform(0.9, 1.1)
         dmg = int(self.base_stats.attack * variance)
