@@ -45,7 +45,7 @@ class Player(Actor):
     def effective_stats(self) -> Stats:
         """Base stats combined with active equipment bonuses and passive abilities."""
         equip_bonuses = self.inventory.get_equipment_stats()
-        stats = self.base_stats.add(equip_bonuses)
+        stats = self.base_stats.add(equip_bonuses).add(self.stat_modifiers)
         for passive in self.abilities.passive:
             stats = passive.modify_stats(stats)
 

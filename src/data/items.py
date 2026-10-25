@@ -37,6 +37,60 @@ class StatPotion(ConsumableItem):
 
 
 ITEM_CATALOG: Final[dict[str, Item]] = {
+    "cleansing_flask": ConsumableItem(
+        id="cleansing_flask", name="Cleanse P.", description="Cleanses all debuffs.",
+        heal_amount=15, cleanses_debuffs=True
+    ),
+    "elixir_of_haste": ConsumableItem(
+        id="elixir_of_haste", name="Haste P. S", description="Grants haste for 15 ticks.",
+        heal_amount=0, applied_status="haste", status_duration=15, status_potency=4
+    ),
+    "stoneskin_draught": ConsumableItem(
+        id="stoneskin_draught", name="Stoneskin P.", description="Grants fortify for 15 ticks.",
+        heal_amount=0, applied_status="fortify", status_duration=15, status_potency=6
+    ),
+    "flame_tongue": EquipmentItem(
+        id="flame_tongue", name="Flame Tongue", description="Sword that burns enemies.",
+        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.ONE_HANDED,
+        stats_bonus=Stats(max_hp=0, attack=8, defense=0, speed=0, crit_chance=0.0),
+        on_hit_status="burn", on_hit_chance=0.40
+    ),
+    "viper_fang": EquipmentItem(
+        id="viper_fang", name="Viper Fang", description="Dagger dripping with venom.",
+        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.ONE_HANDED,
+        stats_bonus=Stats(max_hp=0, attack=6, defense=0, speed=3, crit_chance=0.0),
+        on_hit_status="poison", on_hit_chance=0.45
+    ),
+    "serrated_cleaver": EquipmentItem(
+        id="serrated_cleaver", name="Serrated Cleaver", description="Axe causing severe bleeding.",
+        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.TWO_HANDED,
+        stats_bonus=Stats(max_hp=0, attack=11, defense=0, speed=0, crit_chance=0.0),
+        on_hit_status="bleed", on_hit_chance=0.35
+    ),
+    "storm_wand": EquipmentItem(
+        id="storm_wand", name="Storm Wand", description="Wand that occasionally stuns.",
+        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.WAND,
+        stats_bonus=Stats(max_hp=0, attack=9, defense=0, speed=0, crit_chance=0.0),
+        on_hit_status="stun", on_hit_chance=0.20
+    ),
+    "purifying_vest": EquipmentItem(
+        id="purifying_vest", name="Purifying Vest", description="Vest that prevents statuses.",
+        slot=EquipSlot.CHEST,
+        stats_bonus=Stats(max_hp=0, attack=0, defense=5, speed=0, crit_chance=0.0),
+        immune_statuses=["burn", "poison", "bleed", "stun", "blind", "weaken", "vulnerable"]
+    ),
+    "spiked_carapace": EquipmentItem(
+        id="spiked_carapace", name="Spiked Carapace", description="Carapace reflecting damage.",
+        slot=EquipSlot.CHEST,
+        stats_bonus=Stats(max_hp=20, attack=0, defense=7, speed=0, crit_chance=0.0)
+    ),
+    "cinder_boots": EquipmentItem(
+        id="cinder_boots", name="Cinder Boots", description="Boots granting burn immunity.",
+        slot=EquipSlot.LEGS,
+        stats_bonus=Stats(max_hp=0, attack=0, defense=3, speed=2, crit_chance=0.0),
+        immune_statuses=["burn"]
+    ),
+
     # =========================================================================
     # 1. WARRIOR STARTER KIT (Preserved)
     # =========================================================================

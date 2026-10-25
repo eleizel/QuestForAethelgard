@@ -12,6 +12,7 @@ import pyxel
 if TYPE_CHECKING:
     from src.entities.enemy import Enemy
     from src.entities.player import Player
+    from src.entities.actor import Actor
 
 ACTION_THRESHOLD: Final[int] = 100
 
@@ -57,6 +58,45 @@ class CombatSystem:
         """Return True if combat is still ongoing."""
         return self.result == CombatResult.IN_PROGRESS
 
+    def _process_status_ticks(self, actor: 'Actor') -> None:
+        from src.systems.status import StatusTrigger
+        active_statuses = list(actor.statuses)
+        for s in active_statuses:
+            if s.trigger == StatusTrigger.ON_TICK:
+                if s.on_tick_hook:
+                    log_str, dmg = s.on_tick_hook(self, actor, s)
+                    self.combat_logs.append(log_str)
+
+            # Prevent decrementing duration for PRE_ACTION statuses (e.g. Stun) which are measured in turns, not ticks.
+            if s.trigger != StatusTrigger.PRE_ACTION:
+                s.duration -= 1
+                if s.duration <= 0:
+                    actor.statuses.remove(s)
+
+    def _can_actor_act(self, actor: 'Actor') -> bool:
+        for s in actor.statuses:
+            if s.id == "stun":
+                self.combat_logs.append(f"{actor.name} is STUNNED and cannot act!")
+                s.duration -= 1
+                if s.duration <= 0:
+                    actor.statuses.remove(s)
+                return False
+        return True
+
+    def _evaluate_battle_outcome(self) -> bool:
+        if not self.enemy.is_alive:
+            self.result = CombatResult.PLAYER_VICTORY
+            self.combat_logs.append(_t("combat_enemy_defeat", enemy=self.enemy.name))
+            self._distribute_rewards()
+            pyxel.play(0, 4)  # Sound 4: Victory fanfare
+            return True
+        elif not self.player.is_alive:
+            self.result = CombatResult.PLAYER_DEFEAT
+            self.combat_logs.append(_t("combat_player_defeat", player=self.player.name))
+            pyxel.play(0, 5)  # Sound 5: Defeat sting
+            return True
+        return False
+
     def step(self) -> CombatResult:
         """Advance the battle simulation by one tick."""
         if not self.is_active():
@@ -64,9 +104,14 @@ class CombatSystem:
 
         self.current_tick += 1
 
+        self._process_status_ticks(self.player)
+        self._process_status_ticks(self.enemy)
+        if self._evaluate_battle_outcome():
+            return self.result
+
         # Accumulate action gauges based on speed attributes
         player_speed = self.player.effective_stats.speed
-        enemy_speed = self.enemy.base_stats.speed
+        enemy_speed = self.enemy.effective_stats.speed
 
         self.player_gauge += player_speed
         self.enemy_gauge += enemy_speed
@@ -81,22 +126,16 @@ class CombatSystem:
             if self.player.is_alive and self.player_gauge >= ACTION_THRESHOLD:
                 self._execute_player_attack()
 
-        # Check win/loss state
-        if not self.enemy.is_alive:
-            self.result = CombatResult.PLAYER_VICTORY
-            self.combat_logs.append(_t("combat_enemy_defeat", enemy=self.enemy.name))
-            self._distribute_rewards()
-            pyxel.play(0, 4)  # Sound 4: Victory fanfare
-        elif not self.player.is_alive:
-            self.result = CombatResult.PLAYER_DEFEAT
-            self.combat_logs.append(_t("combat_player_defeat", player=self.player.name))
-            pyxel.play(0, 5)  # Sound 5: Defeat sting
+        self._evaluate_battle_outcome()
 
         return self.result
 
     def _execute_player_attack(self) -> None:
         """Execute a player strike against the enemy, or an ability if queued."""
         self.player_gauge -= ACTION_THRESHOLD
+        if not self._can_actor_act(self.player):
+            return
+
         if self.ability_cooldown > 0:
             self.ability_cooldown -= 1
 
@@ -108,17 +147,34 @@ class CombatSystem:
             pyxel.play(0, 1 if is_crit else 0) # Base sound
             self.queued_ability = None
         else:
-            raw_dmg, is_crit = self.player.calculate_attack(self.rng)
-            dmg_dealt = self.enemy.take_damage(raw_dmg)
-            if is_crit:
-                self.combat_logs.append(_t("combat_crit", actor=self.player.name, target=self.enemy.name, damage=dmg_dealt))
+            if self.player.has_status("blind") and self.rng.random() < 0.50:
+                self.combat_logs.append(f"{self.player.name}'s attack missed due to Blindness!")
+                dmg_dealt = 0
+                is_crit = False
             else:
-                self.combat_logs.append(_t("combat_hit", actor=self.player.name, target=self.enemy.name, damage=dmg_dealt))
-            pyxel.play(0, 1 if is_crit else 0)
+                raw_dmg, is_crit = self.player.calculate_attack(self.rng)
+                if self.enemy.has_status("vulnerable"):
+                    raw_dmg = int(raw_dmg * 1.30)
+                dmg_dealt = self.enemy.take_damage(raw_dmg)
+                if is_crit:
+                    self.combat_logs.append(_t("combat_crit", actor=self.player.name, target=self.enemy.name, damage=dmg_dealt))
+                else:
+                    self.combat_logs.append(_t("combat_hit", actor=self.player.name, target=self.enemy.name, damage=dmg_dealt))
+                pyxel.play(0, 1 if is_crit else 0)
+
+                # Check on_hit_status for player weapons
+                weapon = self.player.inventory.get_equipment_in_slot("Main Hand")
+                if weapon and getattr(weapon, "on_hit_status", None) and self.rng.random() < getattr(weapon, "on_hit_chance", 0.0):
+                    from src.systems.status import get_status_by_id
+                    effect = get_status_by_id(weapon.on_hit_status)
+                    if effect:
+                        self.enemy.apply_status(effect)
+                        self.combat_logs.append(f"{self.enemy.name} is afflicted with {effect.name}!")
 
         # Triggers passive hooks for attack dealt
-        for passive in self.player.abilities.passive:
-            passive.on_attack_dealt(self.player, self.enemy, dmg_dealt, is_crit)
+        if dmg_dealt > 0 or getattr(self, "queued_ability", None):
+            for passive in self.player.abilities.passive:
+                passive.on_attack_dealt(self.player, self.enemy, dmg_dealt, is_crit)
 
         has_veteran = any(a.id == "veterans_instincts" for a in self.player.abilities.passive)
         if has_veteran and is_crit:
@@ -128,7 +184,16 @@ class CombatSystem:
     def _execute_enemy_attack(self) -> None:
         """Execute an enemy strike against the player."""
         self.enemy_gauge -= ACTION_THRESHOLD
+        if not self._can_actor_act(self.enemy):
+            return
+
+        if self.enemy.has_status("blind") and self.rng.random() < 0.50:
+            self.combat_logs.append(f"{self.enemy.name}'s attack missed due to Blindness!")
+            return
+
         raw_dmg, is_crit = self.enemy.calculate_attack(self.rng)
+        if self.player.has_status("vulnerable"):
+            raw_dmg = int(raw_dmg * 1.30)
         dmg_dealt = self.player.take_damage(raw_dmg)
 
         # Audio feedback: Sound 1 (Crit) or Sound 0 (Hit)
@@ -138,6 +203,22 @@ class CombatSystem:
             self.combat_logs.append(_t("combat_crit", actor=self.enemy.name, target=self.player.name, damage=dmg_dealt))
         else:
             self.combat_logs.append(_t("combat_hit", actor=self.enemy.name, target=self.player.name, damage=dmg_dealt))
+
+        if getattr(self.enemy, "on_hit_status", None) and self.rng.random() < getattr(self.enemy, "status_chance", 0.0):
+            from src.systems.status import get_status_by_id
+            effect = get_status_by_id(self.enemy.on_hit_status)
+            if effect:
+                self.player.apply_status(effect)
+                self.combat_logs.append(f"{self.player.name} is afflicted with {effect.name}!")
+
+        if dmg_dealt > 0:
+            chest = self.player.inventory.get_equipment_in_slot("Chest")
+            if chest and chest.id == "spiked_carapace":
+                from src.systems.status import get_status_by_id
+                effect = get_status_by_id("bleed")
+                if effect:
+                    self.enemy.apply_status(effect)
+                    self.combat_logs.append(f"{self.enemy.name} is afflicted with Bleed by Spiked Carapace!")
 
     def _distribute_rewards(self) -> None:
         """Grant spoils of victory to the player."""
