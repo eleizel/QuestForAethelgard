@@ -87,46 +87,46 @@ def create_bleed(duration: int = 6, potency: int = 3) -> StatusEffect:
         duration=duration, potency=potency, on_tick_hook=_hook_bleed,
     )
 
-def create_stun(duration: int = 1) -> StatusEffect:
+def create_stun(duration: int = 1, potency: int = 1) -> StatusEffect:
     return StatusEffect(
         id="stun", name="Stun", badge="STN", color=10,  # COLOR_YELLOW
         status_type=StatusType.DEBUFF, trigger=StatusTrigger.PRE_ACTION,
-        duration=duration, potency=1,
+        duration=duration, potency=potency,
     )
 
-def create_blind(duration: int = 10) -> StatusEffect:
+def create_blind(duration: int = 10, potency: int = 50) -> StatusEffect:
     return StatusEffect(
         id="blind", name="Blind", badge="BLN", color=13,  # COLOR_GRAY
         status_type=StatusType.DEBUFF, trigger=StatusTrigger.POST_HIT,
-        duration=duration, potency=50,  # 50% miss chance
+        duration=duration, potency=potency,  # 50% miss chance
     )
 
-def create_fortify(duration: int = 15, defense_boost: int = 5) -> StatusEffect:
+def create_fortify(duration: int = 15, potency: int = 5) -> StatusEffect:
     return StatusEffect(
         id="fortify", name="Fortify", badge="DEF", color=6,  # COLOR_LIGHT_BLUE
         status_type=StatusType.BUFF, trigger=StatusTrigger.STAT_MOD,
-        duration=duration, potency=defense_boost,
+        duration=duration, potency=potency,
     )
 
-def create_haste(duration: int = 12, speed_boost: int = 4) -> StatusEffect:
+def create_haste(duration: int = 12, potency: int = 4) -> StatusEffect:
     return StatusEffect(
         id="haste", name="Haste", badge="SPD", color=12,  # COLOR_CYAN
         status_type=StatusType.BUFF, trigger=StatusTrigger.STAT_MOD,
-        duration=duration, potency=speed_boost,
+        duration=duration, potency=potency,
     )
 
-def create_weaken(duration: int = 10, attack_drop: int = 4) -> StatusEffect:
+def create_weaken(duration: int = 10, potency: int = 4) -> StatusEffect:
     return StatusEffect(
         id="weaken", name="Weaken", badge="WKN", color=15,  # COLOR_PEACH
         status_type=StatusType.DEBUFF, trigger=StatusTrigger.STAT_MOD,
-        duration=duration, potency=attack_drop,
+        duration=duration, potency=potency,
     )
 
-def create_vulnerable(duration: int = 8) -> StatusEffect:
+def create_vulnerable(duration: int = 8, potency: int = 30) -> StatusEffect:
     return StatusEffect(
         id="vulnerable", name="Vulnerable", badge="VUL", color=14,  # COLOR_PINK
         status_type=StatusType.DEBUFF, trigger=StatusTrigger.POST_HIT,
-        duration=duration, potency=30,  # +30% damage taken
+        duration=duration, potency=potency,  # +30% damage taken
     )
 
 STATUS_BUILDERS = {
