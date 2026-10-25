@@ -48,6 +48,7 @@ class WeaponType(Enum):
     TWO_HANDED = auto()
     SHIELD = auto()
     FOCUS = auto()
+    WAND = auto()
 
 
 @dataclass
