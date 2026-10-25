@@ -176,8 +176,7 @@ class CombatSystem:
             for passive in self.player.abilities.passive:
                 passive.on_attack_dealt(self.player, self.enemy, dmg_dealt, is_crit)
 
-        has_veteran = any(a.id == "veterans_instincts" for a in self.player.abilities.passive)
-        if has_veteran and is_crit:
+        if self.player.abilities.has_veterans_instincts and is_crit:
             self.player_gauge += 20
             self.combat_logs.append(_t("combat_veteran", player=self.player.name))
 
