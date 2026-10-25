@@ -118,6 +118,7 @@ class Inventory:
         self.equipment: dict[EquipSlot, EquipmentItem | None] = {
             slot: None for slot in EquipSlot
         }
+        self._cached_stats: Stats | None = None
         self.pouch: list[Item] = []
         self.belt: list[ConsumableItem | None] = [None] * MAX_BELT_SLOTS
 
@@ -131,10 +132,15 @@ class Inventory:
 
     def get_equipment_stats(self) -> Stats:
         """Aggregate stat bonuses from all currently equipped gear."""
+        if self._cached_stats is not None:
+            return self._cached_stats
+
         total = Stats(max_hp=0, attack=0, defense=0, speed=0, crit_chance=0.0)
         for gear in self.equipment.values():
             if gear is not None:
                 total = total.add(gear.stats_bonus)
+
+        self._cached_stats = total
         return total
 
     def equip(self, item: EquipmentItem) -> EquipmentItem | None:
@@ -142,6 +148,7 @@ class Inventory:
         slot = item.slot
         previous = self.equipment[slot]
         self.equipment[slot] = item
+        self._cached_stats = None
         return previous
 
     def unequip(self, slot: EquipSlot) -> EquipmentItem | None:
@@ -150,6 +157,7 @@ class Inventory:
         if current is not None:
             if len(self.pouch) < MAX_POUCH_SLOTS:
                 self.equipment[slot] = None
+                self._cached_stats = None
                 self.pouch.append(current)
                 return current
         return None
@@ -215,6 +223,7 @@ class Inventory:
             off_hand = self.equipment[EquipSlot.OFF_HAND]
             if off_hand is not None:
                 self.equipment[EquipSlot.OFF_HAND] = None
+                self._cached_stats = None
                 self.pouch.append(off_hand)
 
         # If we are equipping something in MAIN_HAND or OFF_HAND, check if we had a TWO_HANDED weapon
@@ -225,11 +234,13 @@ class Inventory:
             current_main = self.equipment[EquipSlot.MAIN_HAND]
             if current_main is not None and current_main.weapon_type == WeaponType.TWO_HANDED:
                 self.equipment[EquipSlot.MAIN_HAND] = None
+                self._cached_stats = None
                 self.pouch.append(current_main)
 
         # Standard equip
         old_item = self.equipment[popped_item.slot]
         self.equipment[popped_item.slot] = popped_item
+        self._cached_stats = None
         if old_item is not None:
             self.pouch.append(old_item)
 
@@ -244,6 +255,7 @@ class Inventory:
             return (False, "Pouch full!")
 
         self.equipment[slot] = None
+        self._cached_stats = None
         self.pouch.append(item)
         return (True, f"Unequipped {item.name}.")
 
