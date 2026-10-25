@@ -33,7 +33,7 @@ class Engine:
         if os.path.exists(abs_resource_path):
             try:
                 pyxel.load(abs_resource_path)
-            except Exception as e:
+            except (RuntimeError, ValueError) as e:
                 print(f"Warning: Could not load resource file {abs_resource_path}: {e}")
 
         self.game_state: GameState = GameState()
