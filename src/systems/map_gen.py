@@ -44,10 +44,12 @@ class MapGraph:
                 self.nodes_by_id[node.id] = node
 
         self.current_node_id: int | None = None
+        self._available_nodes: list[MapNode] = []
         # Make starting floor nodes available
         if self.floors and self.floors[0]:
             for node in self.floors[0]:
                 node.available = True
+            self._available_nodes = [n for n in self.floors[0] if n.available]
 
     @property
     def current_node(self) -> MapNode | None:
@@ -56,12 +58,10 @@ class MapGraph:
             return self.nodes_by_id.get(self.current_node_id)
         return None
 
-    def get_available_nodes(self) -> list[MapNode]:
+    @property
+    def available_nodes(self) -> list[MapNode]:
         """Return nodes that can be chosen next."""
-        if self.current_node_id is None:
-            return [n for n in self.floors[0] if n.available]
-        curr = self.nodes_by_id[self.current_node_id]
-        return [self.nodes_by_id[nxt_id] for nxt_id in curr.outgoing_ids if self.nodes_by_id[nxt_id].available]
+        return self._available_nodes
 
     def select_node(self, node_id: int) -> bool:
         """Move player to selected node if it is available."""
@@ -82,6 +82,9 @@ class MapGraph:
             next_node = self.nodes_by_id.get(next_id)
             if next_node:
                 next_node.available = True
+
+        # Update available nodes cache
+        self._available_nodes = [self.nodes_by_id[nxt_id] for nxt_id in target.outgoing_ids if self.nodes_by_id[nxt_id].available]
 
         return True
 
