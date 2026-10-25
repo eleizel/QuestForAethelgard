@@ -209,16 +209,14 @@ def execute_cleave(combat: CombatSystem) -> tuple[str, int, bool]:
     return f"{combat.player.name} delivers Cleave! A crushing strike dealing {actual_dmg} damage.", actual_dmg, False
 
 def modify_iron_skin(stats: Stats) -> Stats:
-    from src.entities.actor import Stats
     bonus_def = int(stats.defense * 0.15)
-    return stats.add(Stats(max_hp=0, attack=0, defense=bonus_def, speed=0, crit_chance=0.0))
+    return stats.add(type(stats)(max_hp=0, attack=0, defense=bonus_def, speed=0, crit_chance=0.0))
 
 def hook_iron_skin(actor: Actor, raw_damage: int) -> int:
     return max(1, raw_damage - 2)
 
 def modify_veterans_instincts(stats: Stats) -> Stats:
-    from src.entities.actor import Stats
-    return stats.add(Stats(max_hp=0, attack=0, defense=0, speed=0, crit_chance=0.05))
+    return stats.add(type(stats)(max_hp=0, attack=0, defense=0, speed=0, crit_chance=0.05))
 
 def hook_bloodlust(actor: Actor, target: Actor, damage: int, is_crit: bool) -> None:
     if damage > 0:
@@ -255,8 +253,7 @@ def execute_flurry_of_daggers(combat: CombatSystem) -> tuple[str, int, bool]:
     return f"{combat.player.name} throws a Flurry of Daggers! 3 quick blades inflict {total_dmg} dmg.", total_dmg, any_crit
 
 def modify_nimble_reflexes(stats: Stats) -> Stats:
-    from src.entities.actor import Stats
-    return stats.add(Stats(max_hp=0, attack=0, defense=1, speed=3, crit_chance=0.06))
+    return stats.add(type(stats)(max_hp=0, attack=0, defense=1, speed=3, crit_chance=0.06))
 
 def hook_exposed_weakness(actor: Actor, target: Actor, damage: int, is_crit: bool) -> None:
     if is_crit and hasattr(actor, "base_stats"):
@@ -297,8 +294,7 @@ def execute_chain_lightning(combat: CombatSystem) -> tuple[str, int, bool]:
     return f"{combat.player.name} channels Chain Lightning for {actual_dmg} dmg{crit_msg}!", actual_dmg, is_crit
 
 def modify_arcane_ward(stats: Stats) -> Stats:
-    from src.entities.actor import Stats
-    return stats.add(Stats(max_hp=20, attack=2, defense=3, speed=0, crit_chance=0.02))
+    return stats.add(type(stats)(max_hp=20, attack=2, defense=3, speed=0, crit_chance=0.02))
 
 def hook_mana_barrier(actor: Actor, raw_damage: int) -> int:
     return max(1, raw_damage - 3)
@@ -371,8 +367,7 @@ def hook_shadow_dance_defense(actor: Actor, raw_damage: int) -> int:
     return raw_damage
 
 def modify_death_dealer(stats: Stats) -> Stats:
-    from src.entities.actor import Stats
-    return stats.add(Stats(max_hp=0, attack=5, defense=0, speed=4, crit_chance=0.15))
+    return stats.add(type(stats)(max_hp=0, attack=5, defense=0, speed=4, crit_chance=0.15))
 
 # --- Mage Epics ---
 def execute_meteor(combat: CombatSystem) -> tuple[str, int, bool]:
@@ -387,8 +382,7 @@ def execute_time_stop(combat: CombatSystem) -> tuple[str, int, bool]:
     return f"{combat.player.name} invokes Time Stop! The flow of time freezes, granting an immediate turn.", 0, False
 
 def modify_time_dilation(stats: Stats) -> Stats:
-    from src.entities.actor import Stats
-    return stats.add(Stats(max_hp=0, attack=8, defense=0, speed=6, crit_chance=0.10))
+    return stats.add(type(stats)(max_hp=0, attack=8, defense=0, speed=6, crit_chance=0.10))
 
 def hook_phoenix_rebirth(actor: Actor, raw_damage: int) -> int:
     if actor.current_hp - raw_damage <= 0 and not getattr(actor, "_phoenix_used", False):
