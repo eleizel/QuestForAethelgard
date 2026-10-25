@@ -4,17 +4,12 @@ from __future__ import annotations
 
 import random
 from enum import Enum, auto
-from typing import TYPE_CHECKING
-
 from src.entities import Stats
 from src.entities.enemy import EnemyTier, generate_enemy
 from src.entities.player import Player
 from src.systems.combat import CombatResult, CombatSystem
 from src.systems.inventory import ConsumableItem, EquipSlot, EquipmentItem, Item
 from src.systems.map_gen import MapGraph, MapNode, NodeType, generate_spire_map
-
-if TYPE_CHECKING:
-    pass
 
 
 class GameMode(Enum):
@@ -56,12 +51,15 @@ class GameState:
         self.last_gold_earned: int = 0
         self.last_exp_earned: int = 0
 
-    def start_new_game(self, class_id: str = "warrior", route_mode: str = "FATE") -> None:
+    def start_new_game(
+        self, class_id: str = "warrior", route_mode: str = "FATE"
+    ) -> None:
         """Initialize a new journey with the specified character class."""
         self.player = Player(name="Sir Aethelgard", class_id=class_id)
         self.biome_route_mode = route_mode
 
         from src.data.items import get_starter_kit, get_item
+
         starter_items = get_starter_kit(class_id)
         for item in starter_items:
             self.player.inventory.equip(item)
@@ -77,6 +75,7 @@ class GameState:
 
         if self.biome_route_mode == "FATE":
             from src.data.biomes import ACT_BIOMES
+
             self.current_biome = random.choice(ACT_BIOMES[1])
             self.map_graph = generate_spire_map(num_floors=12, width_lanes=4)
             self.switch_mode(GameMode.MAP)
@@ -89,6 +88,7 @@ class GameState:
             self.current_biome = target_biome_id
         elif self.biome_route_mode == "FATE":
             from src.data.biomes import ACT_BIOMES
+
             self.current_biome = random.choice(ACT_BIOMES[self.act])
 
         self.player.heal(9999)
@@ -130,16 +130,18 @@ class GameState:
             elif node.node_type == NodeType.BOSS:
                 tier = EnemyTier.BOSS
 
-            effective_floor = self.floor + (12 if self.act == 2 else (24 if self.act == 3 else 0))
-            enemy = generate_enemy(tier=tier, floor=effective_floor, biome_id=self.current_biome)
+            effective_floor = self.floor + (
+                12 if self.act == 2 else (24 if self.act == 3 else 0)
+            )
+            enemy = generate_enemy(
+                tier=tier, floor=effective_floor, biome_id=self.current_biome
+            )
             self.combat = CombatSystem(player=self.player, enemy=enemy)
             self.switch_mode(GameMode.COMBAT)
 
         elif node.node_type == NodeType.REST:
             healed = self.player.heal(random.randint(25, 40))
-            self.current_event_text = (
-                f"You discovered a sanctuary campfire. \n\nResting restores {healed} HP."
-            )
+            self.current_event_text = f"You discovered a sanctuary campfire. \n\nResting restores {healed} HP."
             self.switch_mode(GameMode.EVENTS)
 
         elif node.node_type == NodeType.TREASURE:
@@ -152,14 +154,13 @@ class GameState:
 
         elif node.node_type == NodeType.SHOP:
             from src.systems.loot import generate_merchant_stock
+
             self.merchant_stock = generate_merchant_stock(self.floor, self.player)
             self.switch_mode(GameMode.SHOP)
 
         else:  # NodeType.EVENT
             self.player.exp_multiplier = self.player.exp_multiplier + 0.05
-            self.current_event_text = (
-                "An ancient shrine hums with mystical \nenergy as you pass by. \n\nExp gained increased by 5%"
-            )
+            self.current_event_text = "An ancient shrine hums with mystical \nenergy as you pass by. \n\nExp gained increased by 5%"
             self.switch_mode(GameMode.EVENTS)
 
     def update_combat(self) -> None:
@@ -176,6 +177,7 @@ class GameState:
             # Generate loot
             from src.systems.loot import generate_combat_loot
             from src.entities.enemy import EnemyTier
+
             current_node = self.map_graph.current_node
 
             tier = EnemyTier.COMMON
