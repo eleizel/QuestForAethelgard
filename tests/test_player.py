@@ -150,3 +150,107 @@ def test_gain_experience_single_level_up():
     # Check stat points
     assert player.stat_points == initial_stat_points + 2
 
+def test_gain_experience_negative_or_zero():
+    player = Player(class_id="warrior")
+    assert player.experience == 0
+
+    assert not player.gain_experience(0)
+    assert player.experience == 0
+
+    assert not player.gain_experience(-10)
+    assert player.experience == 0
+
+def test_gain_experience_no_level_up():
+    player = Player(class_id="warrior")
+    assert player.level == 1
+    assert player.experience == 0
+
+    # 50 exp to next level. Let's give less than that.
+    # Base multiplier for warrior is 1.0
+    assert not player.gain_experience(40)
+    assert player.experience == 40
+    assert player.level == 1
+
+def test_gain_experience_multiplier():
+    player = Player(class_id="warrior")
+    # Change multiplier for test
+    player.exp_multiplier = 1.5
+
+    assert not player.gain_experience(10)
+    # 10 * 1.5 = 15
+    assert player.experience == 15
+
+def test_gain_experience_multiple_level_ups():
+    player = Player(class_id="warrior")
+    assert player.level == 1
+    initial_hp = player.max_hp
+
+    # From level 1, calculate exp thresholds for next few levels
+    # Lvl 1->2: 50 + 25(0) + 8(0) = 50
+    # Lvl 2->3: 50 + 25(1) + 8(1) = 83
+    # Total needed for Lvl 3 = 133
+
+    assert player.gain_experience(150)
+    assert player.level == 3
+    assert player.experience == 150 - 133 # 17
+
+def test_gain_experience_max_level_cap():
+    player = Player(class_id="warrior")
+    # Artificially set to level 19
+    player.level = 19
+
+    # Calculate exp needed for level 19 to 20
+    from src.core.math_utils import calculate_exp_threshold
+    needed = calculate_exp_threshold(19)
+    player.exp_to_next_level = needed
+    player.experience = 0
+
+    # Give enough to reach level 20 and overflow greatly
+    assert player.gain_experience(needed + 50000)
+
+    assert player.level == 20
+    # Experience should be capped at exp_to_next_level when max level is reached
+    assert player.experience == player.exp_to_next_level
+
+def test_gain_experience_ability_milestones():
+    player = Player(class_id="warrior")
+
+    # At level 1, no milestones
+    assert player.pending_ability_choices == []
+
+    # Reach level 4 ("STANDARD")
+    player.level = 3
+    player.experience = 0
+    from src.core.math_utils import calculate_exp_threshold
+    needed = calculate_exp_threshold(3)
+    player.exp_to_next_level = needed
+
+    player.gain_experience(needed)
+    assert player.level == 4
+    assert player.pending_ability_choices == ["STANDARD"]
+
+    # Clear and reach level 10 ("EPIC")
+    player.pending_ability_choices.clear()
+    player.level = 9
+    player.experience = 0
+    needed = calculate_exp_threshold(9)
+    player.exp_to_next_level = needed
+
+    player.gain_experience(needed)
+    assert player.level == 10
+    assert player.pending_ability_choices == ["EPIC"]
+
+    # Check a level without milestone logic (level 11)
+    player.pending_ability_choices.clear()
+    player.level = 11
+    player._check_ability_milestone()
+    assert player.pending_ability_choices == []
+
+    player.level = 8
+    player._check_ability_milestone()
+    assert player.pending_ability_choices == ["STANDARD"]
+
+    player.level = 20
+    player.pending_ability_choices.clear()
+    player._check_ability_milestone()
+    assert player.pending_ability_choices == ["EPIC"]
