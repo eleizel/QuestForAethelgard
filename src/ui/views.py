@@ -200,7 +200,7 @@ class MapView(View):
             game_state.toggle_inventory()
             return
 
-        available = game_state.map_graph.get_available_nodes()
+        available = game_state.map_graph.available_nodes
 
         floors = game_state.map_graph.floors
         total_floors = len(floors)
@@ -235,7 +235,7 @@ class MapView(View):
         renderer.draw_text(18, 44, t("select_path_prompt"), COLOR_GRAY)
 
         floors = game_state.map_graph.floors
-        available_ids = {n.id for n in game_state.map_graph.get_available_nodes()}
+        available_ids = {n.id for n in game_state.map_graph.available_nodes}
         current_id = game_state.map_graph.current_node_id
 
         total_floors = len(floors)
