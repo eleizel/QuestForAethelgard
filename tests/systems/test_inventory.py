@@ -107,3 +107,91 @@ def test_unequip_empty_slot():
 
     assert unequipped is None
     assert inventory.equipment[EquipSlot.MAIN_HAND] is None
+
+
+def test_add_to_pouch_success():
+    """Test adding an item to the pouch when there is space."""
+    inventory = Inventory()
+    item = Item(id="test_item", name="Test Item", description="A test item")
+
+    success = inventory.add_to_pouch(item)
+
+    assert success is True
+    assert len(inventory.pouch) == 1
+    assert inventory.pouch[0] is item
+
+
+def test_add_to_pouch_full():
+    """Test adding an item fails when the pouch is full."""
+    inventory = Inventory()
+
+    # Fill pouch
+    for i in range(MAX_POUCH_SLOTS):
+        inventory.add_to_pouch(Item(id=f"i{i}", name="junk", description="junk"))
+
+    assert len(inventory.pouch) == MAX_POUCH_SLOTS
+
+    overflow_item = Item(id="overflow", name="Overflow Item", description="Won't fit")
+    success = inventory.add_to_pouch(overflow_item)
+
+    assert success is False
+    assert len(inventory.pouch) == MAX_POUCH_SLOTS
+    assert overflow_item not in inventory.pouch
+
+
+def test_remove_from_pouch_success():
+    """Test removing an item from a valid pouch index."""
+    inventory = Inventory()
+    item1 = Item(id="test1", name="Test 1", description="1")
+    item2 = Item(id="test2", name="Test 2", description="2")
+    inventory.add_to_pouch(item1)
+    inventory.add_to_pouch(item2)
+
+    removed = inventory.remove_from_pouch(0)
+
+    assert removed is item1
+    assert len(inventory.pouch) == 1
+    assert inventory.pouch[0] is item2
+
+
+def test_remove_from_pouch_invalid_index():
+    """Test removing an item from an invalid pouch index returns None."""
+    inventory = Inventory()
+    item = Item(id="test1", name="Test 1", description="1")
+    inventory.add_to_pouch(item)
+
+    # Negative index
+    removed_neg = inventory.remove_from_pouch(-1)
+    assert removed_neg is None
+    assert len(inventory.pouch) == 1
+
+    # Out of bounds index
+    removed_out = inventory.remove_from_pouch(1)
+    assert removed_out is None
+    assert len(inventory.pouch) == 1
+
+
+def test_drop_from_pouch_success():
+    """Test dropping an item from a valid pouch index."""
+    inventory = Inventory()
+    item = Item(id="test1", name="Test 1", description="1")
+    inventory.add_to_pouch(item)
+
+    success, message = inventory.drop_from_pouch(0)
+
+    assert success is True
+    assert message == "Discarded Test 1."
+    assert len(inventory.pouch) == 0
+
+
+def test_drop_from_pouch_invalid_index():
+    """Test dropping an item from an invalid pouch index."""
+    inventory = Inventory()
+    item = Item(id="test1", name="Test 1", description="1")
+    inventory.add_to_pouch(item)
+
+    success, message = inventory.drop_from_pouch(5)
+
+    assert success is False
+    assert message == "Invalid pouch index."
+    assert len(inventory.pouch) == 1
