@@ -2,7 +2,7 @@ name: Build and Deploy Pyxel Web
 
 on:
   push:
-    branches: [ master ]  # O 'master' según tu rama
+    branches: [ master ]  # O 'master' segun tu rama
   workflow_dispatch:
 
 permissions:
@@ -39,9 +39,9 @@ jobs:
           cd ../..
           # Genera la carpeta dist
           mkdir dist
-          # Empaqueta la carpeta raíz indicando tu script inicial (ej. main.py)
+          # Empaqueta la carpeta raiz indicando tu script inicial (ej. main.py)
           pyxel package . main.py
-          # Convierte el archivo .pyxapp a HTML autónomo dentro de /dist
+          # Convierte el archivo .pyxapp a HTML autonomo dentro de /dist
           pyxel app2html QuestForAethelgard.pyxapp
           mv QuestForAethelgard.html dist/index.html
 
