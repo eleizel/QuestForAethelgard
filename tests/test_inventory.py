@@ -1,5 +1,6 @@
 import pytest
 from src.systems.inventory import Inventory, ConsumableItem, EquipmentItem, EquipSlot
+from src.entities.actor import Actor, Stats
 
 def test_assign_to_belt_success():
     """Verify a consumable item can be assigned to an empty belt slot."""
@@ -82,3 +83,73 @@ def test_assign_to_belt_non_consumable():
     assert inv.belt[0] is None
     assert len(inv.pouch) == 1
     assert inv.pouch[0] == sword
+
+def test_consumable_use_heal():
+    """Verify that a consumable item correctly heals the target."""
+    stats = Stats(max_hp=100, attack=10, defense=10, speed=10)
+    target = Actor("Hero", stats)
+    target.current_hp = 50  # Missing 50 HP
+
+    item = ConsumableItem(id="pot_1", name="Health Potion", description="Heals HP", heal_amount=25)
+
+    used = item.use(target)
+
+    assert used is True
+    assert target.current_hp == 75
+
+def test_consumable_use_dead_target():
+    """Verify that a consumable item cannot be used on a dead target."""
+    stats = Stats(max_hp=100, attack=10, defense=10, speed=10)
+    target = Actor("Hero", stats)
+    target.current_hp = 0  # Target is dead
+
+    item = ConsumableItem(id="pot_1", name="Health Potion", description="Heals HP", heal_amount=25)
+
+    used = item.use(target)
+
+    assert used is False
+    assert target.current_hp == 0
+
+def test_consumable_use_cleanse():
+    """Verify that a consumable item correctly cleanses debuffs."""
+    stats = Stats(max_hp=100, attack=10, defense=10, speed=10)
+    target = Actor("Hero", stats)
+
+    from src.systems.status import create_poison
+    poison = create_poison(duration=3, potency=2)
+    target.apply_status(poison)
+
+    assert len(target.statuses) == 1
+
+    item = ConsumableItem(id="antidote", name="Antidote", description="Cleanses debuffs", heal_amount=0, cleanses_debuffs=True)
+
+    used = item.use(target)
+
+    assert used is True
+    assert len(target.statuses) == 0
+
+def test_consumable_use_apply_status():
+    """Verify that a consumable item correctly applies a status effect (buff)."""
+    stats = Stats(max_hp=100, attack=10, defense=10, speed=10)
+    target = Actor("Hero", stats)
+
+    item = ConsumableItem(id="haste_pot", name="Potion of Haste", description="Grants haste", heal_amount=0, applied_status="haste", status_duration=5, status_potency=3)
+
+    used = item.use(target)
+
+    assert used is True
+    assert len(target.statuses) == 1
+    assert target.statuses[0].id == "haste"
+    assert target.statuses[0].duration == 5
+    assert target.statuses[0].potency == 3
+
+def test_consumable_use_no_effect():
+    """Verify that a consumable item without effects returns False when used."""
+    stats = Stats(max_hp=100, attack=10, defense=10, speed=10)
+    target = Actor("Hero", stats)
+
+    item = ConsumableItem(id="water", name="Water", description="Just water", heal_amount=0, cleanses_debuffs=False, applied_status=None)
+
+    used = item.use(target)
+
+    assert used is False
