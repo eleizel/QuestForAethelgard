@@ -2,6 +2,7 @@ import pytest
 from src.entities.player import Player
 from src.entities.actor import Stats
 from src.data.classes import CLASS_REGISTRY
+from src.systems.abilities import Ability, AbilityType, AbilityRarity
 
 def test_available_promotions_underleveled():
     player = Player(class_id="warrior")
@@ -67,6 +68,54 @@ def test_promote_success():
 
     # HP is restored to max
     assert player.current_hp == player.max_hp
+
+def test_effective_stats_base():
+    player = Player(class_id="warrior")
+    stats = player.effective_stats
+    assert stats.max_hp == player.base_stats.max_hp
+    assert stats.attack == player.base_stats.attack
+    assert stats.defense == player.base_stats.defense
+    assert stats.speed == player.base_stats.speed
+    assert stats.crit_chance == pytest.approx(player.base_stats.crit_chance)
+
+def test_effective_stats_with_equipment(monkeypatch):
+    player = Player(class_id="warrior")
+
+    def mock_get_equipment_stats():
+        return Stats(max_hp=20, attack=10, defense=5, speed=2, crit_chance=0.05)
+
+    monkeypatch.setattr(player.inventory, "get_equipment_stats", mock_get_equipment_stats)
+
+    stats = player.effective_stats
+    assert stats.max_hp == player.base_stats.max_hp + 20
+    assert stats.attack == player.base_stats.attack + 10
+    assert stats.defense == player.base_stats.defense + 5
+    assert stats.speed == player.base_stats.speed + 2
+    assert stats.crit_chance == pytest.approx(player.base_stats.crit_chance + 0.05)
+
+def test_effective_stats_with_passive():
+    player = Player(class_id="warrior")
+
+    def modify_stats_hook(stats: Stats) -> Stats:
+        return stats.add(Stats(max_hp=15, attack=8, defense=4, speed=3, crit_chance=0.10))
+
+    passive_ability = Ability(
+        id="mock_passive",
+        name="Mock Passive",
+        description="A mocked passive ability for testing.",
+        ability_type=AbilityType.PASSIVE,
+        rarity=AbilityRarity.STANDARD,
+        modify_stats_hook=modify_stats_hook
+    )
+
+    player.abilities.passive.append(passive_ability)
+
+    stats = player.effective_stats
+    assert stats.max_hp == player.base_stats.max_hp + 15
+    assert stats.attack == player.base_stats.attack + 8
+    assert stats.defense == player.base_stats.defense + 4
+    assert stats.speed == player.base_stats.speed + 3
+    assert stats.crit_chance == pytest.approx(player.base_stats.crit_chance + 0.10)
 
 def test_gain_experience_single_level_up():
     player = Player(class_id="warrior")
