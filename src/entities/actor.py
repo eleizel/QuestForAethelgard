@@ -34,6 +34,56 @@ class Actor:
         self.name: str = name
         self.base_stats: Stats = base_stats
         self.current_hp: int = base_stats.max_hp
+        from src.systems.status import StatusEffect
+        self.statuses: list[StatusEffect] = []
+
+    def apply_status(self, effect: 'src.systems.status.StatusEffect') -> None:
+        # Check for immunities from equipment if player
+        if hasattr(self, "inventory"):
+            immune = []
+            for slot in ['Head', 'Shoulders', 'Chest', 'Waist', 'Hands', 'Legs', 'Main Hand', 'Off Hand', 'Ring', 'Amulet']:
+                item = self.inventory.get_equipment_in_slot(slot)
+                if item and getattr(item, "immune_statuses", None):
+                    immune.extend(item.immune_statuses)
+            if effect.id in immune:
+                return
+
+        for existing in self.statuses:
+            if existing.id == effect.id:
+                existing.duration = max(existing.duration, effect.duration)
+                existing.potency = max(existing.potency, effect.potency)
+                return
+        self.statuses.append(effect.clone())
+
+    def remove_status(self, status_id: str) -> bool:
+        for s in self.statuses:
+            if s.id == status_id:
+                self.statuses.remove(s)
+                return True
+        return False
+
+    def cleanse_debuffs(self) -> int:
+        from src.systems.status import StatusType
+        before = len(self.statuses)
+        self.statuses = [s for s in self.statuses if s.status_type == StatusType.BUFF]
+        return before - len(self.statuses)
+
+    def has_status(self, status_id: str) -> bool:
+        return any(s.id == status_id for s in self.statuses)
+
+    @property
+    def stat_modifiers(self) -> Stats:
+        from src.systems.status import StatusTrigger
+        mod_atk, mod_def, mod_spd = 0, 0, 0
+        for s in self.statuses:
+            if s.trigger == StatusTrigger.STAT_MOD:
+                if s.id == "fortify":
+                    mod_def += s.potency
+                elif s.id == "weaken":
+                    mod_atk -= s.potency
+                elif s.id == "haste":
+                    mod_spd += s.potency
+        return Stats(max_hp=0, attack=mod_atk, defense=mod_def, speed=mod_spd, crit_chance=0.0)
 
     @property
     def is_alive(self) -> bool:

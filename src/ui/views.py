@@ -366,6 +366,7 @@ class CombatView(View):
             hp=game_state.player.current_hp,
             max_hp=game_state.player.max_hp,
             color_scheme=COLOR_DARK_BLUE,
+            statuses=game_state.player.statuses,
         )
 
         # Hero sprite
@@ -385,10 +386,11 @@ class CombatView(View):
             w=112,
             h=78,
             title=enemy_display,
-            stats=combat.enemy.base_stats,
+            stats=combat.enemy.effective_stats,
             hp=combat.enemy.current_hp,
             max_hp=combat.enemy.max_hp,
             color_scheme=COLOR_RED if combat.enemy.tier.value >= 3 else COLOR_NAVY,
+            statuses=combat.enemy.statuses,
         )
 
         # Dynamic Biome Enemy Sprite

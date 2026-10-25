@@ -70,6 +70,9 @@ class EquipmentItem(Item):
     item_type: ItemType = ItemType.EQUIPMENT
     weapon_type: WeaponType | None = None
     required_class: str | None = None
+    on_hit_status: str | None = None
+    on_hit_chance: float = 0.0
+    immune_statuses: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -78,15 +81,33 @@ class ConsumableItem(Item):
 
     heal_amount: int = 25
     item_type: ItemType = ItemType.CONSUMABLE
+    cleanses_debuffs: bool = False
+    applied_status: str | None = None
+    status_duration: int = 0
+    status_potency: int = 0
 
     def use(self, target: Actor) -> bool:
         """Apply the item effect on an actor."""
         if not target.is_alive:
             return False
+
+        used = False
         if self.heal_amount > 0:
             target.heal(self.heal_amount)
-            return True
-        return False
+            used = True
+
+        if self.cleanses_debuffs:
+            cleansed = target.cleanse_debuffs()
+            used = True
+
+        if self.applied_status:
+            from src.systems.status import get_status_by_id
+            effect = get_status_by_id(self.applied_status, duration=self.status_duration, potency=self.status_potency)
+            if effect:
+                target.apply_status(effect)
+                used = True
+
+        return used
 
 
 class Inventory:

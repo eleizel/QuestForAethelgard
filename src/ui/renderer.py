@@ -121,6 +121,7 @@ class Renderer:
         hp: int,
         max_hp: int,
         color_scheme: int = COLOR_NAVY,
+        statuses: list | None = None,
     ) -> None:
         """Render actor statistics box."""
         self.draw_box(x, y, w, h, bg_col=color_scheme, border_col=COLOR_WHITE)
@@ -129,6 +130,13 @@ class Renderer:
         # HP bar
         self.draw_bar(x + 6, y + 18, w - 12, 6, hp, max_hp, fill_col=COLOR_GREEN, bg_col=COLOR_RED)
         self.draw_text(x + 6, y + 26, t("stat_hp", current=hp, max=max_hp), COLOR_WHITE)
+
+        if statuses:
+            badge_x = x + 58
+            for s in statuses[:2]:
+                tag = f"[{s.badge}{s.duration}]"
+                self.draw_text(badge_x, y + 26, tag, s.color)
+                badge_x += len(tag) * 6 + 2
 
         # Attributes
         self.draw_text(x + 6, y + 36, t("stat_atk", val=stats.attack), COLOR_WHITE)
