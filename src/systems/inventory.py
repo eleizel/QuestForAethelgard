@@ -121,6 +121,14 @@ class Inventory:
         self.pouch: list[Item] = []
         self.belt: list[ConsumableItem | None] = [None] * MAX_BELT_SLOTS
 
+    def get_equipment_in_slot(self, slot_name: str) -> EquipmentItem | None:
+        """Get the equipment item currently in the specified slot name."""
+        try:
+            slot = EquipSlot(slot_name)
+            return self.equipment.get(slot)
+        except ValueError:
+            return None
+
     def get_equipment_stats(self) -> Stats:
         """Aggregate stat bonuses from all currently equipped gear."""
         total = Stats(max_hp=0, attack=0, defense=0, speed=0, crit_chance=0.0)
