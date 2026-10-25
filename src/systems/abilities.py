@@ -87,12 +87,17 @@ class PlayerAbilities:
 
     active: list[Ability] = field(default_factory=list)
     passive: list[Ability] = field(default_factory=list)
+    has_veterans_instincts: bool = field(default=False, init=False)
+
+    def _update_cached_flags(self) -> None:
+        self.has_veterans_instincts = any(a.id == "veterans_instincts" for a in self.passive)
 
     def add_ability(self, ability: Ability) -> bool:
         """Attempt to add an ability. Returns True if added without replacing."""
         target_list = self.active if ability.ability_type == AbilityType.ACTIVE else self.passive
         if len(target_list) < 2:
             target_list.append(ability)
+            self._update_cached_flags()
             return True
         return False
 
@@ -101,6 +106,7 @@ class PlayerAbilities:
         target_list = self.active if ability.ability_type == AbilityType.ACTIVE else self.passive
         if 0 <= slot_index < len(target_list):
             target_list[slot_index] = ability
+            self._update_cached_flags()
 
 
 # =============================================================================
