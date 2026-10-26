@@ -61,6 +61,16 @@ class Item:
     item_type: ItemType = ItemType.MATERIAL
     gold_value: int = 10
 
+    @property
+    def localized_name(self) -> str:
+        from src.core.i18n import t
+        return t(f"item_{self.id}_name")
+
+    @property
+    def localized_description(self) -> str:
+        from src.core.i18n import t
+        return t(f"item_{self.id}_desc")
+
 
 @dataclass
 class EquipmentItem(Item):

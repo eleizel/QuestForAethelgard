@@ -155,17 +155,17 @@ class BiomeSelectView(View):
 
             # Dynamic Card Layout
             curr_y = 42 + 8
-            renderer.draw_text(x_offset + 6, curr_y, biome.name[:17], COLOR_YELLOW)
+            renderer.draw_text(x_offset + 6, curr_y, biome.localized_name[:17], COLOR_YELLOW)
             curr_y += 11
 
             # Tags
-            for tag_line in renderer.wrap_text(biome.theme_tags, max_chars_per_line=18):
+            for tag_line in renderer.wrap_text(biome.localized_tags, max_chars_per_line=18):
                 renderer.draw_text(x_offset + 6, curr_y, tag_line, 3) # COLOR_CYAN / 3
                 curr_y += 9
             curr_y += 3
 
             # Description
-            for desc_line in renderer.wrap_text(biome.description, max_chars_per_line=18):
+            for desc_line in renderer.wrap_text(biome.localized_description, max_chars_per_line=18):
                 renderer.draw_text(x_offset + 6, curr_y, desc_line, COLOR_WHITE)
                 curr_y += 9
             curr_y += 4
@@ -229,7 +229,7 @@ class MapView(View):
         from src.data.biomes import get_biome
         biome = get_biome(game_state.current_biome)
         if biome:
-            renderer.draw_text(18, 34, t("act_header", act=game_state.act, biome_name=biome.name), COLOR_YELLOW)
+            renderer.draw_text(18, 34, t("act_header", act=game_state.act, biome_name=biome.localized_name), COLOR_YELLOW)
         else:
             renderer.draw_text(18, 34, t("spire_header"), COLOR_YELLOW)
         renderer.draw_text(18, 44, t("select_path_prompt"), COLOR_GRAY)
@@ -418,7 +418,7 @@ class CombatView(View):
                 bx = 40 + b_idx * 70
 
             b_item = inv.belt[b_idx]
-            name = b_item.name[:9] if b_item else t("empty_slot_short")
+            name = b_item.localized_name[:9] if b_item else t("empty_slot_short")
 
             # Line 1: [i+1] and Item Name
             renderer.draw_text(bx, 129, f"[{b_idx+1}] {name}", COLOR_WHITE if b_item else COLOR_GRAY)
@@ -593,7 +593,7 @@ class InventoryView(View):
             cursor_str = "> " if self.active_pane == "EQUIPMENT" and self.equip_cursor == i else "  "
 
             item = inv.equipment.get(slot)
-            item_name = item.name if item else f"({t('empty_slot_short')})"
+            item_name = item.localized_name if item else f"({t('empty_slot_short')})"
             slot_label_map = {
                 "HEAD": t("slot_head_short"), "SHOULDERS": t("slot_shld_short"), "CHEST": t("slot_chest_short"),
                 "WAIST": t("slot_waist_short"), "HANDS": t("slot_hands_short"), "LEGS": t("slot_legs_short"),
@@ -612,7 +612,7 @@ class InventoryView(View):
             x = 10 + b_idx * 78
             y = 106
             b_item = inv.belt[b_idx]
-            name = b_item.name if b_item else t("empty_slot_short")
+            name = b_item.localized_name[:11] if b_item else t("empty_slot_short")
             renderer.draw_box(x, y, 74, 18, bg_col=COLOR_NAVY, border_col=COLOR_WHITE)
             renderer.draw_text(x + 4, y + 3, f"[{b_idx+1}]", COLOR_YELLOW)
             if b_item:
@@ -635,7 +635,7 @@ class InventoryView(View):
             if p_idx < len(inv.pouch):
                 p_item = inv.pouch[p_idx]
                 item_col = COLOR_WHITE if self.active_pane == "POUCH" and self.pouch_cursor == p_idx else COLOR_GRAY
-                renderer.draw_text(x, y, f"{cursor_str}{p_item.name[:10]}", item_col)
+                renderer.draw_text(x, y, f"{cursor_str}{p_item.localized_name[:10]}", item_col)
 
                 # Show stats if equipment, heal if consumable
                 stats_str = ""
@@ -791,15 +791,9 @@ class ClassSelectView(View):
             renderer.draw_box(card_x, card_y, card_w, card_h, bg_col=COLOR_NAVY, border_col=border_col)
 
             cls_def = CLASS_REGISTRY[cls_id]
-            renderer.draw_text(card_x + 6, card_y + 6, cls_def.name, COLOR_YELLOW)
+            renderer.draw_text(card_x + 6, card_y + 6, cls_def.localized_name, COLOR_YELLOW)
 
-            archetype = ""
-            if cls_id == "warrior":
-                archetype = t("arch_warrior")
-            elif cls_id == "rogue":
-                archetype = t("arch_rogue")
-            elif cls_id == "mage":
-                archetype = t("arch_mage")
+            archetype = t(f"arch_{cls_id}")
 
             renderer.draw_text(card_x + 6, card_y + 16, archetype, COLOR_GRAY)
 
@@ -821,10 +815,10 @@ class ClassSelectView(View):
         sel_cls_id = self.classes[self.selected_index]
         sel_cls_def = CLASS_REGISTRY[sel_cls_id]
 
-        renderer.draw_text(16, detail_y + 4, sel_cls_def.name, COLOR_YELLOW)
+        renderer.draw_text(16, detail_y + 4, sel_cls_def.localized_name, COLOR_YELLOW)
 
         # Word wrap description
-        desc_lines = renderer.wrap_text(sel_cls_def.description, max_chars_per_line=36)
+        desc_lines = renderer.wrap_text(sel_cls_def.localized_description, max_chars_per_line=36)
         for i, line in enumerate(desc_lines):
             renderer.draw_text(16, detail_y + 14 + (i * 9), line, COLOR_WHITE)
 
@@ -843,7 +837,7 @@ class ClassSelectView(View):
             for i, line in enumerate(skill_lines):
                 renderer.draw_text(16, detail_y + 71 + (i * 9), line, COLOR_WHITE)
 
-        promotions = ", ".join(p.capitalize() for p in sel_cls_def.promotions)
+        promotions = ", ".join(t(f"class_{p}_name") for p in sel_cls_def.promotions)
         renderer.draw_text(16, detail_y + 83, t("class_promotions", promotions=promotions), COLOR_PEACH)
 
         # Footer
@@ -1265,7 +1259,7 @@ class ShopView(View):
                         game_state.player.inventory.add_to_pouch(item)
                         stock.pop(self.buy_cursor)
                         pyxel.play(0, 3)
-                        self.feedback_msg = t("shop_purchased", item=item.name)
+                        self.feedback_msg = t("shop_purchased", item=item.localized_name)
                         self.feedback_success = True
                         if self.buy_cursor >= len(stock):
                             self.buy_cursor = max(0, len(stock) - 1)
@@ -1299,7 +1293,7 @@ class ShopView(View):
                     if popped:
                         game_state.player.gold += sell_value
                         pyxel.play(0, 3)
-                        self.feedback_msg = t("shop_sold", item=popped.name, val=sell_value)
+                        self.feedback_msg = t("shop_sold", item=popped.localized_name, val=sell_value)
                         self.feedback_success = True
                         if self.sell_cursor >= len(game_state.player.inventory.pouch):
                             self.sell_cursor = max(0, len(game_state.player.inventory.pouch) - 1)
@@ -1336,7 +1330,7 @@ class ShopView(View):
                     if i == self.buy_cursor:
                         renderer.draw_text(8, y, ">", COLOR_YELLOW)
                         color = COLOR_YELLOW
-                    renderer.draw_text(16, y, item.name, color)
+                    renderer.draw_text(16, y, item.localized_name, color)
 
                     # Try to display some stats/info if equipment
                     from src.systems.inventory import EquipmentItem, ConsumableItem
@@ -1361,7 +1355,7 @@ class ShopView(View):
                     if i == self.sell_cursor:
                         renderer.draw_text(8, y, ">", COLOR_YELLOW)
                         color = COLOR_YELLOW
-                    renderer.draw_text(16, y, item.name, color)
+                    renderer.draw_text(16, y, item.localized_name, color)
 
                     sell_value = max(5, item.gold_value // 2)
                     renderer.draw_text(190, y, f"{sell_value}G", COLOR_YELLOW)
@@ -1452,7 +1446,7 @@ class LootView(View):
         y_offset = 90
         for i, item in enumerate(game_state.pending_loot):
             renderer.draw_box(20, y_offset, w - 40, 25, bg_col=COLOR_DARK_BLUE, border_col=COLOR_WHITE)
-            renderer.draw_text(25, y_offset + 5, f"[{i+1}] {item.name}", COLOR_LIME)
+            renderer.draw_text(25, y_offset + 5, f"[{i+1}] {item.localized_name}", COLOR_LIME)
 
             from src.systems.inventory import EquipmentItem, ConsumableItem
             if isinstance(item, EquipmentItem):

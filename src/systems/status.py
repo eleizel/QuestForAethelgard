@@ -35,6 +35,11 @@ class StatusEffect:
     potency: int = 0           # Numeric scale (flat damage, stat delta, % chance)
     on_tick_hook: Callable[[CombatSystem, Actor, StatusEffect], tuple[str, int]] | None = None
 
+    @property
+    def localized_name(self) -> str:
+        from src.core.i18n import t
+        return t(f"status_{self.id}_name")
+
     def clone(self, duration_override: int | None = None) -> StatusEffect:
         return StatusEffect(
             id=self.id,
@@ -52,16 +57,19 @@ class StatusEffect:
 # --- ON-TICK HOOKS ---
 
 def _hook_burn(combat: CombatSystem, target: Actor, status: StatusEffect) -> tuple[str, int]:
+    from src.core.i18n import t
     dmg = target.take_damage(status.potency)
-    return f"{target.name} burns for {dmg} fire dmg.", dmg
+    return t("status_tick_burn", target=target.name, dmg=dmg), dmg
 
 def _hook_poison(combat: CombatSystem, target: Actor, status: StatusEffect) -> tuple[str, int]:
+    from src.core.i18n import t
     dmg = target.take_damage(status.potency)
-    return f"{target.name} suffers {dmg} poison dmg.", dmg
+    return t("status_tick_poison", target=target.name, dmg=dmg), dmg
 
 def _hook_bleed(combat: CombatSystem, target: Actor, status: StatusEffect) -> tuple[str, int]:
+    from src.core.i18n import t
     dmg = target.take_damage(status.potency)
-    return f"{target.name} bleeds for {dmg} physical dmg.", dmg
+    return t("status_tick_bleed", target=target.name, dmg=dmg), dmg
 
 
 # --- FACTORY CONSTRUCTORS ---
