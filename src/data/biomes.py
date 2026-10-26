@@ -18,6 +18,21 @@ class BiomeDefinition:
     elites: tuple[str, ...]
     bosses: tuple[str, ...]
 
+    @property
+    def localized_name(self) -> str:
+        from src.core.i18n import t
+        return t(f"biome_{self.id}_name")
+
+    @property
+    def localized_description(self) -> str:
+        from src.core.i18n import t
+        return t(f"biome_{self.id}_desc")
+
+    @property
+    def localized_tags(self) -> str:
+        from src.core.i18n import t
+        return t(f"biome_{self.id}_tags")
+
 
 BIOME_REGISTRY: Final[dict[str, BiomeDefinition]] = {
     # =========================================================================
