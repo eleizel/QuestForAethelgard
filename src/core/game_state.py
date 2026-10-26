@@ -11,6 +11,9 @@ from src.systems.combat import CombatResult, CombatSystem
 from src.systems.inventory import ConsumableItem, EquipSlot, EquipmentItem, Item
 from src.systems.map_gen import MapGraph, MapNode, NodeType, generate_spire_map
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from src.data.events import GameEvent
 
 class GameMode(Enum):
     """Core operational modes of the game engine."""
@@ -40,6 +43,7 @@ class GameState:
         self.previous_mode: GameMode = GameMode.WELCOME
 
         self.combat: CombatSystem | None = None
+        self.current_event: 'GameEvent' | None = None
         self.current_event_text: str = ""
         self.floor: int = 1
         self.act: int = 1
@@ -158,8 +162,9 @@ class GameState:
             self.switch_mode(GameMode.SHOP)
 
         else:  # NodeType.EVENT
-            self.player.exp_multiplier = self.player.exp_multiplier + 0.05
-            self.current_event_text = t("event_shrine")
+            from src.data.events import get_random_event
+            self.current_event = get_random_event(self.current_biome)
+            self.current_event_text = self.current_event.description
             self.switch_mode(GameMode.EVENTS)
 
     def update_combat(self) -> None:
