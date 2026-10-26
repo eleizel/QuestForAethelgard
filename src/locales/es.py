@@ -57,7 +57,7 @@ TRANSLATIONS_ES = {
     "btn_choose_route": "[ELEGIR RUTA]",
     "act_header": "-- Acto {act}: {biome_name} --",
     "spire_header": "-- Aguja de Aethelgard --",
-    "select_path_prompt": "Elegir camino: [1-4] Nodo | [I] Inventario",
+    "select_path_prompt": "Elegir camino: [1-4] Nodo",
     "biome_select_header": "RUTA DE EXPEDICIoN - ACTO {act}",
 
     # Inventory & Equipment

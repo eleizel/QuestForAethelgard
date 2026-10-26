@@ -57,7 +57,7 @@ TRANSLATIONS_EN = {
     "btn_choose_route": "[CHOOSE ROUTE]",
     "act_header": "-- Act {act}: {biome_name} --",
     "spire_header": "-- Spire of Aethelgard --",
-    "select_path_prompt": "Select path: [1-4] Choose Node | [I] Inventory",
+    "select_path_prompt": "Select path: [1-4] Choose Node",
     "biome_select_header": "ACT {act} EXPEDITION ROUTE",
 
     # Inventory & Equipment
