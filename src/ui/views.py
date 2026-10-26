@@ -155,17 +155,17 @@ class BiomeSelectView(View):
 
             # Dynamic Card Layout
             curr_y = 42 + 8
-            renderer.draw_text(x_offset + 6, curr_y, biome.name[:17], COLOR_YELLOW)
+            renderer.draw_text(x_offset + 6, curr_y, biome.localized_name[:17], COLOR_YELLOW)
             curr_y += 11
 
             # Tags
-            for tag_line in renderer.wrap_text(biome.theme_tags, max_chars_per_line=18):
+            for tag_line in renderer.wrap_text(biome.localized_tags, max_chars_per_line=18):
                 renderer.draw_text(x_offset + 6, curr_y, tag_line, 3) # COLOR_CYAN / 3
                 curr_y += 9
             curr_y += 3
 
             # Description
-            for desc_line in renderer.wrap_text(biome.description, max_chars_per_line=18):
+            for desc_line in renderer.wrap_text(biome.localized_description, max_chars_per_line=18):
                 renderer.draw_text(x_offset + 6, curr_y, desc_line, COLOR_WHITE)
                 curr_y += 9
             curr_y += 4
@@ -229,7 +229,7 @@ class MapView(View):
         from src.data.biomes import get_biome
         biome = get_biome(game_state.current_biome)
         if biome:
-            renderer.draw_text(18, 34, t("act_header", act=game_state.act, biome_name=biome.name), COLOR_YELLOW)
+            renderer.draw_text(18, 34, t("act_header", act=game_state.act, biome_name=biome.localized_name), COLOR_YELLOW)
         else:
             renderer.draw_text(18, 34, t("spire_header"), COLOR_YELLOW)
         renderer.draw_text(18, 44, t("select_path_prompt"), COLOR_GRAY)
@@ -791,15 +791,9 @@ class ClassSelectView(View):
             renderer.draw_box(card_x, card_y, card_w, card_h, bg_col=COLOR_NAVY, border_col=border_col)
 
             cls_def = CLASS_REGISTRY[cls_id]
-            renderer.draw_text(card_x + 6, card_y + 6, cls_def.name, COLOR_YELLOW)
+            renderer.draw_text(card_x + 6, card_y + 6, cls_def.localized_name, COLOR_YELLOW)
 
-            archetype = ""
-            if cls_id == "warrior":
-                archetype = t("arch_warrior")
-            elif cls_id == "rogue":
-                archetype = t("arch_rogue")
-            elif cls_id == "mage":
-                archetype = t("arch_mage")
+            archetype = t(f"arch_{cls_id}")
 
             renderer.draw_text(card_x + 6, card_y + 16, archetype, COLOR_GRAY)
 
@@ -821,10 +815,10 @@ class ClassSelectView(View):
         sel_cls_id = self.classes[self.selected_index]
         sel_cls_def = CLASS_REGISTRY[sel_cls_id]
 
-        renderer.draw_text(16, detail_y + 4, sel_cls_def.name, COLOR_YELLOW)
+        renderer.draw_text(16, detail_y + 4, sel_cls_def.localized_name, COLOR_YELLOW)
 
         # Word wrap description
-        desc_lines = renderer.wrap_text(sel_cls_def.description, max_chars_per_line=36)
+        desc_lines = renderer.wrap_text(sel_cls_def.localized_description, max_chars_per_line=36)
         for i, line in enumerate(desc_lines):
             renderer.draw_text(16, detail_y + 14 + (i * 9), line, COLOR_WHITE)
 
@@ -843,7 +837,7 @@ class ClassSelectView(View):
             for i, line in enumerate(skill_lines):
                 renderer.draw_text(16, detail_y + 71 + (i * 9), line, COLOR_WHITE)
 
-        promotions = ", ".join(p.capitalize() for p in sel_cls_def.promotions)
+        promotions = ", ".join(t(f"class_{p}_name") for p in sel_cls_def.promotions)
         renderer.draw_text(16, detail_y + 83, t("class_promotions", promotions=promotions), COLOR_PEACH)
 
         # Footer

@@ -76,7 +76,7 @@ class CombatSystem:
     def _can_actor_act(self, actor: 'Actor') -> bool:
         for s in actor.statuses:
             if s.id == "stun":
-                self.combat_logs.append(f"{actor.name} is STUNNED and cannot act!")
+                self.combat_logs.append(_t("combat_stunned", actor=actor.name))
                 s.duration -= 1
                 if s.duration <= 0:
                     actor.statuses.remove(s)
@@ -148,7 +148,7 @@ class CombatSystem:
             self.queued_ability = None
         else:
             if self.player.has_status("blind") and self.rng.random() < 0.50:
-                self.combat_logs.append(f"{self.player.name}'s attack missed due to Blindness!")
+                self.combat_logs.append(_t("combat_blind_miss", actor=self.player.name))
                 dmg_dealt = 0
                 is_crit = False
             else:
@@ -169,7 +169,7 @@ class CombatSystem:
                     effect = get_status_by_id(weapon.on_hit_status)
                     if effect:
                         self.enemy.apply_status(effect)
-                        self.combat_logs.append(f"{self.enemy.name} is afflicted with {effect.name}!")
+                        self.combat_logs.append(_t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name))
 
         # Triggers passive hooks for attack dealt
         if dmg_dealt > 0 or getattr(self, "queued_ability", None):
@@ -187,7 +187,7 @@ class CombatSystem:
             return
 
         if self.enemy.has_status("blind") and self.rng.random() < 0.50:
-            self.combat_logs.append(f"{self.enemy.name}'s attack missed due to Blindness!")
+            self.combat_logs.append(_t("combat_blind_miss", actor=self.enemy.name))
             return
 
         raw_dmg, is_crit = self.enemy.calculate_attack(self.rng)
@@ -208,7 +208,7 @@ class CombatSystem:
             effect = get_status_by_id(self.enemy.on_hit_status)
             if effect:
                 self.player.apply_status(effect)
-                self.combat_logs.append(f"{self.player.name} is afflicted with {effect.name}!")
+                self.combat_logs.append(_t("combat_status_applied", target=self.player.name, effect=effect.localized_name))
 
         if dmg_dealt > 0:
             chest = self.player.inventory.get_equipment_in_slot("Chest")
@@ -217,7 +217,7 @@ class CombatSystem:
                 effect = get_status_by_id("bleed")
                 if effect:
                     self.enemy.apply_status(effect)
-                    self.combat_logs.append(f"{self.enemy.name} is afflicted with Bleed by Spiked Carapace!")
+                    self.combat_logs.append(_t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name))
 
     def _distribute_rewards(self) -> None:
         """Grant spoils of victory to the player."""
