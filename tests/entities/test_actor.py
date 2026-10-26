@@ -1,6 +1,12 @@
+import os
+import sys
+
 import pytest
 
-from src.entities.actor import Actor, Stats
+# Ensure the src directory is in the path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+
+from src.entities.actor import Stats, Actor
 
 
 @pytest.fixture
@@ -11,6 +17,44 @@ def base_stats():
 @pytest.fixture
 def actor(base_stats):
     return Actor("TestActor", base_stats)
+
+
+def test_stats_add_normal():
+    """Test combining two sets of stats normally."""
+    base = Stats(max_hp=100, attack=20, defense=10, speed=15, crit_chance=0.1)
+    bonus = Stats(max_hp=50, attack=5, defense=2, speed=3, crit_chance=0.05)
+
+    result = base.add(bonus)
+
+    assert result.max_hp == 150
+    assert result.attack == 25
+    assert result.defense == 12
+    assert result.speed == 18
+    assert result.crit_chance == pytest.approx(0.15)
+
+
+def test_stats_add_lower_bounds():
+    """Test that stat additions clamp correctly to their lower bounds."""
+    base = Stats(max_hp=10, attack=5, defense=5, speed=5, crit_chance=0.05)
+    penalty = Stats(max_hp=-20, attack=-10, defense=-10, speed=-10, crit_chance=-0.1)
+
+    result = base.add(penalty)
+
+    assert result.max_hp == 1
+    assert result.attack == 0
+    assert result.defense == 0
+    assert result.speed == 1
+    assert result.crit_chance == 0.0
+
+
+def test_stats_add_upper_bounds_crit():
+    """Test that crit_chance is clamped correctly to its upper bound of 1.0."""
+    base = Stats(max_hp=10, attack=5, defense=5, speed=5, crit_chance=0.9)
+    bonus = Stats(max_hp=0, attack=0, defense=0, speed=0, crit_chance=0.5)
+
+    result = base.add(bonus)
+
+    assert result.crit_chance == 1.0
 
 
 def test_heal_normal_amount(actor):
@@ -65,9 +109,11 @@ def test_heal_at_max_hp(actor):
     assert restored == 0
     assert actor.current_hp == 100
 
+
 def create_actor(max_hp: int, defense: int) -> Actor:
     stats = Stats(max_hp=max_hp, attack=10, defense=defense, speed=10)
     return Actor("Test Actor", stats)
+
 
 def test_take_damage_no_defense():
     """Test taking damage with 0 defense."""
@@ -79,6 +125,7 @@ def test_take_damage_no_defense():
     assert actual_damage == 20
     assert actor.current_hp == 80
 
+
 def test_take_damage_with_defense():
     """Test taking damage with positive defense."""
     actor = create_actor(max_hp=100, defense=10)
@@ -89,6 +136,7 @@ def test_take_damage_with_defense():
     assert actual_damage == 15
     assert actor.current_hp == 85
 
+
 def test_take_damage_minimum_one():
     """Test that taking damage always results in at least 1 damage, regardless of high defense."""
     actor = create_actor(max_hp=100, defense=100)
@@ -98,6 +146,7 @@ def test_take_damage_minimum_one():
 
     assert actual_damage == 1
     assert actor.current_hp == 99
+
 
 def test_take_damage_fatal():
     """Test taking damage that exceeds current HP."""
@@ -111,6 +160,7 @@ def test_take_damage_fatal():
     assert actor.current_hp == 0
     assert not actor.is_alive
 
+
 def test_take_damage_negative_defense_ignored():
     """Test that negative defense acts like 0 defense."""
     actor = create_actor(max_hp=100, defense=-10)
@@ -121,6 +171,7 @@ def test_take_damage_negative_defense_ignored():
 
     assert actual_damage == 20
     assert actor.current_hp == 80
+
 
 def test_take_damage_zero_raw_damage():
     """Test taking 0 raw damage still causes 1 mitigated damage because max(1, raw_damage - defense // 2)"""
