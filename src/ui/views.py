@@ -176,7 +176,7 @@ class BiomeSelectView(View):
 
             from src.entities.enemy import ENEMY_CATALOG
             for e_id in biome.basic_enemies[:2]:
-                e_name = ENEMY_CATALOG[e_id].name[:16] if e_id in ENEMY_CATALOG else e_id.replace('_', ' ').title()[:16]
+                e_name = ENEMY_CATALOG[e_id].localized_name[:16] if e_id in ENEMY_CATALOG else e_id.replace('_', ' ').title()[:16]
                 renderer.draw_text(x_offset + 8, curr_y, f"- {e_name}", COLOR_GRAY)
                 curr_y += 9
             curr_y += 4
@@ -185,7 +185,7 @@ class BiomeSelectView(View):
             renderer.draw_text(x_offset + 6, curr_y, t("biome_bosses"), 14) # COLOR_PINK / 14
             curr_y += 9
             for b_id in biome.bosses:
-                b_name = ENEMY_CATALOG[b_id].name[:16] if b_id in ENEMY_CATALOG else b_id.replace('_', ' ').title()[:16]
+                b_name = ENEMY_CATALOG[b_id].localized_name[:16] if b_id in ENEMY_CATALOG else b_id.replace('_', ' ').title()[:16]
                 renderer.draw_text(x_offset + 8, curr_y, f"- {b_name}", COLOR_GRAY)
                 curr_y += 9
 
@@ -379,7 +379,7 @@ class CombatView(View):
         pyxel.blt(100, 32, 0, pu, pv, 16, 16, 0)
 
         # Enemy Stat Panel
-        enemy_display = combat.enemy.name if len(combat.enemy.name) <= 14 else combat.enemy.name[:13] + "."
+        enemy_display = combat.enemy.display_name if len(combat.enemy.display_name) <= 14 else combat.enemy.display_name[:13] + "."
         renderer.draw_stat_panel(
             x=134,
             y=28,
@@ -1174,13 +1174,13 @@ class AbilityChoiceView(View):
 
         if self.replace_mode and self.selected_ability:
             renderer.draw_text(30, 30, t("replace_ability_prompt", type=self.selected_ability.ability_type.name), COLOR_YELLOW)
-            renderer.draw_text(30, 45, t("replace_ability_new", name=self.selected_ability.name), COLOR_LIME)
+            renderer.draw_text(30, 45, t("replace_ability_new", name=self.selected_ability.localized_name), COLOR_LIME)
 
             target_list = game_state.player.abilities.active if self.selected_ability.ability_type == AbilityType.ACTIVE else game_state.player.abilities.passive
             for i, ab in enumerate(target_list):
                 y_pos = 70 + (i * 30)
                 renderer.draw_box(30, y_pos, w - 60, 25, bg_col=COLOR_DARK_BLUE, border_col=COLOR_WHITE)
-                renderer.draw_text(40, y_pos + 8, f"[{i+1}] {ab.name}: {ab.description[:30]}...", COLOR_WHITE)
+                renderer.draw_text(40, y_pos + 8, f"[{i+1}] {ab.localized_name}: {ab.localized_description[:30]}...", COLOR_WHITE)
 
             renderer.draw_button(w - 80, h - 30, 70, 16, t("btn_cancel"), bg_col=COLOR_BLACK, text_col=COLOR_PEACH)
             renderer.draw_text(30, h - 30, t("replace_ability_instruction"), COLOR_PEACH)
@@ -1191,10 +1191,10 @@ class AbilityChoiceView(View):
         for i, ab in enumerate(self.choices):
             y_offset = 60 + (i * 60)
             renderer.draw_box(30, y_offset, w - 60, 50, bg_col=COLOR_DARK_BLUE, border_col=COLOR_WHITE)
-            renderer.draw_text(40, y_offset + 5, f"[{i+1}] {ab.name} ({ab.ability_type.name})", COLOR_LIME)
+            renderer.draw_text(40, y_offset + 5, f"[{i+1}] {ab.localized_name} ({ab.ability_type.name})", COLOR_LIME)
 
             # Simple text wrap for description
-            desc = ab.description
+            desc = ab.localized_description
             if len(desc) > 35:
                 renderer.draw_text(40, y_offset + 18, desc[:35], COLOR_WHITE)
                 renderer.draw_text(40, y_offset + 28, desc[35:70], COLOR_WHITE)

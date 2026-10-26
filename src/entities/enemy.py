@@ -30,6 +30,16 @@ class EnemyArchetype:
     on_hit_status: str | None = None
     status_chance: float = 0.0
 
+    @property
+    def localized_name(self) -> str:
+        from src.core.i18n import t
+        return t(f"enemy_{self.id}_name")
+
+    @property
+    def localized_description(self) -> str:
+        from src.core.i18n import t
+        return t(f"enemy_{self.id}_desc")
+
 
 # Complete Archetype Registry: 24 Commons/Uncommons + 12 Elites + 12 Bosses = 48 Total
 ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
@@ -326,6 +336,18 @@ class Enemy(Actor):
         else:
             self.on_hit_status: str | None = None
             self.status_chance: float = 0.0
+
+    @property
+    def display_name(self) -> str:
+        from src.core.i18n import t
+        prefix = ""
+        if self.tier == EnemyTier.ELITE:
+            prefix = t("prefix_elite")
+        elif self.tier == EnemyTier.UNCOMMON:
+            prefix = t("prefix_uncommon")
+        arch = ENEMY_CATALOG.get(self.archetype_id)
+        base_name = arch.localized_name if arch else self.name
+        return f"{prefix}{base_name}"
 
     @property
     def effective_stats(self) -> Stats:

@@ -52,6 +52,16 @@ class Ability:
     # Active hook: (combat) -> (combat_log, damage_dealt, is_crit)
     execute_hook: Callable[[CombatSystem], tuple[str, int, bool]] | None = None
 
+    @property
+    def localized_name(self) -> str:
+        from src.core.i18n import t
+        return t(f"ability_{self.id}_name")
+
+    @property
+    def localized_description(self) -> str:
+        from src.core.i18n import t
+        return t(f"ability_{self.id}_desc")
+
     # Passive hooks
     modify_stats_hook: Callable[[Stats], Stats] | None = None
     on_damage_taken_hook: Callable[[Actor, int], int] | None = None
@@ -121,7 +131,8 @@ def execute_cross_cut(combat: CombatSystem) -> tuple[str, int, bool]:
     dmg2 = int(raw_dmg2 * 0.90)
     total_dmg = combat.enemy.take_damage(dmg1) + combat.enemy.take_damage(dmg2)
     any_crit = crit1 or crit2
-    return f"{combat.player.name} uses Cross Cut! Deals {total_dmg} damage across 2 strikes.", total_dmg, any_crit
+    from src.core.i18n import t
+    return t("log_cross_cut", player=combat.player.name, dmg=total_dmg), total_dmg, any_crit
 
 CROSS_CUT = Ability(
     id="cross_cut",
@@ -144,7 +155,8 @@ def execute_shadow_strike(combat: CombatSystem) -> tuple[str, int, bool]:
         combat.player_gauge = min(100, combat.player_gauge + 25)
     actual_dmg = combat.enemy.take_damage(dmg)
     crit_msg = " (CRITICAL AMBUSH!)" if is_crit else ""
-    return f"{combat.player.name} lunges with Shadow Strike for {actual_dmg} damage{crit_msg}!", actual_dmg, is_crit
+    from src.core.i18n import t
+    return t("log_shadow_strike", player=combat.player.name, dmg=actual_dmg, crit=crit_msg), actual_dmg, is_crit
 
 SHADOW_STRIKE = Ability(
     id="shadow_strike",
@@ -166,7 +178,8 @@ def execute_arcane_bolt(combat: CombatSystem) -> tuple[str, int, bool]:
     mitigated_dmg = max(1, raw_dmg - (combat.enemy.base_stats.defense // 4))
     actual_dmg = combat.enemy.take_damage(mitigated_dmg)
     crit_msg = " (SURGING ARCANA!)" if is_crit else ""
-    return f"{combat.player.name} hurls an Arcane Bolt for {actual_dmg} magic damage{crit_msg}!", actual_dmg, is_crit
+    from src.core.i18n import t
+    return t("log_arcane_bolt", player=combat.player.name, dmg=actual_dmg, crit=crit_msg), actual_dmg, is_crit
 
 ARCANE_BOLT = Ability(
     id="arcane_bolt",
@@ -181,7 +194,8 @@ ARCANE_BOLT = Ability(
 # --- Debug Tool ---
 def execute_pw_kill(combat: CombatSystem) -> tuple[str, int, bool]:
     actual_dmg = combat.enemy.take_damage(999999)
-    return f"{combat.player.name} casts PW: Kill! Enemy obliterated for {actual_dmg} damage!", actual_dmg, True
+    from src.core.i18n import t
+    return t("log_pw_kill", player=combat.player.name, dmg=actual_dmg), actual_dmg, True
 
 PW_KILL = Ability(
     id="pw_kill",
@@ -201,18 +215,21 @@ def execute_shield_bash(combat: CombatSystem) -> tuple[str, int, bool]:
     dmg = int(combat.player.effective_stats.attack * 0.85)
     actual_dmg = combat.enemy.take_damage(dmg)
     combat.enemy_gauge = max(0, combat.enemy_gauge - 35)
-    return f"{combat.player.name} executes Shield Bash! Deals {actual_dmg} dmg and stalls enemy gauge by 35.", actual_dmg, False
+    from src.core.i18n import t
+    return t("log_shield_bash", player=combat.player.name, dmg=actual_dmg), actual_dmg, False
 
 def execute_rallying_cry(combat: CombatSystem) -> tuple[str, int, bool]:
     heal_amount = int(combat.player.max_hp * 0.15)
     actual_heal = combat.player.heal(heal_amount)
     combat.player.combat_def_buff += 4
-    return f"{combat.player.name} bellows a Rallying Cry! Restores {actual_heal} HP and gains +4 DEF.", 0, False
+    from src.core.i18n import t
+    return t("log_rallying_cry", player=combat.player.name, heal=actual_heal), 0, False
 
 def execute_cleave(combat: CombatSystem) -> tuple[str, int, bool]:
     dmg = int(combat.player.effective_stats.attack * 1.60)
     actual_dmg = combat.enemy.take_damage(dmg)
-    return f"{combat.player.name} delivers Cleave! A crushing strike dealing {actual_dmg} damage.", actual_dmg, False
+    from src.core.i18n import t
+    return t("log_cleave", player=combat.player.name, dmg=actual_dmg), actual_dmg, False
 
 def modify_iron_skin(stats: Stats) -> Stats:
     bonus_def = int(stats.defense * 0.15)
@@ -237,12 +254,14 @@ def execute_poison_shiv(combat: CombatSystem) -> tuple[str, int, bool]:
     dmg = int(combat.player.effective_stats.attack * 1.05)
     actual_dmg = combat.enemy.take_damage(dmg)
     combat.enemy_gauge = max(0, combat.enemy_gauge - 30)
-    return f"{combat.player.name} twists a Poison Shiv for {actual_dmg} dmg, delaying enemy turn by 30 gauge.", actual_dmg, False
+    from src.core.i18n import t
+    return t("log_poison_shiv", player=combat.player.name, dmg=actual_dmg), actual_dmg, False
 
 def execute_smoke_bomb(combat: CombatSystem) -> tuple[str, int, bool]:
     combat.enemy_gauge = max(0, combat.enemy_gauge - 50)
     combat.player_gauge = min(100, combat.player_gauge + 25)
-    return f"{combat.player.name} shatters a Smoke Bomb! Enemy loses 50 gauge; player accelerates by 25.", 0, False
+    from src.core.i18n import t
+    return t("log_smoke_bomb", player=combat.player.name), 0, False
 
 def execute_flurry_of_daggers(combat: CombatSystem) -> tuple[str, int, bool]:
     total_dmg = 0
@@ -256,7 +275,8 @@ def execute_flurry_of_daggers(combat: CombatSystem) -> tuple[str, int, bool]:
             dmg = int(dmg * 1.5)
             any_crit = True
         total_dmg += combat.enemy.take_damage(dmg)
-    return f"{combat.player.name} throws a Flurry of Daggers! 3 quick blades inflict {total_dmg} dmg.", total_dmg, any_crit
+    from src.core.i18n import t
+    return t("log_flurry_of_daggers", player=combat.player.name, dmg=total_dmg), total_dmg, any_crit
 
 def modify_nimble_reflexes(stats: Stats) -> Stats:
     return stats.add(type(stats)(max_hp=0, attack=0, defense=1, speed=3, crit_chance=0.06))
@@ -280,13 +300,15 @@ def hook_shadow_step_gauge(actor: Actor, raw_damage: int) -> int:
 def execute_fireball(combat: CombatSystem) -> tuple[str, int, bool]:
     raw_dmg = int(combat.player.effective_stats.attack * 1.85)
     actual_dmg = combat.enemy.take_damage(raw_dmg)
-    return f"{combat.player.name} incinerates with Fireball! Explodes foe for {actual_dmg} fire damage.", actual_dmg, False
+    from src.core.i18n import t
+    return t("log_fireball", player=combat.player.name, dmg=actual_dmg), actual_dmg, False
 
 def execute_frost_nova(combat: CombatSystem) -> tuple[str, int, bool]:
     dmg = int(combat.player.effective_stats.attack * 0.95)
     actual_dmg = combat.enemy.take_damage(dmg)
     combat.enemy_gauge = max(0, combat.enemy_gauge - 45)
-    return f"{combat.player.name} casts Frost Nova for {actual_dmg} dmg, freezing 45 enemy action gauge.", actual_dmg, False
+    from src.core.i18n import t
+    return t("log_frost_nova", player=combat.player.name, dmg=actual_dmg), actual_dmg, False
 
 def execute_chain_lightning(combat: CombatSystem) -> tuple[str, int, bool]:
     rng = combat.rng
@@ -297,7 +319,8 @@ def execute_chain_lightning(combat: CombatSystem) -> tuple[str, int, bool]:
     if is_crit:
         combat.player_gauge = min(100, combat.player_gauge + 40)
     crit_msg = " (OVERCHARGED SURGE!)" if is_crit else ""
-    return f"{combat.player.name} channels Chain Lightning for {actual_dmg} dmg{crit_msg}!", actual_dmg, is_crit
+    from src.core.i18n import t
+    return t("log_chain_lightning", player=combat.player.name, dmg=actual_dmg, crit=crit_msg), actual_dmg, is_crit
 
 def modify_arcane_ward(stats: Stats) -> Stats:
     return stats.add(type(stats)(max_hp=20, attack=2, defense=3, speed=0, crit_chance=0.02))
@@ -333,7 +356,8 @@ def execute_blade_storm(combat: CombatSystem) -> tuple[str, int, bool]:
             dmg = int(dmg * 1.5)
             any_crit = True
         total_dmg += combat.enemy.take_damage(dmg)
-    return f"{combat.player.name} unleashes Blade Storm! 4 strikes rend foe for {total_dmg} dmg.", total_dmg, any_crit
+    from src.core.i18n import t
+    return t("log_blade_storm", player=combat.player.name, dmg=total_dmg), total_dmg, any_crit
 
 def hook_undying_will(actor: Actor, raw_damage: int) -> int:
     return raw_damage
@@ -342,7 +366,8 @@ def execute_executioners_might(combat: CombatSystem) -> tuple[str, int, bool]:
     mult = 5.0 if combat.enemy.current_hp < combat.enemy.max_hp * 0.40 else 2.5
     dmg = int(combat.player.effective_stats.attack * mult)
     actual_dmg = combat.enemy.take_damage(dmg)
-    return f"{combat.player.name} executes with Executioner's Might for {actual_dmg} colossal dmg!", actual_dmg, False
+    from src.core.i18n import t
+    return t("log_executioners_might", player=combat.player.name, dmg=actual_dmg), actual_dmg, False
 
 # --- Rogue Epics ---
 def execute_assassinate(combat: CombatSystem) -> tuple[str, int, bool]:
@@ -353,7 +378,8 @@ def execute_assassinate(combat: CombatSystem) -> tuple[str, int, bool]:
     dmg = int(combat.player.effective_stats.attack * mult)
     actual_dmg = combat.enemy.take_damage(dmg)
     crit_str = " (LETHAL EXECUTION!)" if is_crit else ""
-    return f"{combat.player.name} performs Assassinate for {actual_dmg} dmg{crit_str}!", actual_dmg, is_crit
+    from src.core.i18n import t
+    return t("log_assassinate", player=combat.player.name, dmg=actual_dmg, crit=crit_str), actual_dmg, is_crit
 
 def execute_fan_of_knives(combat: CombatSystem) -> tuple[str, int, bool]:
     total_dmg = 0
@@ -365,7 +391,8 @@ def execute_fan_of_knives(combat: CombatSystem) -> tuple[str, int, bool]:
         if rng.random() < 0.30:
             delays += 15
     combat.enemy_gauge = max(0, combat.enemy_gauge - delays)
-    return f"{combat.player.name} casts Fan of Knives! 5 blades deal {total_dmg} dmg and delay enemy by {delays} gauge.", total_dmg, False
+    from src.core.i18n import t
+    return t("log_fan_of_knives", player=combat.player.name, dmg=total_dmg, delays=delays), total_dmg, False
 
 def hook_shadow_dance_defense(actor: Actor, raw_damage: int) -> int:
     if random.random() < 0.30:
@@ -380,12 +407,14 @@ def execute_meteor(combat: CombatSystem) -> tuple[str, int, bool]:
     raw_dmg = int(combat.player.effective_stats.attack * 3.20)
     actual_dmg = combat.enemy.take_damage(raw_dmg)
     combat.enemy_gauge = 0
-    return f"{combat.player.name} drops a Cataclysmic Meteor for {actual_dmg} dmg! Enemy gauge reset to 0.", actual_dmg, True
+    from src.core.i18n import t
+    return t("log_meteor", player=combat.player.name, dmg=actual_dmg), actual_dmg, True
 
 def execute_time_stop(combat: CombatSystem) -> tuple[str, int, bool]:
     combat.player_gauge = 100
     combat.enemy_gauge = 0
-    return f"{combat.player.name} invokes Time Stop! The flow of time freezes, granting an immediate turn.", 0, False
+    from src.core.i18n import t
+    return t("log_time_stop", player=combat.player.name), 0, False
 
 def modify_time_dilation(stats: Stats) -> Stats:
     return stats.add(type(stats)(max_hp=0, attack=8, defense=0, speed=6, crit_chance=0.10))
