@@ -55,7 +55,7 @@ UNIVERSAL_EVENTS = [
                 is_available=lambda state: state.player.gold >= 30,
                 action_hook=lambda state: (
                     setattr(state.player, 'gold', state.player.gold - 30),
-                    setattr(state.player.stats, 'attack', state.player.stats.attack + 2),
+                    setattr(state.player.base_stats, 'attack', state.player.base_stats.attack + 2),
                     "You train under the scholar. Your strikes grow more precise." if i18n.locale == "en" else "Entrenas con el erudito. Tus golpes se vuelven más precisos."
                 )[-1]
             ),
@@ -65,7 +65,7 @@ UNIVERSAL_EVENTS = [
                 is_available=lambda state: state.player.gold >= 30,
                 action_hook=lambda state: (
                     setattr(state.player, 'gold', state.player.gold - 30),
-                    setattr(state.player.stats, 'speed', state.player.stats.speed + 2),
+                    setattr(state.player.base_stats, 'speed', state.player.base_stats.speed + 2),
                     "You practice footwork drills. Your agility improves." if i18n.locale == "en" else "Practicas ejercicios de piernas. Tu agilidad mejora."
                 )[-1]
             ),
@@ -88,8 +88,8 @@ UNIVERSAL_EVENTS = [
                 label_en="Pry it open (-20% HP, Greater Elixir)",
                 label_es="Abrirlo por la fuerza (-20% HP, Elixir Mayor)",
                 action_hook=lambda state: (
-                    state.player.take_damage(int(state.player.stats.max_hp * 0.2)),
-                    state.player.inventory.add_to_pouch(ITEM_CATALOG["elixir_strength_greater"]()), # Example
+                    state.player.take_damage(int(state.player.max_hp * 0.2)),
+                    state.player.inventory.add_to_pouch(ITEM_CATALOG["elixir_strength_greater"]), # Example
                     "Dark energy lashes out as you open it, but you find a powerful elixir inside." if i18n.locale == "en" else "La energía oscura te azota al abrirlo, pero encuentras un poderoso elixir dentro."
                 )[-1]
             ),
@@ -98,7 +98,7 @@ UNIVERSAL_EVENTS = [
                 label_es="Consagrarlo (Cura 25 HP, +20 EXP)",
                 action_hook=lambda state: (
                     state.player.heal(25),
-                    state.player.gain_exp(20),
+                    state.player.gain_experience(20),
                     "You say a prayer over the reliquary. The dark energy dissipates." if i18n.locale == "en" else "Dices una oración sobre el relicario. La energía oscura se disipa."
                 )[-1]
             )
@@ -123,11 +123,11 @@ BIOME_EVENTS = {
                     action_hook=lambda state: (
                         (
                             setattr(state.player, 'gold', state.player.gold + 35),
-                            state.player.inventory.add_to_pouch(ITEM_CATALOG["health_potion"]()),
+                            state.player.inventory.add_to_pouch(ITEM_CATALOG["health_potion"]),
                             "You manage to retrieve the items unharmed." if i18n.locale == "en" else "Logras recuperar los objetos sin sufrir daño."
                         )[-1] if random.random() < 0.7 else (
                             setattr(state.player, 'gold', state.player.gold + 15),
-                            state.player.add_status_effect(create_bleed(potency=2, duration=3)),
+                            state.player.apply_status(create_bleed(potency=2, duration=3)),
                             "The thorns slice your hands as you reach in, drawing blood." if i18n.locale == "en" else "Las espinas cortan tus manos al alcanzarlo, haciéndote sangrar."
                         )[-1]
                     )
@@ -151,9 +151,9 @@ BIOME_EVENTS = {
                     label_en="Eat raw bulb (+20 Max HP, Poison)",
                     label_es="Comer bulbo crudo (+20 Max HP, Veneno)",
                     action_hook=lambda state: (
-                        setattr(state.player.stats, 'max_hp', state.player.stats.max_hp + 20),
-                        setattr(state.player.stats, 'hp', state.player.stats.hp + 20),
-                        state.player.add_status_effect(create_poison(potency=3, duration=3)),
+                        setattr(state.player.base_stats, 'max_hp', state.player.base_stats.max_hp + 20),
+                        setattr(state.player, 'current_hp', state.player.current_hp + 20),
+                        state.player.apply_status(create_poison(potency=3, duration=3)),
                         "You choke down the bitter root. Your vitality surges, but nausea overtakes you." if i18n.locale == "en" else "Tragas la raíz amarga. Tu vitalidad aumenta, pero te invade la náusea."
                     )[-1]
                 ),
@@ -161,7 +161,7 @@ BIOME_EVENTS = {
                     label_en="Harvest sap (Major Health Flask)",
                     label_es="Cosechar savia (Frasco de Salud Mayor)",
                     action_hook=lambda state: (
-                        state.player.inventory.add_to_pouch(ITEM_CATALOG["major_health_flask"]()),
+                        state.player.inventory.add_to_pouch(ITEM_CATALOG["major_health_flask"]),
                         "You carefully extract the medicinal sap." if i18n.locale == "en" else "Extraes cuidadosamente la savia medicinal."
                     )[-1]
                 )
@@ -182,7 +182,7 @@ BIOME_EVENTS = {
                     label_es="Beber agua bendita (Limpiar, Cura 35% HP)",
                     action_hook=lambda state: (
                         state.player.cleanse_debuffs(),
-                        state.player.heal(int(state.player.stats.max_hp * 0.35)),
+                        state.player.heal(int(state.player.max_hp * 0.35)),
                         "The holy water purifies your body and mends your wounds." if i18n.locale == "en" else "El agua bendita purifica tu cuerpo y sana tus heridas."
                     )[-1]
                 ),
@@ -192,7 +192,7 @@ BIOME_EVENTS = {
                     is_available=lambda state: state.player.gold >= 25,
                     action_hook=lambda state: (
                         setattr(state.player, 'gold', state.player.gold - 25),
-                        setattr(state.player.stats, 'crit_chance', state.player.stats.crit_chance + 0.05),
+                        setattr(state.player.base_stats, 'crit_chance', state.player.base_stats.crit_chance + 0.05),
                         "The gargoyle's eyes flash gold. Your strikes feel more lethal." if i18n.locale == "en" else "Los ojos de la gárgola brillan dorados. Tus golpes se sienten más letales."
                     )[-1]
                 )
@@ -240,7 +240,7 @@ BIOME_EVENTS = {
                     label_es="Soportar terapia de sanguijuelas (-15 HP, +3 DEF permanente)",
                     action_hook=lambda state: (
                         state.player.take_damage(15),
-                        setattr(state.player.stats, 'defense', state.player.stats.defense + 3),
+                        setattr(state.player.base_stats, 'defense', state.player.base_stats.defense + 3),
                         "The leeches drain your blood, but your skin hardens like leather." if i18n.locale == "en" else "Las sanguijuelas drenan tu sangre, pero tu piel se endurece como el cuero."
                     )[-1]
                 ),
@@ -248,7 +248,7 @@ BIOME_EVENTS = {
                     label_en="Scrape salts (Obtain Cleansing Flask)",
                     label_es="Raspar sales (Obtener Frasco Purificador)",
                     action_hook=lambda state: (
-                        state.player.inventory.add_to_pouch(ITEM_CATALOG["cleansing_flask"]()),
+                        state.player.inventory.add_to_pouch(ITEM_CATALOG["cleansing_flask"]),
                         "You carefully scrape the mineral salts from the edge of the basin." if i18n.locale == "en" else "Raspas cuidadosamente las sales minerales del borde de la cuenca."
                     )[-1]
                 )
@@ -268,12 +268,12 @@ BIOME_EVENTS = {
                     action_hook=lambda state: (
                         (
                             setattr(state.player, 'gold', state.player.gold + 45),
-                            state.player.inventory.add_to_pouch(ITEM_CATALOG["elixir_celerity_greater"]()),
-                            state.player.add_status_effect(create_weaken(potency=2, duration=3)),
+                            state.player.inventory.add_to_pouch(ITEM_CATALOG["elixir_celerity_greater"]),
+                            state.player.apply_status(create_weaken(potency=2, duration=3)),
                             "You retrieve the treasure, but the freezing water drains your strength." if i18n.locale == "en" else "Recuperas el tesoro, pero el agua helada drena tu fuerza."
                         )[-1] if random.random() < 0.4 else (
                             setattr(state.player, 'gold', state.player.gold + 45),
-                            state.player.inventory.add_to_pouch(ITEM_CATALOG["elixir_celerity_greater"]()),
+                            state.player.inventory.add_to_pouch(ITEM_CATALOG["elixir_celerity_greater"]),
                             "You retrieve the treasure and emerge unharmed." if i18n.locale == "en" else "Recuperas el tesoro y emerges ileso."
                         )[-1]
                     )
@@ -302,7 +302,7 @@ BIOME_EVENTS = {
                     label_en="Temper weapon (+3 ATK permanently)",
                     label_es="Templar arma (+3 ATK permanente)",
                     action_hook=lambda state: (
-                        setattr(state.player.stats, 'attack', state.player.stats.attack + 3),
+                        setattr(state.player.base_stats, 'attack', state.player.base_stats.attack + 3),
                         "You bathe your weapon in the spectral flames. Its edge grows sharper." if i18n.locale == "en" else "Bañas tu arma en las llamas espectrales. Su filo se vuelve más agudo."
                     )[-1]
                 ),
@@ -310,8 +310,8 @@ BIOME_EVENTS = {
                     label_en="Reinforce armor (+4 DEF, -1 SPD permanently)",
                     label_es="Reforzar armadura (+4 DEF, -1 SPD permanente)",
                     action_hook=lambda state: (
-                        setattr(state.player.stats, 'defense', state.player.stats.defense + 4),
-                        setattr(state.player.stats, 'speed', max(1, state.player.stats.speed - 1)),
+                        setattr(state.player.base_stats, 'defense', state.player.base_stats.defense + 4),
+                        setattr(state.player.base_stats, 'speed', max(1, state.player.base_stats.speed - 1)),
                         "You fuse ethereal steel to your armor. It is sturdier, but heavier." if i18n.locale == "en" else "Fusionas acero etéreo a tu armadura. Es más resistente, pero más pesada."
                     )[-1]
                 )
@@ -329,8 +329,8 @@ BIOME_EVENTS = {
                     label_en="Force valve (Greater Celerity Elixir, Burn)",
                     label_es="Forzar válvula (Elixir Celeridad Mayor, Quemadura)",
                     action_hook=lambda state: (
-                        state.player.inventory.add_to_pouch(ITEM_CATALOG["elixir_celerity_greater"]()),
-                        state.player.add_status_effect(create_burn(potency=4, duration=3)),
+                        state.player.inventory.add_to_pouch(ITEM_CATALOG["elixir_celerity_greater"]),
+                        state.player.apply_status(create_burn(potency=4, duration=3)),
                         "You wrestle the valve closed, securing the concentrated elixir, but the steam scalds you." if i18n.locale == "en" else "Cierras la válvula, asegurando el elixir concentrado, pero el vapor te quema."
                     )[-1]
                 ),
@@ -338,7 +338,7 @@ BIOME_EVENTS = {
                     label_en="Siphon steam (Elixir of Haste)",
                     label_es="Sifonear vapor (Elixir de Prisa)",
                     action_hook=lambda state: (
-                        state.player.inventory.add_to_pouch(ITEM_CATALOG["elixir_of_haste"]()),
+                        state.player.inventory.add_to_pouch(ITEM_CATALOG["elixir_of_haste"]),
                         "You carefully condense the escaping vapors into a potent draft." if i18n.locale == "en" else "Condensas cuidadosamente los vapores que escapan en un brebaje potente."
                     )[-1]
                 )
@@ -385,8 +385,8 @@ BIOME_EVENTS = {
                     label_en="Channel starlight flame (+4 ATK, +5% Crit permanently)",
                     label_es="Canalizar llama estelar (+4 ATK, +5% Crítico permanente)",
                     action_hook=lambda state: (
-                        setattr(state.player.stats, 'attack', state.player.stats.attack + 4),
-                        setattr(state.player.stats, 'crit_chance', state.player.stats.crit_chance + 0.05),
+                        setattr(state.player.base_stats, 'attack', state.player.base_stats.attack + 4),
+                        setattr(state.player.base_stats, 'crit_chance', state.player.base_stats.crit_chance + 0.05),
                         "You absorb the stellar fire. Your strikes burn with cosmic power." if i18n.locale == "en" else "Absorbes el fuego estelar. Tus golpes arden con poder cósmico."
                     )[-1]
                 ),
@@ -394,9 +394,9 @@ BIOME_EVENTS = {
                     label_en="Form stardust barrier (+30 Max HP, +3 DEF permanently)",
                     label_es="Formar barrera de polvo estelar (+30 Max HP, +3 DEF permanente)",
                     action_hook=lambda state: (
-                        setattr(state.player.stats, 'max_hp', state.player.stats.max_hp + 30),
-                        setattr(state.player.stats, 'hp', state.player.stats.hp + 30),
-                        setattr(state.player.stats, 'defense', state.player.stats.defense + 3),
+                        setattr(state.player.base_stats, 'max_hp', state.player.base_stats.max_hp + 30),
+                        setattr(state.player, 'current_hp', state.player.current_hp + 30),
+                        setattr(state.player.base_stats, 'defense', state.player.base_stats.defense + 3),
                         "The stardust hardens around you, fortifying your life force." if i18n.locale == "en" else "El polvo estelar se endurece a tu alrededor, fortificando tu fuerza vital."
                     )[-1]
                 )
@@ -417,9 +417,9 @@ BIOME_EVENTS = {
                     label_es="Participar en comunión (-20 HP, +6 ATK, +3 SPD, +8% Crítico)",
                     action_hook=lambda state: (
                         state.player.take_damage(20),
-                        setattr(state.player.stats, 'attack', state.player.stats.attack + 6),
-                        setattr(state.player.stats, 'speed', state.player.stats.speed + 3),
-                        setattr(state.player.stats, 'crit_chance', state.player.stats.crit_chance + 0.08),
+                        setattr(state.player.base_stats, 'attack', state.player.base_stats.attack + 6),
+                        setattr(state.player.base_stats, 'speed', state.player.base_stats.speed + 3),
+                        setattr(state.player.base_stats, 'crit_chance', state.player.base_stats.crit_chance + 0.08),
                         "You drink the foul blood. It burns your veins but grants unholy strength." if i18n.locale == "en" else "Bebes la sangre fétida. Quema tus venas pero te otorga una fuerza impía."
                     )[-1]
                 ),
@@ -428,7 +428,7 @@ BIOME_EVENTS = {
                     label_es="Volcar altar (Cura 30 HP, +5 DEF permanente)",
                     action_hook=lambda state: (
                         state.player.heal(30),
-                        setattr(state.player.stats, 'defense', state.player.stats.defense + 5),
+                        setattr(state.player.base_stats, 'defense', state.player.base_stats.defense + 5),
                         "You desecrate the dark shrine. A wave of purifying light washes over you." if i18n.locale == "en" else "Profanas el oscuro santuario. Una ola de luz purificadora te baña."
                     )[-1]
                 )
@@ -446,7 +446,7 @@ BIOME_EVENTS = {
                     label_en="Claim masterwork blade (Obtain Widowmaker Dirk)",
                     label_es="Reclamar hoja maestra (Obtener Daga Viuda Negra)",
                     action_hook=lambda state: (
-                        state.player.inventory.add_to_pouch(ITEM_CATALOG["widowmaker_dirk"]()),
+                        state.player.inventory.add_to_pouch(ITEM_CATALOG["widowmaker_dirk"]),
                         "You carefully lift the deadly dagger from the rack." if i18n.locale == "en" else "Levantas cuidadosamente la daga mortal del estante."
                     )[-1]
                 ),
@@ -454,8 +454,8 @@ BIOME_EVENTS = {
                     label_en="Salvage grips (+3 SPD, +4% Crit, +50G)",
                     label_es="Robar empuñaduras (+3 SPD, +4% Crítico, +50G)",
                     action_hook=lambda state: (
-                        setattr(state.player.stats, 'speed', state.player.stats.speed + 3),
-                        setattr(state.player.stats, 'crit_chance', state.player.stats.crit_chance + 0.04),
+                        setattr(state.player.base_stats, 'speed', state.player.base_stats.speed + 3),
+                        setattr(state.player.base_stats, 'crit_chance', state.player.base_stats.crit_chance + 0.04),
                         setattr(state.player, 'gold', state.player.gold + 50),
                         "You dismantle the weapons for their exquisite materials and gold fittings." if i18n.locale == "en" else "Desmontas las armas por sus materiales exquisitos y accesorios de oro."
                     )[-1]
