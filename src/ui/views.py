@@ -418,7 +418,7 @@ class CombatView(View):
                 bx = 40 + b_idx * 70
 
             b_item = inv.belt[b_idx]
-            name = b_item.name[:9] if b_item else t("empty_slot_short")
+            name = b_item.localized_name[:9] if b_item else t("empty_slot_short")
 
             # Line 1: [i+1] and Item Name
             renderer.draw_text(bx, 129, f"[{b_idx+1}] {name}", COLOR_WHITE if b_item else COLOR_GRAY)
@@ -593,7 +593,7 @@ class InventoryView(View):
             cursor_str = "> " if self.active_pane == "EQUIPMENT" and self.equip_cursor == i else "  "
 
             item = inv.equipment.get(slot)
-            item_name = item.name if item else f"({t('empty_slot_short')})"
+            item_name = item.localized_name if item else f"({t('empty_slot_short')})"
             slot_label_map = {
                 "HEAD": t("slot_head_short"), "SHOULDERS": t("slot_shld_short"), "CHEST": t("slot_chest_short"),
                 "WAIST": t("slot_waist_short"), "HANDS": t("slot_hands_short"), "LEGS": t("slot_legs_short"),
@@ -612,7 +612,7 @@ class InventoryView(View):
             x = 10 + b_idx * 78
             y = 106
             b_item = inv.belt[b_idx]
-            name = b_item.name if b_item else t("empty_slot_short")
+            name = b_item.localized_name[:11] if b_item else t("empty_slot_short")
             renderer.draw_box(x, y, 74, 18, bg_col=COLOR_NAVY, border_col=COLOR_WHITE)
             renderer.draw_text(x + 4, y + 3, f"[{b_idx+1}]", COLOR_YELLOW)
             if b_item:
@@ -635,7 +635,7 @@ class InventoryView(View):
             if p_idx < len(inv.pouch):
                 p_item = inv.pouch[p_idx]
                 item_col = COLOR_WHITE if self.active_pane == "POUCH" and self.pouch_cursor == p_idx else COLOR_GRAY
-                renderer.draw_text(x, y, f"{cursor_str}{p_item.name[:10]}", item_col)
+                renderer.draw_text(x, y, f"{cursor_str}{p_item.localized_name[:10]}", item_col)
 
                 # Show stats if equipment, heal if consumable
                 stats_str = ""
@@ -1265,7 +1265,7 @@ class ShopView(View):
                         game_state.player.inventory.add_to_pouch(item)
                         stock.pop(self.buy_cursor)
                         pyxel.play(0, 3)
-                        self.feedback_msg = t("shop_purchased", item=item.name)
+                        self.feedback_msg = t("shop_purchased", item=item.localized_name)
                         self.feedback_success = True
                         if self.buy_cursor >= len(stock):
                             self.buy_cursor = max(0, len(stock) - 1)
@@ -1299,7 +1299,7 @@ class ShopView(View):
                     if popped:
                         game_state.player.gold += sell_value
                         pyxel.play(0, 3)
-                        self.feedback_msg = t("shop_sold", item=popped.name, val=sell_value)
+                        self.feedback_msg = t("shop_sold", item=popped.localized_name, val=sell_value)
                         self.feedback_success = True
                         if self.sell_cursor >= len(game_state.player.inventory.pouch):
                             self.sell_cursor = max(0, len(game_state.player.inventory.pouch) - 1)
@@ -1336,7 +1336,7 @@ class ShopView(View):
                     if i == self.buy_cursor:
                         renderer.draw_text(8, y, ">", COLOR_YELLOW)
                         color = COLOR_YELLOW
-                    renderer.draw_text(16, y, item.name, color)
+                    renderer.draw_text(16, y, item.localized_name, color)
 
                     # Try to display some stats/info if equipment
                     from src.systems.inventory import EquipmentItem, ConsumableItem
@@ -1361,7 +1361,7 @@ class ShopView(View):
                     if i == self.sell_cursor:
                         renderer.draw_text(8, y, ">", COLOR_YELLOW)
                         color = COLOR_YELLOW
-                    renderer.draw_text(16, y, item.name, color)
+                    renderer.draw_text(16, y, item.localized_name, color)
 
                     sell_value = max(5, item.gold_value // 2)
                     renderer.draw_text(190, y, f"{sell_value}G", COLOR_YELLOW)
@@ -1452,7 +1452,7 @@ class LootView(View):
         y_offset = 90
         for i, item in enumerate(game_state.pending_loot):
             renderer.draw_box(20, y_offset, w - 40, 25, bg_col=COLOR_DARK_BLUE, border_col=COLOR_WHITE)
-            renderer.draw_text(25, y_offset + 5, f"[{i+1}] {item.name}", COLOR_LIME)
+            renderer.draw_text(25, y_offset + 5, f"[{i+1}] {item.localized_name}", COLOR_LIME)
 
             from src.systems.inventory import EquipmentItem, ConsumableItem
             if isinstance(item, EquipmentItem):
