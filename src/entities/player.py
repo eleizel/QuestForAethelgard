@@ -39,7 +39,8 @@ class Player(Actor):
 
     @property
     def class_name(self) -> str:
-        return CLASS_REGISTRY[self.class_id].name
+        from src.core.i18n import t
+        return t(f"class_{self.class_id}_name")
 
     @property
     def effective_stats(self) -> Stats:

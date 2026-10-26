@@ -14,6 +14,16 @@ class ClassDefinition:
     starting_abilities: list[str] = field(default_factory=list)
     exp_multiplier: float = 1.0
 
+    @property
+    def localized_name(self) -> str:
+        from src.core.i18n import t
+        return t(f"class_{self.id}_name")
+
+    @property
+    def localized_description(self) -> str:
+        from src.core.i18n import t
+        return t(f"class_{self.id}_desc")
+
 CLASS_REGISTRY: Final[dict[str, ClassDefinition]] = {
     "warrior": ClassDefinition(
         id="warrior",
