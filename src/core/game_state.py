@@ -123,6 +123,7 @@ class GameState:
 
     def _trigger_node_encounter(self, node: MapNode) -> None:
         """Initialize encounter state corresponding to node type."""
+        from src.core.i18n import t
         if node.node_type in (NodeType.COMBAT, NodeType.ELITE, NodeType.BOSS):
             tier = EnemyTier.COMMON
             if node.node_type == NodeType.ELITE:
@@ -141,15 +142,13 @@ class GameState:
 
         elif node.node_type == NodeType.REST:
             healed = self.player.heal(random.randint(25, 40))
-            self.current_event_text = f"You discovered a sanctuary campfire. \n\nResting restores {healed} HP."
+            self.current_event_text = t("event_rest", healed=healed)
             self.switch_mode(GameMode.EVENTS)
 
         elif node.node_type == NodeType.TREASURE:
             gold = random.randint(25, 40)
             self.player.gold += gold
-            self.current_event_text = (
-                f"You cracked open an ornate chest! \n\nObtained {gold} Gold."
-            )
+            self.current_event_text = t("event_treasure", gold=gold)
             self.switch_mode(GameMode.EVENTS)
 
         elif node.node_type == NodeType.SHOP:
@@ -160,7 +159,7 @@ class GameState:
 
         else:  # NodeType.EVENT
             self.player.exp_multiplier = self.player.exp_multiplier + 0.05
-            self.current_event_text = "An ancient shrine hums with mystical \nenergy as you pass by. \n\nExp gained increased by 5%"
+            self.current_event_text = t("event_shrine")
             self.switch_mode(GameMode.EVENTS)
 
     def update_combat(self) -> None:

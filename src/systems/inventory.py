@@ -195,23 +195,25 @@ class Inventory:
         return True
 
     def can_equip(self, item: EquipmentItem, player: Actor | None = None) -> tuple[bool, str]:
+        from src.core.i18n import t
         if item.required_class is not None and player is not None:
             if getattr(player, "class_id", None) != item.required_class:
-                return (False, f"Requires {item.required_class.capitalize()}!")
+                return (False, t("msg_req_class", cls=item.required_class.capitalize()))
 
         if item.weapon_type == WeaponType.TWO_HANDED and self.equipment[EquipSlot.OFF_HAND] is not None:
             if len(self.pouch) >= MAX_POUCH_SLOTS:
-                return (False, "Pouch full! Cannot unequip off-hand.")
+                return (False, t("msg_pouch_full_offhand"))
 
         return (True, "OK")
 
     def equip_from_pouch(self, pouch_index: int, player: Actor | None = None) -> tuple[bool, str]:
+        from src.core.i18n import t
         if not (0 <= pouch_index < len(self.pouch)):
-            return (False, "Invalid pouch slot.")
+            return (False, t("msg_invalid_pouch"))
 
         item = self.pouch[pouch_index]
         if not isinstance(item, EquipmentItem):
-            return (False, "Item is not equipment.")
+            return (False, t("msg_not_equipment"))
 
         success, message = self.can_equip(item, player)
         if not success:
@@ -244,36 +246,39 @@ class Inventory:
         if old_item is not None:
             self.pouch.append(old_item)
 
-        return (True, f"Equipped {popped_item.name}!")
+        return (True, t("msg_equipped", item=popped_item.name))
 
     def unequip_to_pouch(self, slot: EquipSlot) -> tuple[bool, str]:
+        from src.core.i18n import t
         item = self.equipment[slot]
         if item is None:
-            return (False, "Slot is empty.")
+            return (False, t("msg_slot_empty"))
 
         if len(self.pouch) >= MAX_POUCH_SLOTS:
-            return (False, "Pouch full!")
+            return (False, t("msg_pouch_full"))
 
         self.equipment[slot] = None
         self._cached_stats = None
         self.pouch.append(item)
-        return (True, f"Unequipped {item.name}.")
+        return (True, t("msg_unequipped", item=item.name))
 
     def drop_from_pouch(self, pouch_index: int) -> tuple[bool, str]:
+        from src.core.i18n import t
         if not (0 <= pouch_index < len(self.pouch)):
-            return (False, "Invalid pouch index.")
+            return (False, t("msg_invalid_pouch"))
         item = self.pouch.pop(pouch_index)
-        return (True, f"Discarded {item.name}.")
+        return (True, t("msg_discarded", item=item.name))
 
     def assign_pouch_to_belt(self, pouch_index: int, belt_index: int) -> tuple[bool, str]:
+        from src.core.i18n import t
         if not (0 <= belt_index < MAX_BELT_SLOTS):
-            return (False, "Invalid belt index.")
+            return (False, t("msg_invalid_belt"))
         if not (0 <= pouch_index < len(self.pouch)):
-            return (False, "Invalid pouch index.")
+            return (False, t("msg_invalid_pouch"))
 
         item = self.pouch[pouch_index]
         if not isinstance(item, ConsumableItem):
-            return (False, "Not a consumable.")
+            return (False, t("msg_not_consumable"))
 
         self.pouch.pop(pouch_index)
         old_belt_item = self.belt[belt_index]
@@ -281,7 +286,7 @@ class Inventory:
         if old_belt_item is not None:
             self.pouch.append(old_belt_item)
 
-        return (True, f"Assigned {item.name} to Belt [{belt_index + 1}].")
+        return (True, t("msg_assigned_belt", item=item.name, slot=belt_index + 1))
 
     def use_belt_item(self, belt_index: int, target: Actor) -> bool:
         """Consume an item from the specified belt slot."""
