@@ -206,12 +206,13 @@ class Inventory:
         return (True, "OK")
 
     def equip_from_pouch(self, pouch_index: int, player: Actor | None = None) -> tuple[bool, str]:
+        from src.core.i18n import t
         if not (0 <= pouch_index < len(self.pouch)):
-            return (False, "Invalid pouch slot.")
+            return (False, t("msg_invalid_pouch"))
 
         item = self.pouch[pouch_index]
         if not isinstance(item, EquipmentItem):
-            return (False, "Item is not equipment.")
+            return (False, t("msg_not_equipment"))
 
         success, message = self.can_equip(item, player)
         if not success:
@@ -244,7 +245,7 @@ class Inventory:
         if old_item is not None:
             self.pouch.append(old_item)
 
-        return (True, f"Equipped {popped_item.name}!")
+        return (True, t("msg_equipped", item=popped_item.name))
 
     def unequip_to_pouch(self, slot: EquipSlot) -> tuple[bool, str]:
         item = self.equipment[slot]
