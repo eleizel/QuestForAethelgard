@@ -50,15 +50,46 @@ class EventsView(View):
     """Renders non-combat room encounters featuring gothic modal framing, treasure scenes, and centered event text."""
 
     def update(self, game_state: GameState) -> None:
-        if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.KEY_RETURN) or Renderer.is_clicked(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT):
-            pyxel.play(0, 3)
-            game_state.switch_mode(GameMode.MAP)
+        event = getattr(game_state, "current_event", None)
 
-    def _draw_event_scene(self, box_x: int, box_y: int, box_w: int, text: str) -> None:
+        if event is None or event.resolved_text:
+            # Resolved state
+            if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.KEY_RETURN) or Renderer.is_clicked(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT):
+                pyxel.play(0, 3)
+                game_state.current_event = None
+                game_state.switch_mode(GameMode.MAP)
+        else:
+            # Decision state
+            box_x, box_y, box_w, box_h = 18, 42, SCREEN_WIDTH - 36, 198
+            btn_w, btn_h = 260, 18
+            btn_x = SCREEN_WIDTH // 2 - btn_w // 2
+            btn_y_start = box_y + 112 + 40
+
+            for i, choice in enumerate(event.choices[:3]):
+                is_avail = choice.is_available(game_state)
+                btn_y = btn_y_start + i * 22
+
+                # Check for click on button or key press
+                clicked = Renderer.is_clicked(btn_x, btn_y, btn_w, btn_h)
+                key_pressed = False
+                if i == 0 and (pyxel.btnp(pyxel.KEY_1) or pyxel.btnp(pyxel.KEY_KP_1)): key_pressed = True
+                if i == 1 and (pyxel.btnp(pyxel.KEY_2) or pyxel.btnp(pyxel.KEY_KP_2)): key_pressed = True
+                if i == 2 and (pyxel.btnp(pyxel.KEY_3) or pyxel.btnp(pyxel.KEY_KP_3)): key_pressed = True
+
+                if (clicked or key_pressed) and is_avail:
+                    pyxel.play(0, 3)
+                    outcome = choice.action_hook(game_state)
+                    event.resolved_text = outcome
+                    break
+
+    def _draw_event_scene(self, box_x: int, box_y: int, box_w: int, text: str, scene_type: str = "DEFAULT") -> None:
         """Render bespoke scene art: glowing ornate chest or holy sanctuary shrine."""
         fc = pyxel.frame_count
         cy = box_y + 60
-        is_shrine = any(k in text.lower() for k in ("shrine", "sanctuary", "santuario", "altar", "pray", "rezar"))
+        is_shrine = scene_type in ("SHRINE", "ALTAR")
+        is_forge = scene_type == "FORGE"
+        is_portal = scene_type == "PORTAL"
+        is_corpse = scene_type == "CORPSE"
 
         # Cobblestone ground at bottom of art frame
         ground_y = cy + 18
@@ -75,7 +106,58 @@ class EventsView(View):
                 pyxel.line(col_x, my, col_x + 11, my, COLOR_DARK_BLUE)
                 pyxel.pset(col_x + ((my // 3) % 8), my + 2, COLOR_LIGHT_BLUE)
 
-        if is_shrine:
+        if is_forge:
+            # --- FORGE ENCOUNTER ---
+            sx = SCREEN_WIDTH // 2
+            # Anvil Base
+            pyxel.rect(sx - 16, cy + 8, 32, 12, COLOR_NAVY)
+            pyxel.rect(sx - 12, cy - 4, 24, 12, COLOR_DARK_BLUE)
+            # Anvil Top
+            pyxel.rect(sx - 18, cy - 8, 36, 6, COLOR_LIGHT_BLUE)
+            pyxel.rect(sx + 18, cy - 6, 8, 4, COLOR_LIGHT_BLUE) # Horn
+            # Glowing slag
+            pyxel.rect(sx - 4, cy - 10, 12, 4, COLOR_ORANGE)
+            pyxel.rect(sx - 2, cy - 11, 8, 2, COLOR_RED)
+            # Embers
+            for i in range(5):
+                if (fc + i * 10) % 30 < 15:
+                    ex = sx - 10 + (i * 8)
+                    ey = cy - 15 - ((fc + i * 5) % 20)
+                    pyxel.pset(ex, ey, COLOR_YELLOW if i % 2 == 0 else COLOR_ORANGE)
+        elif is_portal:
+            # --- PORTAL ENCOUNTER ---
+            sx = SCREEN_WIDTH // 2
+            # Outer Swirl
+            for i in range(36):
+                angle = (i * 10 + fc * 2) * math.pi / 180
+                px = sx + math.cos(angle) * 30
+                py = cy - 5 + math.sin(angle) * 20
+                pyxel.pset(px, py, COLOR_PURPLE)
+            # Inner Swirl
+            for i in range(24):
+                angle = (i * 15 - fc * 3) * math.pi / 180
+                px = sx + math.cos(angle) * 20
+                py = cy - 5 + math.sin(angle) * 12
+                pyxel.pset(px, py, COLOR_CYAN)
+            # Core
+            pyxel.elli(sx - 10, cy - 12, 20, 14, COLOR_WHITE)
+            pyxel.elli(sx - 6, cy - 9, 12, 8, COLOR_LIGHT_BLUE)
+        elif is_corpse:
+            # --- CORPSE ENCOUNTER ---
+            sx = SCREEN_WIDTH // 2
+            # Tangled Briars
+            pyxel.circ(sx, cy + 5, 18, COLOR_NAVY)
+            for i in range(0, 360, 45):
+                angle = i * math.pi / 180
+                bx = sx + math.cos(angle) * 15
+                by = cy + 5 + math.sin(angle) * 10
+                pyxel.line(sx, cy + 5, bx, by, COLOR_GREEN)
+                if i % 90 == 0:
+                    pyxel.pset(bx, by, COLOR_RED) # Blood/Roses
+            # Silhouette
+            pyxel.rect(sx - 8, cy - 5, 16, 10, COLOR_DARK_BLUE)
+            pyxel.elli(sx - 5, cy - 12, 10, 8, COLOR_DARK_BLUE)
+        elif is_shrine:
             # --- SANCTUARY / SHRINE ENCOUNTER ---
             sx = SCREEN_WIDTH // 2
             # Stone Altar Base
@@ -210,39 +292,68 @@ class EventsView(View):
             pyxel.pset(star_x, py + 8, COLOR_CYAN)
             pyxel.pset(star_x, py + 10, COLOR_CYAN)
 
-        header_title = t("room_encounter_header")
+        event = getattr(game_state, "current_event", None)
+        header_title = event.title if event else t("room_encounter_header")
         renderer.draw_text(SCREEN_WIDTH // 2 - renderer.get_text_width(header_title) // 2, py + 6, header_title, COLOR_YELLOW)
 
         # =====================================================================
         # 3. BESPOKE SCENE ILLUSTRATION
         # =====================================================================
         event_raw_text = game_state.current_event_text or ""
-        self._draw_event_scene(box_x, box_y, box_w, event_raw_text)
+        scene_type = event.scene_type if event else "DEFAULT"
+        self._draw_event_scene(box_x, box_y, box_w, event_raw_text, scene_type)
 
         # =====================================================================
         # 4. CENTERED NARRATIVE & REWARD TEXT
         # =====================================================================
-        lines = renderer.wrap_text(event_raw_text, max_chars_per_line=34)
+        is_resolved = event is not None and event.resolved_text != ""
+        display_text = event.resolved_text if is_resolved else event_raw_text
+
+        lines = renderer.wrap_text(display_text, max_chars_per_line=34)
         if not lines:
-            lines = [t("room_encounter_header")]
+            lines = [header_title]
 
         txt_start_y = box_y + 112
         for li, line in enumerate(lines[:3]):
             tw = renderer.get_text_width(line)
             tx = SCREEN_WIDTH // 2 - tw // 2
-            # Highlight rewards line
-            is_reward = any(k in line.lower() for k in ("gold", "oro", "heal", "cura", "obtained", "obtenido", "gained"))
-            renderer.draw_text(tx, txt_start_y + li * 12, line, COLOR_YELLOW if is_reward else COLOR_WHITE)
+
+            if is_resolved:
+                renderer.draw_text(tx, txt_start_y + li * 12, line, COLOR_YELLOW)
+            else:
+                is_reward = any(k in line.lower() for k in ("gold", "oro", "heal", "cura", "obtained", "obtenido", "gained"))
+                renderer.draw_text(tx, txt_start_y + li * 12, line, COLOR_YELLOW if is_reward else COLOR_WHITE)
 
         # =====================================================================
-        # 5. ORNATE [CONTINUE] BUTTON WITH CORNER BRACKETS
+        # 5. ACTIONS OR CONTINUE BUTTON
         # =====================================================================
-        btn_w, btn_h = 92, 18
-        btn_x = (SCREEN_WIDTH - btn_w) // 2
-        btn_y = box_y + box_h - 30
+        if event is not None and not is_resolved:
+            # Action Controls (Unresolved)
+            btn_w, btn_h = 260, 18
+            btn_x = SCREEN_WIDTH // 2 - btn_w // 2
+            btn_y_start = txt_start_y + 40
 
-        pyxel.rect(btn_x, btn_y, btn_w, btn_h, COLOR_BLACK)
-        pyxel.rectb(btn_x, btn_y, btn_w, btn_h, COLOR_LIGHT_BLUE)
+            for i, choice in enumerate(event.choices[:3]):
+                btn_y = btn_y_start + i * 22
+                is_avail = choice.is_available(game_state)
+
+                bg_col = COLOR_NAVY if is_avail else COLOR_BLACK
+                border_col = COLOR_LIGHT_BLUE if is_avail else COLOR_GRAY
+                text_col = COLOR_WHITE if is_avail else COLOR_GRAY
+
+                pyxel.rect(btn_x, btn_y, btn_w, btn_h, bg_col)
+                pyxel.rectb(btn_x, btn_y, btn_w, btn_h, border_col)
+
+                label = f"[{i+1}] {choice.label}"
+                renderer.draw_text(btn_x + 8, btn_y + 6, label, text_col)
+        else:
+            # Ornate [CONTINUE] Button (Resolved or No Event)
+            btn_w, btn_h = 92, 18
+            btn_x = (SCREEN_WIDTH - btn_w) // 2
+            btn_y = box_y + box_h - 30
+
+            pyxel.rect(btn_x, btn_y, btn_w, btn_h, COLOR_BLACK)
+            pyxel.rectb(btn_x, btn_y, btn_w, btn_h, COLOR_LIGHT_BLUE)
 
         # Decorative Corner Ticks protruding from button
         pyxel.line(btn_x - 2, btn_y - 2, btn_x + 3, btn_y - 2, COLOR_LIGHT_BLUE)
