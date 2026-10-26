@@ -85,9 +85,9 @@ TRANSLATIONS_EN = {
 
     # Room Encounters & Events
     "room_encounter_header": "-- Room Encounter --",
-    "event_rest": "You discovered a sanctuary campfire. \n\nResting restores {healed} HP.",
-    "event_treasure": "You cracked open an ornate chest! \n\nObtained {gold} Gold.",
-    "event_shrine": "An ancient shrine hums with mystical \nenergy as you pass by. \n\nExp gained increased by 5%",
+    "event_rest": "You discovered a sanctuary campfire. Resting restores {healed} HP.",
+    "event_treasure": "You cracked open an ornate chest! Obtained {gold} Gold.",
+    "event_shrine": "An ancient shrine hums with mystical energy as you pass by. Exp gained increased by 5%",
 
     # Inventory & Shop Feedback Messages
     "msg_req_class": "Requires {cls}!",
