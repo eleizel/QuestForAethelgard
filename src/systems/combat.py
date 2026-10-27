@@ -229,7 +229,7 @@ class CombatSystem:
                 passive.on_attack_dealt(self.player, self.enemy, dmg_dealt, is_crit)
 
         if self.player.abilities.has_veterans_instincts and is_crit:
-            self.player_gauge += 20
+            self.player_gauge = min(100, self.player_gauge + 20)
             self.combat_logs.append(_t("combat_veteran", player=self.player.name))
 
     def _execute_enemy_attack(self) -> None:
