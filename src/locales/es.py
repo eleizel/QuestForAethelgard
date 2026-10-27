@@ -31,6 +31,7 @@ TRANSLATIONS_ES = {
     "hud_floor": "Piso {floor}",
     "hud_gold": "Oro: {gold}",
     "stat_hp": "PV: {current}/{max}",
+    "stat_exp": "EXP: {current}/{max}",
     "stat_atk": "ATQ: {val}",
     "stat_def": "DEF: {val}",
     "stat_spd": "VEL: {val}",
