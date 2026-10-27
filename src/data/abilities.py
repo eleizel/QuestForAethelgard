@@ -239,15 +239,6 @@ def hook_exposed_weakness(actor: Actor, target: Actor, damage: int, is_crit: boo
         setattr(actor, "_next_strike_bonus", True)
 
 
-def hook_shadow_step_gauge(actor: Actor, raw_damage: int) -> int:
-    """Gain 15 action gauge when an incoming hit reaches the damage hooks."""
-    if raw_damage > 0:
-        combat = getattr(actor, "combat_ref", None)
-        if combat:
-            combat.player_gauge = min(100, combat.player_gauge + 15)
-    return raw_damage
-
-
 # =============================================================================
 # 4. MAGE STANDARD SKILLS (3 Actives, 3 Passives)
 # =============================================================================
@@ -473,9 +464,8 @@ STANDARD_ABILITIES: list[Ability] = [
     Ability(id="exposed_weakness", name="Exposed Weakness",
             description="Critical hits empower your next damaging strike by 25%.", ability_type=AbilityType.PASSIVE,
             rarity=AbilityRarity.STANDARD, required_class="rogue", on_attack_dealt_hook=hook_exposed_weakness,),
-    Ability(id="shadow_step", name="Shadow Step", description="Taking damage accelerates player gauge by +15.",
-            ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
-            on_damage_taken_hook=hook_shadow_step_gauge,),
+    Ability(id="shadow_step", name="Shadow Step", description="When you lose HP, gain 15 player action gauge.",
+            ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue"),
 
     # Mage Standard
     Ability(id="fireball", name="Fireball", description="High-impact blast dealing 185% ATK fire damage.",
