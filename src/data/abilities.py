@@ -284,10 +284,13 @@ def hook_mana_barrier(actor: Actor, raw_damage: int) -> int:
 
 
 def hook_pyromania(actor: Actor, target: Actor, damage: int, is_crit: bool) -> None:
+    """Basic attacks have a 30% chance to add one stack of Burn."""
+    from src.systems.status import get_status_by_id
     combat = getattr(actor, "combat_ref", None)
     if damage > 0 and combat and target.current_hp > 0 and combat.rng.random() < 0.30:
-        burn = max(2, int(actor.effective_stats.attack * 0.40))  # type: ignore
-        target.take_damage(burn)
+        burn = get_status_by_id("burn", duration=8, potency=1)
+        if burn:
+            target.apply_status(burn)
 
 
 # =============================================================================
@@ -483,7 +486,7 @@ STANDARD_ABILITIES: list[Ability] = [
     Ability(id="mana_barrier", name="Mana Barrier", description="Kinetic barrier absorbs 20% damage from all attacks.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
             on_damage_taken_hook=hook_mana_barrier,),
-    Ability(id="pyromania", name="Pyromania", description="Attacks have a 30% chance to ignite foe for 40% ATK.",
+    Ability(id="pyromania", name="Pyromania", description="Basic attacks have a 30% chance to add a Burn stack.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
             on_attack_dealt_hook=hook_pyromania,),
 ]
