@@ -11,6 +11,7 @@ from src.config import (
     COLOR_DARK_BLUE,
     COLOR_GRAY,
     COLOR_GREEN,
+    COLOR_LIGHT_BLUE,
     COLOR_LIME,
     COLOR_NAVY,
     COLOR_PEACH,
@@ -99,10 +100,10 @@ class Renderer:
         title_text = f"{player.name} ({player.class_name}) Lv.{player.level}"
         self.draw_text(6, 4, title_text, COLOR_YELLOW)
 
-        # Health bar
-        hp_str = t("stat_hp", current=player.current_hp, max=player.max_hp)
-        self.draw_text(6, 13, hp_str, COLOR_WHITE)
-        self.draw_bar(68, 13, 54, 6, player.current_hp, player.max_hp, fill_col=COLOR_GREEN, bg_col=COLOR_RED)
+        # EXP bar
+        exp_str = t("stat_exp", current=player.experience, max=player.exp_to_next_level)
+        self.draw_text(6, 13, exp_str, COLOR_WHITE)
+        self.draw_bar(68, 13, 54, 6, player.experience, player.exp_to_next_level, fill_col=COLOR_LIGHT_BLUE, bg_col=COLOR_GRAY)
 
         # Gold & Dungeon Floor
         gold_text = t("hud_gold", gold=player.gold)
