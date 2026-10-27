@@ -357,7 +357,7 @@ TRANSLATIONS_ES = {
     "ability_exposed_weakness_name": "Punto Debil",
     "ability_exposed_weakness_desc": "Los críticos potencian un 25% tu siguiente golpe que inflija daño.",
     "ability_shadow_step_name": "Paso Sombrio",
-    "ability_shadow_step_desc": "Recibir dano acelera tu medidor de accion en +15.",
+    "ability_shadow_step_desc": "Cuando pierdes PV, ganas +15 de medidor de acción.",
     "ability_fireball_name": "Bola de Fuego",
     "ability_fireball_desc": "Estallido igneo que inflige 185% ATQ dano de fuego.",
     "ability_frost_nova_name": "Nova de Escarcha",
