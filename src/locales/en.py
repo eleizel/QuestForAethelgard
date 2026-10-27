@@ -394,6 +394,12 @@ TRANSLATIONS_EN = {
     "ability_time_dilation_desc": "+25% ATK, +30% Speed, +25% Crit Chance.",
     "ability_phoenix_rebirth_name": "Phoenix Rebirth",
     "ability_phoenix_rebirth_desc": "Once per combat, lethal blow heals to 50% HP.",
+    "ability_cull_the_weak_name": "Cull the Weak",
+    "ability_cull_the_weak_desc": "Deal 30% more damage to enemies at or below 30% Max HP.",
+    "ability_blood_frenzy_name": "Blood Frenzy",
+    "ability_blood_frenzy_desc": "Gain 5% ATK per 10% of Max HP missing, up to +40% ATK.",
+    "ability_reckless_assault_name": "Reckless Assault",
+    "ability_reckless_assault_desc": "Deals 150% ATK, ignores 25% DEF, but you take 10% more damage until your next action.",
     "ability_cross_cut_name": "Cross Cut",
     "ability_cross_cut_desc": "Strikes 2 times at 90% ATK each.",
     "ability_shadow_strike_name": "Shadow Strike",
@@ -404,6 +410,7 @@ TRANSLATIONS_EN = {
     "ability_pw_kill_desc": "Insta-kill enemy for testing.",
 
     # Ability Combat Execution Logs
+    "log_reckless_assault": "{player} launches Reckless Assault for {dmg} damage!",
     "log_cross_cut": "{player} uses Cross Cut! Deals {dmg} damage across 2 strikes.",
     "log_shadow_strike": "{player} lunges with Shadow Strike for {dmg} damage{crit}!",
     "log_arcane_bolt": "{player} hurls an Arcane Bolt for {dmg} magic damage{crit}!",
