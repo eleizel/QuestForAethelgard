@@ -153,6 +153,25 @@ def hook_bloodlust(actor: Actor, target: Actor, damage: int, is_crit: bool) -> N
         actor.heal(int(damage * 0.20))
 
 
+def execute_shieldbreaker_strike(combat: CombatSystem) -> tuple[str, int, bool]:
+    from src.core.i18n import t
+    stats = combat.player.effective_stats
+    raw_damage = int(stats.attack + stats.defense * 0.50)
+    actual_damage = combat.damage_enemy(raw_damage)
+    return t("log_shieldbreaker_strike", player=combat.player.name, dmg=actual_damage), actual_damage, False
+
+
+def hook_defensive_superiority(actor: Actor, raw_damage: int) -> int:
+    return raw_damage
+
+
+def hook_paladin_guard(actor: Actor, raw_damage: int) -> int:
+    affinities = getattr(actor, "_last_ability_affinities", ())
+    if "paladin" in affinities:
+        return max(1, int(raw_damage * 0.90))
+    return raw_damage
+
+
 def execute_reckless_assault(combat: CombatSystem) -> tuple[str, int, bool]:
     from src.core.i18n import t
     raw_damage = int(combat.player.effective_stats.attack * 1.50)
@@ -391,13 +410,13 @@ STANDARD_ABILITIES: list[Ability] = [
     # Warrior Standard
     Ability(id="shield_bash", name="Shield Bash", description="Deals 85% ATK, delays enemy gauge by 35.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
-            execute_hook=execute_shield_bash,cooldown=3,),
+            execute_hook=execute_shield_bash,cooldown=3, affinities=("paladin",)),
     Ability(id="rallying_cry", name="Rallying Cry", description="Restores 15% Max HP, +4 DEF for battle.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
-            execute_hook=execute_rallying_cry,cooldown=2,),
+            execute_hook=execute_rallying_cry,cooldown=2, affinities=("paladin",)),
     Ability(id="cleave", name="Cleave", description="Heavy cleave dealing 160% ATK damage.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
-            execute_hook=execute_cleave,cooldown=3,),
+            execute_hook=execute_cleave,cooldown=3, affinities=("berserker",)),
     Ability(id="iron_skin", name="Iron Skin", description="+15% DEF, -10% damage taken.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
             modify_stats_hook=modify_iron_skin, on_damage_taken_hook=hook_iron_skin,),
@@ -407,6 +426,18 @@ STANDARD_ABILITIES: list[Ability] = [
     Ability(id="bloodlust", name="Bloodlust", description="Heal for 20% of physical damage dealt.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
             on_attack_dealt_hook=hook_bloodlust,),
+    Ability(id="shieldbreaker_strike", name="Shieldbreaker Strike",
+            description="Deals damage equal to 100% ATK plus 50% DEF.",
+            ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
+            execute_hook=execute_shieldbreaker_strike, cooldown=3, affinities=("paladin",)),
+    Ability(id="defensive_superiority", name="Defensive Superiority",
+            description="Gain DEF-based armor penetration, up to 75%, when your DEF exceeds the enemy's.",
+            ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
+            on_damage_taken_hook=hook_defensive_superiority, affinities=("paladin",)),
+    Ability(id="paladin_guard", name="Paladin Guard",
+            description="Take 10% less damage while your last active ability had Paladin affinity.",
+            ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
+            on_damage_taken_hook=hook_paladin_guard, affinities=("paladin",)),
     Ability(id="reckless_assault", name="Reckless Assault",
             description="Deals 150% ATK, ignores 25% DEF, but you take 10% more damage until your next action.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
