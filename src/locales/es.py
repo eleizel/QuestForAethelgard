@@ -394,6 +394,12 @@ TRANSLATIONS_ES = {
     "ability_time_dilation_desc": "+8 ATQ, +6 Velocidad, +10% Prob. Critico.",
     "ability_phoenix_rebirth_name": "Renacer del Fenix",
     "ability_phoenix_rebirth_desc": "Una vez por combate, un golpe mortal cura el 50% de PV.",
+    "ability_cull_the_weak_name": "Abatir al Debil",
+    "ability_cull_the_weak_desc": "Inflige un 30% mas de dano a enemigos con un 30% o menos de PV maximos.",
+    "ability_blood_frenzy_name": "Frenesi Sangriento",
+    "ability_blood_frenzy_desc": "Gana un 5% de ATQ por cada 10% de PV maximos perdidos, hasta un +40%.",
+    "ability_reckless_assault_name": "Asalto Temerario",
+    "ability_reckless_assault_desc": "Inflige 150% ATQ, ignora 25% DEF, pero recibes un 10% mas de dano hasta tu siguiente accion.",
     "ability_cross_cut_name": "Corte Cruzado",
     "ability_cross_cut_desc": "Dos impactos rápidos que infligen 90% ATQ cada uno.",
     "ability_shadow_strike_name": "Golpe Sombrio",
@@ -404,6 +410,7 @@ TRANSLATIONS_ES = {
     "ability_pw_kill_desc": "Elimina al instante al objetivo para pruebas.",
 
     # Ability Combat Execution Logs
+    "log_reckless_assault": "¡{player} ejecuta un Asalto Temerario e inflige {dmg} de dano!",
     "log_cross_cut": "¡{player} usa Corte Cruzado! Asesta {dmg} de dano en 2 tajos.",
     "log_shadow_strike": "¡{player} se abalanza con Golpe Sombrio por {dmg} de dano{crit}!",
     "log_arcane_bolt": "¡{player} dispara una Saeta Arcana por {dmg} dano magico{crit}!",
