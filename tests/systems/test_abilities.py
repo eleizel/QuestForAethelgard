@@ -244,6 +244,18 @@ def test_passive_abilities(monkeypatch):
     bloodlust.on_attack_dealt(player, None, 20, False)
     assert player.current_hp == 54
 
+    # Test Arcane Ward and Mana Barrier percentages.
+    arcane_ward = get_ability_by_id("arcane_ward")
+    ward_stats = arcane_ward.modify_stats(base_stats)
+    assert ward_stats.max_hp == pytest.approx(12)
+    assert ward_stats.attack == pytest.approx(11.5)
+    assert ward_stats.defense == pytest.approx(11)
+    assert ward_stats.crit_chance == pytest.approx(0.2)
+
+    mana_barrier = get_ability_by_id("mana_barrier")
+    assert mana_barrier.on_damage_taken(None, 100) == 80
+    assert mana_barrier.on_damage_taken(None, 1) == 1
+
     # Test nimble_reflexes
     nimble_reflexes = get_ability_by_id("nimble_reflexes")
     new_stats = nimble_reflexes.modify_stats(base_stats)
