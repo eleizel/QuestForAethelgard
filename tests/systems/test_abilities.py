@@ -228,9 +228,9 @@ def test_passive_abilities(monkeypatch):
     assert new_stats.defense == 11
 
     reduced_dmg = iron_skin.on_damage_taken(None, 10)
-    assert reduced_dmg == 8  # 10 - 2
+    assert reduced_dmg == 9  # 10% reduction
     reduced_dmg = iron_skin.on_damage_taken(None, 1)
-    assert reduced_dmg == 1  # max(1, 1 - 2)
+    assert reduced_dmg == 1  # minimum damage remains 1)
 
     # Test bloodlust
     bloodlust = get_ability_by_id("bloodlust")
@@ -244,12 +244,70 @@ def test_passive_abilities(monkeypatch):
     bloodlust.on_attack_dealt(player, None, 20, False)
     assert player.current_hp == 54
 
+    # Test Arcane Ward and Mana Barrier percentages.
+    arcane_ward = get_ability_by_id("arcane_ward")
+    ward_stats = arcane_ward.modify_stats(base_stats)
+    assert ward_stats.max_hp == pytest.approx(12)
+    assert ward_stats.attack == pytest.approx(11.5)
+    assert ward_stats.defense == pytest.approx(11)
+    assert ward_stats.crit_chance == pytest.approx(0.2)
+
+    mana_barrier = get_ability_by_id("mana_barrier")
+    assert mana_barrier.on_damage_taken(None, 100) == 80
+    assert mana_barrier.on_damage_taken(None, 1) == 1
+
     # Test nimble_reflexes
     nimble_reflexes = get_ability_by_id("nimble_reflexes")
     new_stats = nimble_reflexes.modify_stats(base_stats)
-    assert new_stats.speed == 13  # base 10 + 3
-    assert new_stats.crit_chance == pytest.approx(0.16)  # base 0.1 + 0.06
-    assert new_stats.defense == 11  # base 10 + 1
+    assert new_stats.speed == pytest.approx(11)  # +10%
+    assert new_stats.crit_chance == pytest.approx(0.15)  # +5 percentage points
+    assert new_stats.defense == pytest.approx(10.5)  # +5%
+
+
+
+def test_rogue_standard_effects(monkeypatch):
+    from src.data.abilities import get_ability_by_id
+    from src.entities.enemy import EnemyTier
+
+    player = Player(name="RogueTest", class_id="rogue")
+    player.base_stats = Stats(max_hp=100, attack=20, defense=0, speed=15, crit_chance=0.1)
+    player.current_hp = 100
+    enemy = Enemy(name="Target", stats=Stats(100, 10, 0, 10, 0.0), tier=EnemyTier.COMMON,
+                  floor_level=1, exp_reward=1, gold_reward=1)
+    enemy.base_stats = Stats(max_hp=100, attack=10, defense=0, speed=10, crit_chance=0.0)
+    enemy.current_hp = 100
+    combat = CombatSystem(player, enemy)
+
+    def exact_damage(self, raw_damage, defense_penetration=0.0):
+        return raw_damage
+    monkeypatch.setattr(Enemy, "take_damage", exact_damage)
+
+    # Poison Shiv applies the existing poison status as well as its direct hit.
+    poison_shiv = get_ability_by_id("poison_shiv")
+    assert poison_shiv is not None
+    poison_shiv.execute(combat)
+    poison = next((status for status in enemy.statuses if status.id == "poison"), None)
+    assert poison is not None
+    assert poison.duration == 5
+    assert poison.potency == 2
+
+    # Exposed Weakness applies a 25% bonus to one subsequent damaging strike only.
+    exposed = get_ability_by_id("exposed_weakness")
+    assert exposed is not None
+    player.abilities.add_ability(exposed)
+    exposed.on_attack_dealt(player, enemy, 10, True)
+    assert getattr(player, "_next_strike_bonus", False) is True
+    assert combat.damage_enemy(100) == 125
+    assert getattr(player, "_next_strike_bonus", False) is False
+    assert combat.damage_enemy(100) == 100
+
+    # Shadow Step updates the combat gauge through the combat reference.
+    shadow_step = get_ability_by_id("shadow_step")
+    assert shadow_step is not None
+    player.abilities.add_ability(shadow_step)
+    combat.player_gauge = 10
+    player.take_damage(10)
+    assert combat.player_gauge == 25
 
 
 def test_ability_registry_and_retrieval():
@@ -289,3 +347,171 @@ def test_ability_registry_and_retrieval():
     from src.data.abilities import STANDARD_ABILITIES
 
     assert len(random_fallback) == len(STANDARD_ABILITIES)
+
+
+def test_berserker_standard_abilities(monkeypatch):
+    from src.data.abilities import get_ability_by_id
+    from src.entities.enemy import EnemyTier
+
+    player = Player(name="BerserkerTest", class_id="warrior")
+    player.base_stats = Stats(max_hp=100, attack=100, defense=0, speed=10, crit_chance=0.0)
+    player.current_hp = 100
+    enemy = Enemy(name="Target", stats=Stats(100, 10, 20, 10, 0.0), tier=EnemyTier.COMMON,
+                  floor_level=1, exp_reward=1, gold_reward=1)
+    enemy.base_stats = Stats(max_hp=100, attack=10, defense=20, speed=10, crit_chance=0.0)
+    enemy.current_hp = 100
+    combat = CombatSystem(player, enemy)
+
+    def exact_damage(self, raw_damage, defense_penetration=0.0):
+        return raw_damage
+    monkeypatch.setattr(Enemy, "take_damage", exact_damage)
+
+    reckless = get_ability_by_id("reckless_assault")
+    assert reckless is not None and reckless.affinities == ("berserker",)
+    _, damage, crit = reckless.execute(combat)
+    assert damage == 150 and not crit
+    assert player._reckless_assault_vulnerable is True
+
+    blood_frenzy = get_ability_by_id("blood_frenzy")
+    assert blood_frenzy is not None
+    # Blood Frenzy is an acquired passive, so grant it before testing its scaling.
+    assert all(ability.id != "blood_frenzy" for ability in player.abilities.passive)
+    player.abilities.add_ability(blood_frenzy)
+    assert player.effective_stats.attack == 100
+    player.current_hp = 50
+    assert player.effective_stats.attack == 125
+    player.current_hp = 20
+    assert player.effective_stats.attack == 140
+
+    cull = get_ability_by_id("cull_the_weak")
+    assert cull is not None and cull.affinities == ("berserker",)
+    player.abilities.add_ability(cull)
+    enemy.current_hp = 30
+    assert combat.damage_enemy(100) == 130
+
+
+def test_paladin_standard_abilities(monkeypatch):
+    from src.data.abilities import get_ability_by_id
+    from src.entities.enemy import EnemyTier
+
+    player = Player(name="PaladinTest", class_id="warrior")
+    player.base_stats = Stats(max_hp=100, attack=100, defense=30, speed=10, crit_chance=0.0)
+    player.current_hp = 100
+    enemy = Enemy(name="Target", stats=Stats(100, 10, 10, 10, 0.0), tier=EnemyTier.COMMON,
+                  floor_level=1, exp_reward=1, gold_reward=1)
+    enemy.base_stats = Stats(max_hp=100, attack=10, defense=10, speed=10, crit_chance=0.0)
+    enemy.current_hp = 100
+    combat = CombatSystem(player, enemy)
+
+    def exact_damage(self, raw_damage, defense_penetration=0.0):
+        self.last_penetration = defense_penetration
+        return raw_damage
+    monkeypatch.setattr(Enemy, "take_damage", exact_damage)
+
+    strike = get_ability_by_id("shieldbreaker_strike")
+    assert strike is not None and strike.affinities == ("paladin",)
+    _, damage, crit = strike.execute(combat)
+    assert damage == 115 and not crit
+
+    defensive = get_ability_by_id("defensive_superiority")
+    guard = get_ability_by_id("paladin_guard")
+    assert defensive is not None and defensive.affinities == ("paladin",)
+    assert guard is not None and guard.affinities == ("paladin",)
+
+    player.abilities.add_ability(defensive)
+    # Player DEF 30 vs enemy DEF 10 -> capped at 75% penetration.
+    combat.damage_enemy(100)
+    assert enemy.last_penetration == pytest.approx(0.75)
+
+    player.abilities.add_ability(guard)
+    player._last_ability_affinities = ("paladin",)
+    assert guard.on_damage_taken(player, 100) == 90
+    player._last_ability_affinities = ("berserker",)
+    assert guard.on_damage_taken(player, 100) == 100
+
+
+
+def test_burn_stacks_scale_with_max_hp_and_ignore_defense():
+    from src.systems.status import get_status_by_id
+
+    from src.entities.enemy import EnemyTier
+
+    enemy = Enemy(
+        name="BurnTarget",
+        stats=Stats(max_hp=1000, attack=10, defense=999, speed=10, crit_chance=0.0),
+        tier=EnemyTier.COMMON,
+        floor_level=1,
+        exp_reward=1,
+        gold_reward=1,
+    )
+    enemy.current_hp = 1000
+
+    for _ in range(3):
+        burn = get_status_by_id("burn", duration=8, potency=1)
+        assert burn is not None
+        enemy.apply_status(burn)
+
+    active_burn = next(status for status in enemy.statuses if status.id == "burn")
+    assert active_burn.stacks == 3
+    assert active_burn.max_stacks == 3
+    assert active_burn.duration == 8
+
+    # Reapplication adds no more than three stacks and refreshes the duration.
+    active_burn.duration = 2
+    burn = get_status_by_id("burn", duration=8, potency=1)
+    assert burn is not None
+    enemy.apply_status(burn)
+    assert active_burn.stacks == 3
+    assert active_burn.duration == 8
+
+    # 3 stacks deal 3% of max HP (30) and bypass the enemy's 999 DEF.
+    player = Player(name="TickSource", class_id="mage")
+    combat = CombatSystem(player, enemy)
+    combat._process_status_ticks(enemy)
+    assert enemy.current_hp == 970
+
+
+def test_pyromania_triggers_on_basic_attacks_but_not_abilities(monkeypatch):
+    from src.data.abilities import get_ability_by_id
+    from src.entities.enemy import EnemyTier
+
+    player = Player(name="PyromaniaTest", class_id="mage")
+    player.base_stats = Stats(max_hp=100, attack=10, defense=0, speed=10, crit_chance=0.0)
+    player.current_hp = 100
+    enemy = Enemy(
+        name="PyromaniaTarget",
+        stats=Stats(max_hp=1000, attack=10, defense=0, speed=10, crit_chance=0.0),
+        tier=EnemyTier.COMMON,
+        floor_level=1,
+        exp_reward=1,
+        gold_reward=1,
+    )
+    enemy.current_hp = 1000
+    combat = CombatSystem(player, enemy)
+    monkeypatch.setattr("src.systems.combat.pyxel.play", lambda *args: None)
+
+    class ProcRNG:
+        def random(self):
+            return 0.0
+
+        def uniform(self, a, b):
+            return 1.0
+
+    combat.rng = ProcRNG()
+    pyromania = get_ability_by_id("pyromania")
+    assert pyromania is not None
+    player.abilities.add_ability(pyromania)
+
+    combat.player_gauge = 100
+    combat._execute_player_attack()
+    burn = next((status for status in enemy.statuses if status.id == "burn"), None)
+    assert burn is not None
+    assert burn.stacks == 1
+
+    # An active spell must not trigger Pyromania, even when its damage lands.
+    enemy.statuses.clear()
+    enemy.current_hp = 1000
+    combat.player_gauge = 100
+    combat.queued_ability = get_ability_by_id("arcane_bolt")
+    combat._execute_player_attack()
+    assert not enemy.has_status("burn")

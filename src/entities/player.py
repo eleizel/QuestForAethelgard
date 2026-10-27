@@ -49,6 +49,7 @@ class Player(Actor):
         stats = self.base_stats.add(equip_bonuses).add(self.stat_modifiers)
         for passive in self.abilities.passive:
             stats = passive.modify_stats(stats)
+            stats = passive.modify_actor_stats(self, stats)
 
         # Colossus stance check
         has_colossus = any(a.id == "colossus_stance" for a in self.abilities.passive)
@@ -71,6 +72,8 @@ class Player(Actor):
     def take_damage(self, raw_damage: int, defense_penetration: float = 0.0) -> int:
         """Apply damage mitigated by defense and passive abilities."""
         from src.core.math_utils import calculate_damage
+        if getattr(self, "_reckless_assault_vulnerable", False):
+            raw_damage = int(raw_damage * 1.10)
         for passive in self.abilities.passive:
             raw_damage = passive.on_damage_taken(self, raw_damage)
 
@@ -85,6 +88,13 @@ class Player(Actor):
 
         actual_damage = min(self.current_hp, mitigated)
         self.current_hp -= actual_damage
+
+        # Shadow Step triggers only when the player actually loses HP, not on fully mitigated hits.
+        if actual_damage > 0 and any(a.id == "shadow_step" for a in self.abilities.passive):
+            combat = getattr(self, "combat_ref", None)
+            if combat:
+                combat.player_gauge = min(100, combat.player_gauge + 15)
+
         return actual_damage
 
     def gain_experience(self, amount: int, foe_type: str | None = None) -> bool:

@@ -42,6 +42,8 @@ class CombatSystem:
     ) -> None:
         self.player: Player = player
         self.enemy: Enemy = enemy
+        # Passive hooks may update combat-owned resources such as action gauge.
+        self.player.combat_ref = self
         self.rng: random.Random = random.Random(seed)
 
         # Action gauges (0 to ACTION_THRESHOLD)
@@ -132,11 +134,46 @@ class CombatSystem:
 
         return self.result
 
+    def damage_enemy(self, raw_damage: int, defense_penetration: float = 0.0) -> int:
+        """Resolve player damage, including execute bonuses, against the current enemy."""
+        has_cull_the_weak = any(
+            ability.id == "cull_the_weak" for ability in self.player.abilities.passive
+        )
+        if has_cull_the_weak and self.enemy.current_hp > 0 and self.enemy.current_hp <= self.enemy.max_hp * 0.30:
+            raw_damage = int(raw_damage * 1.30)
+
+        # Defensive Superiority converts the player's relative DEF advantage into
+        # penetration. It does nothing when the enemy has equal or higher DEF.
+        has_defensive_superiority = any(
+            ability.id == "defensive_superiority" for ability in self.player.abilities.passive
+        )
+        if has_defensive_superiority:
+            enemy_defense = max(0, self.enemy.effective_stats.defense)
+            player_defense = max(0, self.player.effective_stats.defense)
+            if enemy_defense <= 0:
+                passive_penetration = 0.75 if player_defense > 0 else 0.0
+            else:
+                passive_penetration = min(0.75, max(0.0, player_defense / enemy_defense - 1.0))
+            # Combine penetrations multiplicatively to avoid adding percentages past 100%.
+            defense_penetration = 1.0 - (1.0 - defense_penetration) * (1.0 - passive_penetration)
+
+        # Exposed Weakness empowers exactly the next damaging strike after a critical hit.
+        if getattr(self.player, "_next_strike_bonus", False):
+            raw_damage = int(raw_damage * 1.25)
+            self.player._next_strike_bonus = False
+
+        return self.enemy.take_damage(raw_damage, defense_penetration=defense_penetration)
+
     def _execute_player_attack(self) -> None:
         """Execute a player strike against the enemy, or an ability if queued."""
         self.player_gauge -= ACTION_THRESHOLD
         if not self._can_actor_act(self.player):
             return
+
+        is_basic_attack = self.queued_ability is None
+
+        # Reckless Assault's vulnerability lasts until this next player action.
+        self.player._reckless_assault_vulnerable = False
 
         # Decrement all independent cooldowns by 1 on player action
         for ab_id in list(self.cooldowns.keys()):
@@ -149,6 +186,9 @@ class CombatSystem:
             # Set this specific ability's cooldown
             if self.queued_ability.cooldown > 0:
                 self.cooldowns[self.queued_ability.id] = self.queued_ability.cooldown
+
+            # Track the affinity of the last active skill used. Basic attacks do not clear it.
+            self.player._last_ability_affinities = tuple(getattr(self.queued_ability, "affinities", ()))
 
             # Execute active ability
             log_str, dmg_dealt, is_crit = self.queued_ability.execute(self)
@@ -164,7 +204,7 @@ class CombatSystem:
                 raw_dmg, is_crit = self.player.calculate_attack(self.rng)
                 if self.enemy.has_status("vulnerable"):
                     raw_dmg = int(raw_dmg * 1.30)
-                dmg_dealt = self.enemy.take_damage(raw_dmg)
+                dmg_dealt = self.damage_enemy(raw_dmg)
                 if is_crit:
                     self.combat_logs.append(
                         _t("combat_crit", actor=self.player.name, target=self.enemy.name, damage=dmg_dealt))
@@ -185,13 +225,16 @@ class CombatSystem:
                         self.combat_logs.append(
                             _t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name))
 
-        # Triggers passive hooks for attack dealt
-        if dmg_dealt > 0 or getattr(self, "queued_ability", None):
+        # Trigger passive hooks for attack dealt. Pyromania is deliberately
+        # restricted to basic attacks; other passives may still react to abilities.
+        if dmg_dealt > 0:
             for passive in self.player.abilities.passive:
+                if passive.id == "pyromania" and not is_basic_attack:
+                    continue
                 passive.on_attack_dealt(self.player, self.enemy, dmg_dealt, is_crit)
 
         if self.player.abilities.has_veterans_instincts and is_crit:
-            self.player_gauge += 20
+            self.player_gauge = min(100, self.player_gauge + 20)
             self.combat_logs.append(_t("combat_veteran", player=self.player.name))
 
     def _execute_enemy_attack(self) -> None:

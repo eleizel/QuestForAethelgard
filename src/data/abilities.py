@@ -21,7 +21,7 @@ def execute_cross_cut(combat: CombatSystem) -> tuple[str, int, bool]:
     raw_dmg2, crit2 = combat.player.calculate_attack(combat.rng)
     dmg1 = int(raw_dmg1 * 0.90)
     dmg2 = int(raw_dmg2 * 0.90)
-    total_dmg = combat.enemy.take_damage(dmg1) + combat.enemy.take_damage(dmg2)
+    total_dmg = combat.damage_enemy(dmg1) + combat.damage_enemy(dmg2)
     any_crit = crit1 or crit2
     return t("log_cross_cut", player=combat.player.name, dmg=total_dmg), total_dmg, any_crit
 
@@ -48,7 +48,7 @@ def execute_shadow_strike(combat: CombatSystem) -> tuple[str, int, bool]:
     if is_crit:
         dmg = int(dmg * 1.5)
         combat.player_gauge = min(100, combat.player_gauge + 15)
-    actual_dmg = combat.enemy.take_damage(dmg)
+    actual_dmg = combat.damage_enemy(dmg)
     crit_msg = (" (¡EMBOSCADA CRÍTICA!)" if i18n.locale == "es" else " (CRITICAL AMBUSH!)") if is_crit else ""
     return t("log_shadow_strike", player=combat.player.name, dmg=actual_dmg, crit=crit_msg), actual_dmg, is_crit
 
@@ -73,7 +73,7 @@ def execute_arcane_bolt(combat: CombatSystem) -> tuple[str, int, bool]:
     raw_dmg = int(combat.player.effective_stats.attack * 1.10)
     if is_crit:
         raw_dmg = int(raw_dmg * 1.5)
-    actual_dmg = combat.enemy.take_damage(raw_dmg, defense_penetration=0.20)
+    actual_dmg = combat.damage_enemy(raw_dmg, defense_penetration=0.20)
     crit_msg = (" (¡ARCANA DESATADA!)" if i18n.locale == "es" else " (SURGING ARCANA!)") if is_crit else ""
     return t("log_arcane_bolt", player=combat.player.name, dmg=actual_dmg, crit=crit_msg), actual_dmg, is_crit
 
@@ -93,7 +93,7 @@ ARCANE_BOLT = Ability(
 # --- Debug Tool ---
 def execute_pw_kill(combat: CombatSystem) -> tuple[str, int, bool]:
     from src.core.i18n import t
-    actual_dmg = combat.enemy.take_damage(999999)
+    actual_dmg = combat.damage_enemy(999999)
     return t("log_pw_kill", player=combat.player.name, dmg=actual_dmg), actual_dmg, True
 
 
@@ -115,7 +115,7 @@ PW_KILL = Ability(
 def execute_shield_bash(combat: CombatSystem) -> tuple[str, int, bool]:
     from src.core.i18n import t
     dmg = int(combat.player.effective_stats.attack * 0.85)
-    actual_dmg = combat.enemy.take_damage(dmg)
+    actual_dmg = combat.damage_enemy(dmg)
     combat.enemy_gauge = max(0, combat.enemy_gauge - 35)
     return t("log_shield_bash", player=combat.player.name, dmg=actual_dmg), actual_dmg, False
 
@@ -131,7 +131,7 @@ def execute_rallying_cry(combat: CombatSystem) -> tuple[str, int, bool]:
 def execute_cleave(combat: CombatSystem) -> tuple[str, int, bool]:
     from src.core.i18n import t
     dmg = int(combat.player.effective_stats.attack * 1.60)
-    actual_dmg = combat.enemy.take_damage(dmg)
+    actual_dmg = combat.damage_enemy(dmg)
     return t("log_cleave", player=combat.player.name, dmg=actual_dmg), actual_dmg, False
 
 
@@ -141,7 +141,8 @@ def modify_iron_skin(stats: Stats) -> Stats:
 
 
 def hook_iron_skin(actor: Actor, raw_damage: int) -> int:
-    return max(1, raw_damage * 0.90)
+    """Reduce incoming damage by 10%, retaining a minimum of 1 damage."""
+    return max(1, int(raw_damage * 0.90))
 
 
 def modify_veterans_instincts(stats: Stats) -> Stats:
@@ -153,14 +154,52 @@ def hook_bloodlust(actor: Actor, target: Actor, damage: int, is_crit: bool) -> N
         actor.heal(int(damage * 0.20))
 
 
+def execute_shieldbreaker_strike(combat: CombatSystem) -> tuple[str, int, bool]:
+    from src.core.i18n import t
+    stats = combat.player.effective_stats
+    raw_damage = int(stats.attack + stats.defense * 0.50)
+    actual_damage = combat.damage_enemy(raw_damage)
+    return t("log_shieldbreaker_strike", player=combat.player.name, dmg=actual_damage), actual_damage, False
+
+
+def hook_paladin_guard(actor: Actor, raw_damage: int) -> int:
+    affinities = getattr(actor, "_last_ability_affinities", ())
+    if "paladin" in affinities:
+        return max(1, int(raw_damage * 0.90))
+    return raw_damage
+
+
+def execute_reckless_assault(combat: CombatSystem) -> tuple[str, int, bool]:
+    from src.core.i18n import t
+    raw_damage = int(combat.player.effective_stats.attack * 1.50)
+    actual_damage = combat.damage_enemy(raw_damage, defense_penetration=0.25)
+    combat.player._reckless_assault_vulnerable = True
+    return t("log_reckless_assault", player=combat.player.name, dmg=actual_damage), actual_damage, False
+
+
+def modify_blood_frenzy(actor: Actor, stats: Stats) -> Stats:
+    """Gain 5% ATK per 10% of max HP missing, up to 40%."""
+    max_hp = max(1, stats.max_hp)
+    missing_ratio = max(0.0, min(1.0, (max_hp - actor.current_hp) / max_hp))
+    bonus_ratio = min(0.40, int(missing_ratio * 10) * 0.05)
+    bonus_attack = int(stats.attack * bonus_ratio)
+    return stats.add(type(stats)(max_hp=0, attack=bonus_attack, defense=0, speed=0, crit_chance=0.0))
+
+
 # =============================================================================
 # 3. ROGUE STANDARD SKILLS (3 Actives, 3 Passives)
 # =============================================================================
 
 def execute_poison_shiv(combat: CombatSystem) -> tuple[str, int, bool]:
     from src.core.i18n import t
-    dmg = int(combat.player.effective_stats.attack * 1.05)
-    actual_dmg = combat.enemy.take_damage(dmg)
+    from src.systems.status import get_status_by_id
+    attack = combat.player.effective_stats.attack
+    dmg = int(attack * 1.05)
+    actual_dmg = combat.damage_enemy(dmg)
+    if combat.enemy.current_hp > 0:
+        poison = get_status_by_id("poison", duration=5, potency=max(1, int(attack * 0.10)))
+        if poison:
+            combat.enemy.apply_status(poison)
     combat.enemy_gauge = max(0, combat.enemy_gauge - 30)
     return t("log_poison_shiv", player=combat.player.name, dmg=actual_dmg), actual_dmg, False
 
@@ -184,7 +223,7 @@ def execute_flurry_of_daggers(combat: CombatSystem) -> tuple[str, int, bool]:
         if is_crit:
             dmg = int(dmg * 1.5)
             any_crit = True
-        total_dmg += combat.enemy.take_damage(dmg)
+        total_dmg += combat.damage_enemy(dmg)
     return t("log_flurry_of_daggers", player=combat.player.name, dmg=total_dmg), total_dmg, any_crit
 
 
@@ -195,16 +234,9 @@ def modify_nimble_reflexes(stats: Stats) -> Stats:
 
 
 def hook_exposed_weakness(actor: Actor, target: Actor, damage: int, is_crit: bool) -> None:
-    if is_crit and hasattr(actor, "base_stats"):
+    """A critical hit empowers the player's next damaging strike by 25%."""
+    if is_crit and damage > 0 and hasattr(actor, "base_stats"):
         setattr(actor, "_next_strike_bonus", True)
-
-
-def hook_shadow_step_gauge(actor: Actor, raw_damage: int) -> int:
-    if raw_damage > 0:
-        combat = getattr(actor, "combat_ref", None)
-        if combat:
-            combat.player_gauge = min(100, combat.player_gauge + 15)
-    return raw_damage
 
 
 # =============================================================================
@@ -214,14 +246,14 @@ def hook_shadow_step_gauge(actor: Actor, raw_damage: int) -> int:
 def execute_fireball(combat: CombatSystem) -> tuple[str, int, bool]:
     from src.core.i18n import t
     raw_dmg = int(combat.player.effective_stats.attack * 1.85)
-    actual_dmg = combat.enemy.take_damage(raw_dmg)
+    actual_dmg = combat.damage_enemy(raw_dmg)
     return t("log_fireball", player=combat.player.name, dmg=actual_dmg), actual_dmg, False
 
 
 def execute_frost_nova(combat: CombatSystem) -> tuple[str, int, bool]:
     from src.core.i18n import t
     dmg = int(combat.player.effective_stats.attack * 0.95)
-    actual_dmg = combat.enemy.take_damage(dmg)
+    actual_dmg = combat.damage_enemy(dmg)
     combat.enemy_gauge = max(0, combat.enemy_gauge - 45)
     return t("log_frost_nova", player=combat.player.name, dmg=actual_dmg), actual_dmg, False
 
@@ -232,7 +264,7 @@ def execute_chain_lightning(combat: CombatSystem) -> tuple[str, int, bool]:
     is_crit = rng.random() < combat.player.effective_stats.crit_chance
     mult = 1.95 if is_crit else 1.30
     dmg = int(combat.player.effective_stats.attack * mult)
-    actual_dmg = combat.enemy.take_damage(dmg)
+    actual_dmg = combat.damage_enemy(dmg)
     if is_crit:
         combat.player_gauge = min(100, combat.player_gauge + 40)
     crit_msg = (" (¡SOBRECARGA!)" if i18n.locale == "es" else " (OVERCHARGED SURGE!)") if is_crit else ""
@@ -252,9 +284,13 @@ def hook_mana_barrier(actor: Actor, raw_damage: int) -> int:
 
 
 def hook_pyromania(actor: Actor, target: Actor, damage: int, is_crit: bool) -> None:
-    if damage > 0 and random.random() < 0.30:
-        burn = max(2, int(actor.effective_stats.attack * 0.40))  # type: ignore
-        target.take_damage(burn)
+    """Basic attacks have a 30% chance to add one stack of Burn."""
+    from src.systems.status import get_status_by_id
+    combat = getattr(actor, "combat_ref", None)
+    if damage > 0 and combat and target.current_hp > 0 and combat.rng.random() < 0.30:
+        burn = get_status_by_id("burn", duration=8, potency=1)
+        if burn:
+            target.apply_status(burn)
 
 
 # =============================================================================
@@ -280,7 +316,7 @@ def execute_blade_storm(combat: CombatSystem) -> tuple[str, int, bool]:
         if is_crit:
             dmg = int(dmg * 1.5)
             any_crit = True
-        total_dmg += combat.enemy.take_damage(dmg)
+        total_dmg += combat.damage_enemy(dmg)
     return t("log_blade_storm", player=combat.player.name, dmg=total_dmg), total_dmg, any_crit
 
 
@@ -292,7 +328,7 @@ def execute_executioners_might(combat: CombatSystem) -> tuple[str, int, bool]:
     from src.core.i18n import t
     mult = 5.0 if combat.enemy.current_hp < combat.enemy.max_hp * 0.40 else 2.5
     dmg = int(combat.player.effective_stats.attack * mult)
-    actual_dmg = combat.enemy.take_damage(dmg)
+    actual_dmg = combat.damage_enemy(dmg)
     return t("log_executioners_might", player=combat.player.name, dmg=actual_dmg), actual_dmg, False
 
 
@@ -304,7 +340,7 @@ def execute_assassinate(combat: CombatSystem) -> tuple[str, int, bool]:
     is_crit = rng.random() < crit_chance
     mult = 3.80 if is_crit else 2.00
     dmg = int(combat.player.effective_stats.attack * mult)
-    actual_dmg = combat.enemy.take_damage(dmg)
+    actual_dmg = combat.damage_enemy(dmg)
     crit_str = (" (¡EJECUCIÓN LETAL!)" if i18n.locale == "es" else " (LETHAL EXECUTION!)") if is_crit else ""
     return t("log_assassinate", player=combat.player.name, dmg=actual_dmg, crit=crit_str), actual_dmg, is_crit
 
@@ -316,7 +352,7 @@ def execute_fan_of_knives(combat: CombatSystem) -> tuple[str, int, bool]:
     rng = combat.rng
     for _ in range(5):
         dmg = int(combat.player.effective_stats.attack * 0.50)
-        total_dmg += combat.enemy.take_damage(dmg)
+        total_dmg += combat.damage_enemy(dmg)
         if rng.random() < 0.30:
             delays += 15
     combat.enemy_gauge = max(0, combat.enemy_gauge - delays)
@@ -337,7 +373,7 @@ def modify_death_dealer(stats: Stats) -> Stats:
 def execute_meteor(combat: CombatSystem) -> tuple[str, int, bool]:
     from src.core.i18n import t
     raw_dmg = int(combat.player.effective_stats.attack * 3.20)
-    actual_dmg = combat.enemy.take_damage(raw_dmg)
+    actual_dmg = combat.damage_enemy(raw_dmg)
     combat.enemy_gauge = 0
     return t("log_meteor", player=combat.player.name, dmg=actual_dmg), actual_dmg, True
 
@@ -374,13 +410,13 @@ STANDARD_ABILITIES: list[Ability] = [
     # Warrior Standard
     Ability(id="shield_bash", name="Shield Bash", description="Deals 85% ATK, delays enemy gauge by 35.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
-            execute_hook=execute_shield_bash,cooldown=3,),
+            execute_hook=execute_shield_bash,cooldown=3, affinities=("paladin",)),
     Ability(id="rallying_cry", name="Rallying Cry", description="Restores 15% Max HP, +4 DEF for battle.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
-            execute_hook=execute_rallying_cry,cooldown=2,),
+            execute_hook=execute_rallying_cry,cooldown=2, affinities=("paladin",)),
     Ability(id="cleave", name="Cleave", description="Heavy cleave dealing 160% ATK damage.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
-            execute_hook=execute_cleave,cooldown=3,),
+            execute_hook=execute_cleave,cooldown=3, affinities=("berserker",)),
     Ability(id="iron_skin", name="Iron Skin", description="+15% DEF, -10% damage taken.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
             modify_stats_hook=modify_iron_skin, on_damage_taken_hook=hook_iron_skin,),
@@ -390,9 +426,33 @@ STANDARD_ABILITIES: list[Ability] = [
     Ability(id="bloodlust", name="Bloodlust", description="Heal for 20% of physical damage dealt.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
             on_attack_dealt_hook=hook_bloodlust,),
+    Ability(id="shieldbreaker_strike", name="Shieldbreaker Strike",
+            description="Deals damage equal to 100% ATK plus 50% DEF.",
+            ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
+            execute_hook=execute_shieldbreaker_strike, cooldown=3, affinities=("paladin",)),
+    Ability(id="defensive_superiority", name="Defensive Superiority",
+            description="Gain DEF-based armor penetration, up to 75%, when your DEF exceeds the enemy's.",
+            ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
+            affinities=("paladin",)),
+    Ability(id="paladin_guard", name="Paladin Guard",
+            description="Take 10% less damage while your last active ability had Paladin affinity.",
+            ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
+            on_damage_taken_hook=hook_paladin_guard, affinities=("paladin",)),
+    Ability(id="reckless_assault", name="Reckless Assault",
+            description="Deals 150% ATK, ignores 25% DEF, but you take 10% more damage until your next action.",
+            ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
+            execute_hook=execute_reckless_assault, cooldown=3, affinities=("berserker",)),
+    Ability(id="blood_frenzy", name="Blood Frenzy",
+            description="Gain 5% ATK per 10% of Max HP missing, up to +40% ATK.",
+            ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
+            modify_actor_stats_hook=modify_blood_frenzy, affinities=("berserker",)),
+    Ability(id="cull_the_weak", name="Cull the Weak",
+            description="Deal 30% more damage to enemies below 30% Max HP.",
+            ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
+            affinities=("berserker",)),
 
     # Rogue Standard
-    Ability(id="poison_shiv", name="Poison Shiv", description="Deals 105% ATK and drains 30 enemy gauge.",
+    Ability(id="poison_shiv", name="Poison Shiv", description="Deals 105% ATK, applies 5 ticks of poison, and drains 30 enemy gauge.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
             execute_hook=execute_poison_shiv,cooldown=3,),
     Ability(id="smoke_bomb", name="Smoke Bomb", description="Stalls enemy by 50 gauge; grants +25 player gauge.",
@@ -405,11 +465,10 @@ STANDARD_ABILITIES: list[Ability] = [
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
             modify_stats_hook=modify_nimble_reflexes,),
     Ability(id="exposed_weakness", name="Exposed Weakness",
-            description="Crits expose enemy vitals for devastating follow-ups.", ability_type=AbilityType.PASSIVE,
+            description="Critical hits empower your next damaging strike by 25%.", ability_type=AbilityType.PASSIVE,
             rarity=AbilityRarity.STANDARD, required_class="rogue", on_attack_dealt_hook=hook_exposed_weakness,),
-    Ability(id="shadow_step", name="Shadow Step", description="Taking damage accelerates player gauge by +15.",
-            ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
-            on_damage_taken_hook=hook_shadow_step_gauge,),
+    Ability(id="shadow_step", name="Shadow Step", description="When you lose HP, gain 15 player action gauge.",
+            ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue"),
 
     # Mage Standard
     Ability(id="fireball", name="Fireball", description="High-impact blast dealing 185% ATK fire damage.",
@@ -427,7 +486,7 @@ STANDARD_ABILITIES: list[Ability] = [
     Ability(id="mana_barrier", name="Mana Barrier", description="Kinetic barrier absorbs 20% damage from all attacks.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
             on_damage_taken_hook=hook_mana_barrier,),
-    Ability(id="pyromania", name="Pyromania", description="Attacks have a 30% chance to ignite foe for 40% ATK.",
+    Ability(id="pyromania", name="Pyromania", description="Basic attacks have a 30% chance to add a Burn stack.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
             on_attack_dealt_hook=hook_pyromania,),
 ]

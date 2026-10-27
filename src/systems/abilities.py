@@ -53,6 +53,8 @@ class Ability:
             modify_stats_hook: Callable[[Stats], Stats] | None = None,
             on_damage_taken_hook: Callable[[Actor, int], int] | None = None,
             on_attack_dealt_hook: Callable[[Actor, Actor, int, bool], None] | None = None,
+            modify_actor_stats_hook: Callable[[Actor, Stats], Stats] | None = None,
+            affinities: tuple[str, ...] = (),
     ) -> None:
         self.id: str = id
         self._raw_name: str = name
@@ -65,6 +67,8 @@ class Ability:
         self.modify_stats_hook = modify_stats_hook
         self.on_damage_taken_hook = on_damage_taken_hook
         self.on_attack_dealt_hook = on_attack_dealt_hook
+        self.modify_actor_stats_hook = modify_actor_stats_hook
+        self.affinities: tuple[str, ...] = tuple(affinities)
 
     @property
     def name(self) -> str:
@@ -116,6 +120,12 @@ class Ability:
         """Apply passive stat modifications."""
         if self.ability_type == AbilityType.PASSIVE and self.modify_stats_hook:
             return self.modify_stats_hook(stats)
+        return stats
+
+    def modify_actor_stats(self, actor: Actor, stats: Stats) -> Stats:
+        """Apply passive stat modifications that depend on the actor's current state."""
+        if self.ability_type == AbilityType.PASSIVE and self.modify_actor_stats_hook:
+            return self.modify_actor_stats_hook(actor, stats)
         return stats
 
     def on_damage_taken(self, actor: Actor, raw_damage: int) -> int:

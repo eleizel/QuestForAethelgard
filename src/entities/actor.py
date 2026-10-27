@@ -52,6 +52,11 @@ class Actor:
 
         for existing in self.statuses:
             if existing.id == effect.id:
+                if effect.id == "burn":
+                    existing.stacks = min(existing.max_stacks, existing.stacks + effect.stacks)
+                    existing.duration = effect.duration
+                    existing.potency = max(existing.potency, effect.potency)
+                    return
                 existing.duration = max(existing.duration, effect.duration)
                 existing.potency = max(existing.potency, effect.potency)
                 return
