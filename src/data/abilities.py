@@ -3,7 +3,6 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING
 
-from src.core.math_utils import calculate_damage
 from src.entities.actor import Actor, Stats
 from src.systems.abilities import Ability, AbilityType, AbilityRarity
 
@@ -20,8 +19,8 @@ def execute_cross_cut(combat: CombatSystem) -> tuple[str, int, bool]:
     from src.core.i18n import t
     raw_dmg1, crit1 = combat.player.calculate_attack(combat.rng)
     raw_dmg2, crit2 = combat.player.calculate_attack(combat.rng)
-    dmg1 = int(raw_dmg1 * 0.60)
-    dmg2 = int(raw_dmg2 * 0.60)
+    dmg1 = int(raw_dmg1 * 0.90)
+    dmg2 = int(raw_dmg2 * 0.90)
     total_dmg = combat.enemy.take_damage(dmg1) + combat.enemy.take_damage(dmg2)
     any_crit = crit1 or crit2
     return t("log_cross_cut", player=combat.player.name, dmg=total_dmg), total_dmg, any_crit
@@ -30,7 +29,7 @@ def execute_cross_cut(combat: CombatSystem) -> tuple[str, int, bool]:
 CROSS_CUT = Ability(
     id="cross_cut",
     name="Cross Cut",
-    description="Strikes 2 times at 60% ATK each.",
+    description="Strikes 2 times at 90% ATK each.",
     ability_type=AbilityType.ACTIVE,
     rarity=AbilityRarity.STANDARD,
     required_class="warrior",
@@ -45,7 +44,7 @@ def execute_shadow_strike(combat: CombatSystem) -> tuple[str, int, bool]:
     rng = combat.rng
     crit_chance = combat.player.effective_stats.crit_chance + 0.15
     is_crit = rng.random() < crit_chance
-    dmg = int(combat.player.effective_stats.attack * 1.15)
+    dmg = combat.player.effective_stats.attack * 115 // 100
     if is_crit:
         dmg = int(dmg * 1.5)
         combat.player_gauge = min(100, combat.player_gauge + 15)
@@ -57,7 +56,7 @@ def execute_shadow_strike(combat: CombatSystem) -> tuple[str, int, bool]:
 SHADOW_STRIKE = Ability(
     id="shadow_strike",
     name="Shadow Strike",
-    description="Deals 110% ATK (+15% Crit). Crits refund 15 gauge.",
+    description="Deals 115% ATK (+15% Crit). Crits refund 15 gauge.",
     ability_type=AbilityType.ACTIVE,
     rarity=AbilityRarity.STANDARD,
     required_class="rogue",
@@ -74,8 +73,7 @@ def execute_arcane_bolt(combat: CombatSystem) -> tuple[str, int, bool]:
     raw_dmg = int(combat.player.effective_stats.attack * 1.10)
     if is_crit:
         raw_dmg = int(raw_dmg * 1.5)
-    mitigated_dmg = calculate_damage(raw_dmg, combat.enemy.base_stats.defense, 0.20)
-    actual_dmg = combat.enemy.take_damage(mitigated_dmg)
+    actual_dmg = combat.enemy.take_damage(raw_dmg, defense_penetration=0.20)
     crit_msg = (" (¡ARCANA DESATADA!)" if i18n.locale == "es" else " (SURGING ARCANA!)") if is_crit else ""
     return t("log_arcane_bolt", player=combat.player.name, dmg=actual_dmg, crit=crit_msg), actual_dmg, is_crit
 

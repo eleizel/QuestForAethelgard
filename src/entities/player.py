@@ -65,14 +65,14 @@ class Player(Actor):
         """Total maximum HP including equipment modifiers."""
         return self.effective_stats.max_hp
 
-    def take_damage(self, raw_damage: int) -> int:
+    def take_damage(self, raw_damage: int, defense_penetration: float = 0.0) -> int:
         """Apply damage mitigated by defense and passive abilities."""
         from src.core.math_utils import calculate_damage
         for passive in self.abilities.passive:
             raw_damage = passive.on_damage_taken(self, raw_damage)
 
         effective_defense = max(0, self.effective_stats.defense)
-        mitigated = calculate_damage(raw_damage, effective_defense)
+        mitigated = calculate_damage(raw_damage, effective_defense, defense_penetration)
 
         has_undying_will = any(a.id == "undying_will" for a in self.abilities.passive)
         if has_undying_will and self.current_hp - mitigated <= 0 and not getattr(self, "undying_will_used", False):
@@ -80,7 +80,9 @@ class Player(Actor):
             self.current_hp = int(self.max_hp * 0.4)
             return 0
 
-        return super().take_damage(raw_damage)
+        actual_damage = min(self.current_hp, mitigated)
+        self.current_hp -= actual_damage
+        return actual_damage
 
     def gain_experience(self, amount: int, foe_type: str | None = None) -> bool:
         """Add experience points and process level-ups. Returns True if leveled up."""

@@ -64,7 +64,7 @@ ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
     "malignant_belladonna": EnemyArchetype(
         id="malignant_belladonna", name="Malignant Belladonna",
         base_hp=220, base_atk=20, base_def=8, base_spd=9, base_crit=0.08,
-        description="Giant carnivorous floral queen that siphons life.", on_hit_status="poison", status_chance=0.60,
+        description="Giant carnivorous floral queen that siphons life.", on_hit_status="poison", status_chance=0.40,
     ),
     "verdant_abomination": EnemyArchetype(
         id="verdant_abomination", name="The Verdant Abomination",
@@ -114,7 +114,7 @@ ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
     ),
     "chorus_of_damned": EnemyArchetype(
         id="chorus_of_damned", name="Chorus of the Damned",
-        base_hp=240, base_atk=22, base_def=6, base_spd=10, base_crit=0.15,
+        base_hp=190, base_atk=22, base_def=6, base_spd=10, base_crit=0.15,
         description="Spectral choir shrieking harmonized mental agonies.",
     ),
 
@@ -246,9 +246,9 @@ ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
     ),
     "chronomancer_praetor": EnemyArchetype(
         id="chronomancer_praetor", name="Chronomancer Praetor",
-        base_hp=440, base_atk=42, base_def=12, base_spd=13, base_crit=0.20,
+        base_hp=400, base_atk=39, base_def=12, base_spd=13, base_crit=0.20,
         description="Time lord capable of rewinding mortality and stalling cooldowns.", on_hit_status="stun",
-        status_chance=0.30,
+        status_chance=0.20,
     ),
     "devouring_constellation": EnemyArchetype(
         id="devouring_constellation", name="The Devouring Constellation",
@@ -294,13 +294,13 @@ ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
     ),
     "high_lord_carmilla": EnemyArchetype(
         id="high_lord_carmilla", name="High Lord Carmilla",
-        base_hp=460, base_atk=46, base_def=12, base_spd=14, base_crit=0.25,
+        base_hp=420, base_atk=42, base_def=12, base_spd=14, base_crit=0.25,
         description="Ancient vampire queen possessing mist form and lethal executes.", on_hit_status="vulnerable",
         status_chance=0.50,
     ),
     "blood_god_avatar": EnemyArchetype(
         id="blood_god_avatar", name="The Blood-God Avatar",
-        base_hp=520, base_atk=50, base_def=10, base_spd=12, base_crit=0.20,
+        base_hp=450, base_atk=46, base_def=10, base_spd=12, base_crit=0.20,
         description="Monolithic deity dealing accelerating bleed damage in a strict race.",
     ),
 }

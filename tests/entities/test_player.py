@@ -87,6 +87,13 @@ def test_effective_stats_base():
     assert stats.crit_chance == pytest.approx(player.base_stats.crit_chance)
 
 
+def test_rogue_has_modest_survivability_tuning():
+    rogue = CLASS_REGISTRY["rogue"]
+
+    assert rogue.base_stats.max_hp == 85
+    assert rogue.growth_per_level.max_hp == 11
+
+
 def test_effective_stats_with_equipment(monkeypatch):
     player = Player(class_id="warrior")
 
@@ -201,13 +208,13 @@ def test_gain_experience_multiple_level_ups():
     initial_hp = player.max_hp
 
     # From level 1, calculate exp thresholds for next few levels
-    # Lvl 1->2: 50 + 25(0) + 8(0) = 50
-    # Lvl 2->3: 50 + 25(1) + 8(1) = 83
-    # Total needed for Lvl 3 = 133
+    # Lvl 1->2: 50 + 15(0) + 7(0) = 50
+    # Lvl 2->3: 50 + 15(1) + 7(1) = 72
+    # Total needed for Lvl 3 = 122
 
     assert player.gain_experience(150)
     assert player.level == 3
-    assert player.experience == 150 - 133  # 17
+    assert player.experience == 150 - 122  # 28
 
 
 def test_gain_experience_max_level_cap():

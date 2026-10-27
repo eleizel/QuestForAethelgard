@@ -88,7 +88,7 @@ BIOME_REGISTRY: Final[dict[str, BiomeDefinition]] = {
     ),
 
     # =========================================================================
-    # ACT 3: THE SUMMIT (Floors 25-36)
+    # ACT 3: THE SUMMIT (Floors 25-42; this act uses 18 map floors)
     # =========================================================================
     "observatory": BiomeDefinition(
         id="observatory",

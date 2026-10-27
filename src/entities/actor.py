@@ -93,15 +93,20 @@ class Actor:
         return self.current_hp > 0
 
     @property
+    def effective_stats(self) -> Stats:
+        """Base stats combined with temporary stat modifiers."""
+        return self.base_stats.add(self.stat_modifiers)
+
+    @property
     def max_hp(self) -> int:
         """Get the current maximum HP."""
         return self.base_stats.max_hp
 
-    def take_damage(self, raw_damage: int) -> int:
+    def take_damage(self, raw_damage: int, defense_penetration: float = 0.0) -> int:
         """Apply damage mitigated by defense. Returns actual damage suffered."""
         from src.core.math_utils import calculate_damage
-        effective_defense = max(0, self.base_stats.defense)
-        mitigated = calculate_damage(raw_damage, effective_defense)
+        effective_defense = max(0, self.effective_stats.defense)
+        mitigated = calculate_damage(raw_damage, effective_defense, defense_penetration)
         actual_damage = min(self.current_hp, mitigated)
         self.current_hp -= actual_damage
         return actual_damage
@@ -118,9 +123,10 @@ class Actor:
     def calculate_attack(self, rng: random.Random | None = None) -> tuple[int, bool]:
         """Compute outgoing damage and whether the attack was a critical hit."""
         rand = rng if rng is not None else secrets.SystemRandom()
-        is_crit = rand.random() < self.base_stats.crit_chance
+        stats = self.effective_stats
+        is_crit = rand.random() < stats.crit_chance
         variance = rand.uniform(0.9, 1.1)
-        dmg = int(self.base_stats.attack * variance)
+        dmg = int(stats.attack * variance)
         if is_crit:
             dmg = int(dmg * 1.5)
         return max(1, dmg), is_crit

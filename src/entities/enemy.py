@@ -28,6 +28,20 @@ TIER_ATK_MULT: dict[EnemyTier, float] = {
     EnemyTier.BOSS:     1.50,
 }
 
+# Act 3 bosses need a distinct curve: the normal floor scaling compounds sharply
+# by floor 42, where the final encounters currently become an extreme damage race.
+ACT_3_START_FLOOR = 25
+ACT_3_BOSS_HP_MULT = 2.50
+ACT_3_BOSS_ATK_MULT = 1.35
+
+# Reward scaling is kept explicit so enum values do not implicitly set economy balance.
+TIER_REWARD_MULT: dict[EnemyTier, float] = {
+    EnemyTier.COMMON: 1.0,
+    EnemyTier.UNCOMMON: 2.0,
+    EnemyTier.ELITE: 3.0,
+    EnemyTier.BOSS: 4.0,
+}
+
 from src.data.enemies import ENEMY_CATALOG
 
 
@@ -93,21 +107,21 @@ def generate_enemy(
 
     if tier == EnemyTier.BOSS:
         arch_id = rand.choice(biome.bosses)
-        multiplier = 1.0 + (floor * 0.05)
     elif tier == EnemyTier.ELITE:
         arch_id = rand.choice(biome.elites)
-        multiplier = 1.0 + (floor * 0.04)
     else:  # COMMON or UNCOMMON
         arch_id = rand.choice(biome.basic_enemies)
-        tier_mult = 1.0 if tier == EnemyTier.COMMON else 1.1
-        multiplier = tier_mult * (1.0 + (floor - 1) * 0.04)
 
     template = ENEMY_CATALOG.get(arch_id, ENEMY_CATALOG["thornvein_creeper"])
 
     floor_offset = max(0, floor - 1)
+    reward_multiplier = (1.0 + floor_offset * 0.04) * TIER_REWARD_MULT[tier]
 
     hp_mult = TIER_HP_MULT[tier]
     atk_mult = TIER_ATK_MULT[tier]
+    if tier == EnemyTier.BOSS and floor >= ACT_3_START_FLOOR:
+        hp_mult = ACT_3_BOSS_HP_MULT
+        atk_mult = ACT_3_BOSS_ATK_MULT
 
     scaled_stats = Stats(
         max_hp=max(1, int(template.base_hp * (1 + floor_offset * 0.045) * hp_mult)),
@@ -117,8 +131,8 @@ def generate_enemy(
         crit_chance=template.base_crit,
     )
 
-    exp_reward = int(70 * multiplier * tier.value)
-    gold_reward = int(rand.randint(6, 16) * multiplier * tier.value)
+    exp_reward = int(70 * reward_multiplier)
+    gold_reward = int(rand.randint(6, 16) * reward_multiplier)
 
     title_prefix = ""
     if tier == EnemyTier.ELITE:

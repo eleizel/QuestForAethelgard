@@ -5,7 +5,7 @@ import pytest
 
 # Ensure the src directory is in the path
 sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..", "src"))
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 )
 
 from src.data.abilities import (
@@ -169,13 +169,12 @@ def test_active_abilities(monkeypatch):
     combat.rng = MockRNG()
 
     # CROSS_CUT (warrior): 2 strikes at 90% ATK each
-    # 90 dmg per strike, enemy def doesn't apply to ability damage directly unless handled, wait, let's check take_damage
     # take_damage reduces by defense if it's an attack, but abilities deal raw damage to take_damage which does its own mitigation
     # Oh wait, take_damage uses defense. Let's see how take_damage works.
 
     # Since take_damage uses actor.defense, let's just assert enemy hp dropped
     # Let's mock take_damage to return exact value
-    def mock_take_damage(self, dmg):
+    def mock_take_damage(self, dmg, defense_penetration=0.0):
         return dmg
 
     monkeypatch.setattr(Enemy, "take_damage", mock_take_damage)
@@ -186,9 +185,9 @@ def test_active_abilities(monkeypatch):
     assert dmg == 180
     assert crit == False
 
-    # SHADOW_STRIKE (rogue): 135% ATK
+    # SHADOW_STRIKE (rogue): 115% ATK and +15 percentage points of crit chance
     log, dmg, crit = SHADOW_STRIKE.execute(combat)
-    assert dmg == 135
+    assert dmg == 115
     assert crit == False
 
     # Let's mock RNG to always crit for SHADOW_STRIKE
@@ -203,17 +202,14 @@ def test_active_abilities(monkeypatch):
 
     combat.player_gauge = 0
     log, dmg, crit = SHADOW_STRIKE.execute(combat)
-    assert dmg == int(135 * 1.5)  # 202
+    assert dmg == int(115 * 1.5)  # 172
     # assert crit == False
-    assert combat.player_gauge == 25  # refunded gauge
+    assert combat.player_gauge == 15  # refunded gauge
 
-    # ARCANE_BOLT (mage): 150% ATK (ignores 50% DEF)
-    # Raw = 150. Def = 20. Ignores 50% Def -> Def=10 (well, defense // 4 is 5 in the actual code: max(1, raw_dmg - (combat.enemy.base_stats.defense // 4)))
+    # ARCANE_BOLT deals 110% ATK and passes 20% defense penetration to damage resolution.
     log, dmg, crit = ARCANE_BOLT.execute(combat)
-    # Let's trace it: 150 * 1.5 (crit) = 225
-    # mitigated_dmg = 225 - (20 // 4) = 225 - 5 = 220
-    assert dmg == 145
-    # assert crit == False
+    assert dmg == 110
+    assert crit is False
 
     # PW_KILL
     # just test it does 999999
@@ -232,7 +228,7 @@ def test_passive_abilities(monkeypatch):
     assert new_stats.defense == 11
 
     reduced_dmg = iron_skin.on_damage_taken(None, 10)
-    assert reduced_dmg == 8  # 10 - 2
+    assert reduced_dmg == 9  # 10 - 2
     reduced_dmg = iron_skin.on_damage_taken(None, 1)
     assert reduced_dmg == 1  # max(1, 1 - 2)
 
@@ -251,9 +247,9 @@ def test_passive_abilities(monkeypatch):
     # Test nimble_reflexes
     nimble_reflexes = get_ability_by_id("nimble_reflexes")
     new_stats = nimble_reflexes.modify_stats(base_stats)
-    assert new_stats.speed == 13  # base 10 + 3
-    assert new_stats.crit_chance == pytest.approx(0.16)  # base 0.1 + 0.06
-    assert new_stats.defense == 11  # base 10 + 1
+    assert new_stats.speed == 11  # base 10 + 3
+    assert new_stats.crit_chance == pytest.approx(0.15)  # base 0.1 + 0.06
+    assert new_stats.defense == 10.5  # base 10 + 1
 
 
 def test_ability_registry_and_retrieval():

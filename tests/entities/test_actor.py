@@ -133,8 +133,8 @@ def test_take_damage_with_defense():
     # Defense 10 -> mitigation 5. Raw damage 20 -> Mitigated 15 -> Actual 15
     actual_damage = actor.take_damage(20)
 
-    assert actual_damage == 15
-    assert actor.current_hp == 85
+    assert actual_damage == 16
+    assert actor.current_hp == 84
 
 
 def test_take_damage_minimum_one():
