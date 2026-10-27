@@ -363,7 +363,7 @@ TRANSLATIONS_ES = {
     "ability_frost_nova_name": "Nova de Escarcha",
     "ability_frost_nova_desc": "Inflige 95% ATQ y congela 45 del medidor enemigo.",
     "ability_chain_lightning_name": "Cadena de Rayos",
-    "ability_chain_lightning_desc": "Inflige 130% ATQ. Los criticos devuelven 40 de medidor.",
+    "ability_chain_lightning_desc": "Inflige 130% ATQ o 195% con crítico. Los críticos devuelven 40 de medidor.",
     "ability_arcane_ward_name": "Guarda Arcana",
     "ability_arcane_ward_desc": "+20% PV máximos, +15% ATQ, +10% DEF y +10 puntos porcentuales de crítico.",
     "ability_mana_barrier_name": "Barrera de Mana",
