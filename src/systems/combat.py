@@ -42,6 +42,8 @@ class CombatSystem:
     ) -> None:
         self.player: Player = player
         self.enemy: Enemy = enemy
+        # Passive hooks may update combat-owned resources such as action gauge.
+        self.player.combat_ref = self
         self.rng: random.Random = random.Random(seed)
 
         # Action gauges (0 to ACTION_THRESHOLD)
@@ -154,6 +156,11 @@ class CombatSystem:
                 passive_penetration = min(0.75, max(0.0, player_defense / enemy_defense - 1.0))
             # Combine penetrations multiplicatively to avoid adding percentages past 100%.
             defense_penetration = 1.0 - (1.0 - defense_penetration) * (1.0 - passive_penetration)
+
+        # Exposed Weakness empowers exactly the next damaging strike after a critical hit.
+        if getattr(self.player, "_next_strike_bonus", False):
+            raw_damage = int(raw_damage * 1.25)
+            self.player._next_strike_bonus = False
 
         return self.enemy.take_damage(raw_damage, defense_penetration=defense_penetration)
 
