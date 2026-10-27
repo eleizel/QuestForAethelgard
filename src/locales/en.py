@@ -213,7 +213,7 @@ TRANSLATIONS_EN = {
     "status_haste_name": "Haste",
     "status_weaken_name": "Weaken",
     "status_vulnerable_name": "Vulnerable",
-    "status_tick_burn": "{target} burns for {dmg} fire dmg.",
+    "status_tick_burn": "{target} burns for {dmg} fire damage (ignores defense).",
     "status_tick_poison": "{target} suffers {dmg} poison dmg.",
     "status_tick_bleed": "{target} bleeds for {dmg} physical dmg.",
     "combat_status_applied": "{target} is afflicted with {effect}!",
