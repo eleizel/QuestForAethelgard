@@ -8,16 +8,16 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..", "src"))
 )
 
-from src.systems.abilities import (
+from src.data.abilities import (
     Ability,
     AbilityType,
     AbilityRarity,
-    PlayerAbilities,
     get_ability_by_id,
     CROSS_CUT,
     SHADOW_STRIKE,
     ARCANE_BOLT,
 )
+from src.systems.abilities import PlayerAbilities
 
 from src.entities.actor import Stats
 from src.entities.player import Player
@@ -257,7 +257,7 @@ def test_passive_abilities(monkeypatch):
 
 
 def test_ability_registry_and_retrieval():
-    from src.systems.abilities import get_random_abilities, ABILITY_REGISTRY
+    from src.data.abilities import get_random_abilities, ABILITY_REGISTRY
 
     # get_ability_by_id
     assert get_ability_by_id("cross_cut").name == "Cross Cut"
@@ -290,6 +290,6 @@ def test_ability_registry_and_retrieval():
         AbilityRarity.STANDARD, [], player_class="warrior", count=100
     )
     # the pool of all standards is len(STANDARD_ABILITIES)
-    from src.systems.abilities import STANDARD_ABILITIES
+    from src.data.abilities import STANDARD_ABILITIES
 
     assert len(random_fallback) == len(STANDARD_ABILITIES)

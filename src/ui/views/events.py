@@ -48,7 +48,10 @@ class EventsView(View):
                                                                                                   SCREEN_HEIGHT):
                 pyxel.play(0, 3)
                 game_state.current_event = None
-                game_state.switch_mode(GameMode.MAP)
+                if game_state.player.pending_ability_choices:
+                    game_state.switch_mode(GameMode.ABILITY_CHOICE)
+                else:
+                    game_state.switch_mode(GameMode.MAP)
         else:
             # Decision state
             box_x, box_y, box_w, box_h = 18, 42, SCREEN_WIDTH - 36, 198
