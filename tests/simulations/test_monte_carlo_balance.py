@@ -10,6 +10,8 @@ The simulation uses the real map, enemy, combat, level, reward, and loot systems
 Its automated policy picks the safest available biome in PATHFINDER mode, chooses
 map nodes using a survivability/reward heuristic, takes generated gear upgrades,
 uses healing items/skills when hurt, and selects randomly from ability drafts.
+During combat it uses the ready damaging ability with the highest expected damage
+per cooldown cycle; permanent stat elixirs are consumed as soon as they are found.
 The developer-only `pw_kill` ability is excluded from balance runs.
 Events choose the option with the strongest estimated player-state value; shops
 buy/equip useful upgrades, stat elixirs, and healing supplies when affordable.
@@ -225,7 +227,7 @@ def _shop_item_utility(player: Any, item: Any, price: int) -> float:
     return float("-inf")
 
 
-def _purchase_simulated_shop_items(state: Any) -> tuple[int, int]:
+def _purchase_simulated_shop_items(state: Any) -> tuple[int, int, list[str]]:
     """Buy affordable upgrades and reserve healing, applying them as a player can."""
     from src.data.items import StatPotion
     from src.entities.item import ConsumableItem, EquipmentItem
@@ -234,6 +236,7 @@ def _purchase_simulated_shop_items(state: Any) -> tuple[int, int]:
     inventory = state.player.inventory
     bought = 0
     gold_spent = 0
+    stat_potions_used: list[str] = []
     stock = state.merchant_stock
     while stock and len(inventory.pouch) < MAX_POUCH_SLOTS:
         candidates = [
@@ -256,7 +259,8 @@ def _purchase_simulated_shop_items(state: Any) -> tuple[int, int]:
             if old_item is not None:
                 inventory.add_to_pouch(old_item)
         elif isinstance(item, StatPotion):
-            item.use(state.player)
+            if item.use(state.player):
+                stat_potions_used.append(item.id)
         elif isinstance(item, ConsumableItem) and item.heal_amount > 0:
             empty_slot = next((i for i, belt_item in enumerate(inventory.belt) if belt_item is None), None)
             if empty_slot is not None:
@@ -264,13 +268,14 @@ def _purchase_simulated_shop_items(state: Any) -> tuple[int, int]:
             else:
                 inventory.add_to_pouch(item)
     state.merchant_stock = []
-    return bought, gold_spent
+    return bought, gold_spent, stat_potions_used
 
 
 def _collect_loot_and_ability_drafts(
     state: Any, rng: random.Random
-) -> tuple[int, int, int, list[str], list[str]]:
+) -> tuple[int, int, int, list[str], list[str], list[str]]:
     from src.data.abilities import get_random_abilities
+    from src.data.items import StatPotion
     from src.entities.item import ConsumableItem, EquipmentItem
     from src.systems.abilities import AbilityRarity
 
@@ -278,6 +283,7 @@ def _collect_loot_and_ability_drafts(
     loot_count = len(state.pending_loot)
     equipment_upgrades = 0
     equipment_selected: list[str] = []
+    stat_potions_used: list[str] = []
     for item in state.pending_loot:
         if isinstance(item, EquipmentItem):
             current = inventory.equipment[item.slot]
@@ -287,6 +293,9 @@ def _collect_loot_and_ability_drafts(
                 equipment_selected.append(item.id)
                 if previous is not None and len(inventory.pouch) < 10:
                     inventory.pouch.append(previous)
+        elif isinstance(item, StatPotion):
+            if item.use(state.player):
+                stat_potions_used.append(item.id)
         elif isinstance(item, ConsumableItem):
             if not inventory.add_to_pouch(item):
                 continue
@@ -322,12 +331,27 @@ def _collect_loot_and_ability_drafts(
         else:
             state.player.abilities.replace_ability(selected, 1)
 
-    return loot_count, equipment_upgrades, ability_drafts, equipment_selected, abilities_selected
+    return (
+        loot_count,
+        equipment_upgrades,
+        ability_drafts,
+        equipment_selected,
+        abilities_selected,
+        stat_potions_used,
+    )
 
 
 def _increment(groups: tuple[dict[str, Any], ...], key: str, amount: float = 1) -> None:
     for group in groups:
         group[key] = group.get(key, 0) + amount
+
+
+def _record_stat_potions(groups: tuple[dict[str, Any], ...], item_ids: list[str]) -> None:
+    for group in groups:
+        group["stat_potions_used"] = group.get("stat_potions_used", 0) + len(item_ids)
+        used_by_id = group.setdefault("stat_potion_ids_used", {})
+        for item_id in item_ids:
+            used_by_id[item_id] = used_by_id.get(item_id, 0) + 1
 
 
 def _record_max(groups: tuple[dict[str, Any], ...], key: str, value: float) -> None:
@@ -360,6 +384,8 @@ def _new_act_record() -> dict[str, Any]:
         "player_actions_skipped_by_stun": 0,
         "enemy_actions_skipped_by_stun": 0,
         "potions_used": 0,
+        "stat_potions_used": 0,
+        "stat_potion_ids_used": {},
         "potion_hp_restored": 0,
         "events_resolved": 0,
         "shop_items_bought": 0,
@@ -535,6 +561,59 @@ def test_combat_instrumentation_counts_real_damage_hits() -> None:
     assert encounter["player_direct_kill"] is True
 
 
+def _expected_ability_damage(combat: Any, ability: Any, samples: int = 5) -> float:
+    """Estimate direct damage on isolated copies using repeatable RNG samples."""
+    damage_samples: list[int] = []
+    seed_base = sum((index + 1) * ord(char) for index, char in enumerate(ability.id))
+    for sample in range(max(1, samples)):
+        player = deepcopy(combat.player)
+        enemy = deepcopy(combat.enemy)
+        # Combat instrumentation wraps this method per encounter; restore the
+        # class implementation on the copy so a forecast cannot affect metrics.
+        enemy.take_damage = type(enemy).take_damage.__get__(enemy, type(enemy))
+        scratch = SimpleNamespace(
+            player=player,
+            enemy=enemy,
+            rng=random.Random(seed_base + sample * 104729),
+            player_gauge=getattr(combat, "player_gauge", 0),
+            enemy_gauge=getattr(combat, "enemy_gauge", 0),
+        )
+        _log, damage, _crit = ability.execute(scratch)
+        damage_samples.append(max(0, int(damage)))
+    return statistics.mean(damage_samples)
+
+
+def _ability_damage_per_action(combat: Any, ability: Any) -> float:
+    # Cooldowns decrement on each player action; after using cooldown N, the
+    # skill is available again after N further actions, so the cycle is N+1.
+    def stat_key(actor: Any) -> tuple[Any, ...]:
+        stats = actor.effective_stats
+        return (stats.max_hp, stats.attack, stats.defense, stats.speed, stats.crit_chance)
+
+    status_key = tuple(
+        sorted(
+            (status.id, status.potency)
+            for actor in (combat.player, combat.enemy)
+            for status in actor.statuses
+        )
+    )
+    cache_key = (
+        ability.id,
+        stat_key(combat.player),
+        stat_key(combat.enemy),
+        status_key,
+        int(4 * combat.enemy.current_hp / max(1, combat.enemy.max_hp)),
+        combat.enemy.current_hp < combat.enemy.max_hp * 0.40,
+    )
+    cache = getattr(combat, "_mc_ability_damage_cache", None)
+    if cache is None:
+        cache = {}
+        combat._mc_ability_damage_cache = cache
+    if cache_key not in cache:
+        cache[cache_key] = _expected_ability_damage(combat, ability)
+    return cache[cache_key] / (max(0, ability.cooldown) + 1)
+
+
 def _queue_ability_if_ready(combat: Any, rng: random.Random) -> None:
     if combat.queued_ability is not None:
         return
@@ -560,7 +639,63 @@ def _queue_ability_if_ready(combat: Any, rng: random.Random) -> None:
 
     offensive_or_control = [ability for ability in ready if ability.id != "rallying_cry"]
     if offensive_or_control:
-        combat.queued_ability = rng.choice(offensive_or_control)
+        ranked = [
+            (_ability_damage_per_action(combat, ability), ability.id, ability)
+            for ability in offensive_or_control
+        ]
+        # Stable ID tie-break keeps the policy reproducible across runs.
+        best_damage, _ability_id, best_ability = max(ranked, key=lambda row: (row[0], row[1]))
+        if best_damage > 0:
+            combat.queued_ability = best_ability
+        else:
+            combat.queued_ability = min(offensive_or_control, key=lambda ability: ability.id)
+
+
+def test_combat_bot_prefers_highest_damage_per_cooldown_cycle() -> None:
+    class DummyEnemy:
+        def __init__(self) -> None:
+            self.current_hp = 100
+            self.max_hp = 100
+            self.statuses: list[Any] = []
+            self.effective_stats = SimpleNamespace(
+                max_hp=100, attack=10, defense=0, speed=10, crit_chance=0.0
+            )
+
+        def take_damage(self, damage: int, defense_penetration: float = 0.0) -> int:
+            return damage
+
+    def skill(skill_id: str, damage: int, cooldown: int) -> Any:
+        return SimpleNamespace(
+            id=skill_id,
+            cooldown=cooldown,
+            required_class="warrior",
+            execute=lambda _combat: ("", damage, False),
+        )
+
+    slower_burst = skill("slower_burst", 40, 3)  # 10 expected damage/action
+    faster_damage = skill("faster_damage", 30, 1)  # 15 expected damage/action
+    player = SimpleNamespace(
+        class_id="warrior",
+        current_hp=100,
+        max_hp=100,
+        effective_stats=SimpleNamespace(
+            max_hp=100, attack=10, defense=0, speed=100, crit_chance=0.0
+        ),
+        statuses=[],
+        abilities=SimpleNamespace(active=[slower_burst, faster_damage]),
+    )
+    combat = SimpleNamespace(
+        queued_ability=None,
+        player_gauge=0,
+        enemy_gauge=0,
+        player=player,
+        enemy=DummyEnemy(),
+        is_ability_ready=lambda _ability: True,
+    )
+
+    _queue_ability_if_ready(combat, random.Random(1))
+
+    assert combat.queued_ability is faster_damage
 
 
 def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any) -> dict[str, Any]:
@@ -593,6 +728,8 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
         "equipment_upgrades": 0,
         "ability_drafts": 0,
         "potions_used": 0,
+        "stat_potions_used": 0,
+        "stat_potion_ids_used": {},
         "potion_hp_restored": 0,
         "gold_from_nodes": 0,
         "events_resolved": 0,
@@ -694,7 +831,9 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
                                 event_drafts,
                                 event_equipment,
                                 event_abilities,
+                                event_stat_potions,
                             ) = _collect_loot_and_ability_drafts(state, rng)
+                            _record_stat_potions((metrics, act_record), event_stat_potions)
                             _increment((metrics, act_record), "loot_items", event_loot)
                             _increment((metrics, act_record), "ability_drafts", event_drafts)
                             for item_id in event_equipment:
@@ -706,7 +845,8 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
                         state.current_event = None
                         state.switch_mode(GameMode.MAP)
                     elif state.current_mode == GameMode.SHOP:
-                        bought, gold_spent = _purchase_simulated_shop_items(state)
+                        bought, gold_spent, shop_stat_potions = _purchase_simulated_shop_items(state)
+                        _record_stat_potions((metrics, act_record), shop_stat_potions)
                         _increment((metrics, act_record), "shop_items_bought", bought)
                         _increment((metrics, act_record), "shop_gold_spent", gold_spent)
                         state.switch_mode(GameMode.MAP)
@@ -822,7 +962,9 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
                         ability_drafts,
                         equipment_selected,
                         abilities_selected,
+                        stat_potions,
                     ) = _collect_loot_and_ability_drafts(state, rng)
+                    _record_stat_potions((metrics, act_record), stat_potions)
                     metrics["loot_items"] += loot_count
                     metrics["equipment_upgrades"] += equipment_upgrades
                     metrics["ability_drafts"] += ability_drafts
@@ -956,6 +1098,7 @@ def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
             row["act_transition_healing"] for row in rows
         ),
         "mean_potions": statistics.mean(row["potions_used"] for row in rows),
+        "mean_stat_potions": statistics.mean(row["stat_potions_used"] for row in rows),
         "mean_potion_hp_restored": statistics.mean(row["potion_hp_restored"] for row in rows),
         "mean_equipment_upgrades": statistics.mean(row["equipment_upgrades"] for row in rows),
         "mean_ability_drafts": statistics.mean(row["ability_drafts"] for row in rows),
@@ -1006,7 +1149,7 @@ def _print_detailed_tables(
         "class,route,fights,bosses,ticks,damage_dealt,status_dealt,total_dealt,"
         "damage_taken,status_taken,total_taken,"
         "combat_hp_restored,levelup_hp_restored,potion_hp_restored,rest_healing,"
-        "act_transition_healing,potions,"
+        "act_transition_healing,potions,stat_elixirs_used,"
         "equipment_upgrades,ability_drafts,events_resolved,shop_items_bought,shop_gold_spent,"
         "xp_awarded,xp_remainder,gold_held,gold_awarded,gold_from_nodes,"
         "player_actions,enemy_actions,stun_skips,max_hit_taken_p90"
@@ -1021,7 +1164,8 @@ def _print_detailed_tables(
             f"{summary['mean_combat_hp_restored']:.1f},{summary['mean_levelup_hp_restored']:.1f},"
             f"{summary['mean_potion_hp_restored']:.1f},{summary['mean_rest_healing']:.1f},"
             f"{summary['mean_act_transition_healing']:.1f},"
-            f"{summary['mean_potions']:.2f},{summary['mean_equipment_upgrades']:.2f},"
+            f"{summary['mean_potions']:.2f},{summary['mean_stat_potions']:.2f},"
+            f"{summary['mean_equipment_upgrades']:.2f},"
             f"{summary['mean_ability_drafts']:.2f},{summary['mean_events_resolved']:.2f},"
             f"{summary['mean_shop_items_bought']:.2f},{summary['mean_shop_gold_spent']:.1f},"
             f"{summary['mean_xp_awarded']:.1f},"
@@ -1078,6 +1222,16 @@ def _print_detailed_tables(
                 f"{mean_act_metric('xp_awarded'):.1f},{mean_act_metric('gold_awarded'):.1f},"
                 f"{mean_act_metric('potions_used'):.2f},{mean_act_metric('equipment_upgrades'):.2f}"
             )
+
+    print("\n=== ELIXIRES PERMANENTES USADOS ===")
+    print("class,route,item_id,uses,uses_per_run")
+    for class_id, route, rows, _summary in summaries:
+        item_counts: dict[str, int] = {}
+        for row in rows:
+            for item_id, count in row.get("stat_potion_ids_used", {}).items():
+                item_counts[item_id] = item_counts.get(item_id, 0) + count
+        for item_id, count in sorted(item_counts.items()):
+            print(f"{class_id},{route},{item_id},{count},{count / len(rows):.2f}")
 
     print("\n=== COMBATES POR TIER ===")
     print("class,route,tier,encounters,win%,win_95ci,mean_ticks,damage_dealt,damage_taken,status_taken")
