@@ -139,6 +139,22 @@ class CombatSystem:
         )
         if has_cull_the_weak and self.enemy.current_hp > 0 and self.enemy.current_hp <= self.enemy.max_hp * 0.30:
             raw_damage = int(raw_damage * 1.30)
+
+        # Defensive Superiority converts the player's relative DEF advantage into
+        # penetration. It does nothing when the enemy has equal or higher DEF.
+        has_defensive_superiority = any(
+            ability.id == "defensive_superiority" for ability in self.player.abilities.passive
+        )
+        if has_defensive_superiority:
+            enemy_defense = max(0, self.enemy.effective_stats.defense)
+            player_defense = max(0, self.player.effective_stats.defense)
+            if enemy_defense <= 0:
+                passive_penetration = 0.75 if player_defense > 0 else 0.0
+            else:
+                passive_penetration = min(0.75, max(0.0, player_defense / enemy_defense - 1.0))
+            # Combine penetrations multiplicatively to avoid adding percentages past 100%.
+            defense_penetration = 1.0 - (1.0 - defense_penetration) * (1.0 - passive_penetration)
+
         return self.enemy.take_damage(raw_damage, defense_penetration=defense_penetration)
 
     def _execute_player_attack(self) -> None:
@@ -161,6 +177,9 @@ class CombatSystem:
             # Set this specific ability's cooldown
             if self.queued_ability.cooldown > 0:
                 self.cooldowns[self.queued_ability.id] = self.queued_ability.cooldown
+
+            # Track the affinity of the last active skill used. Basic attacks do not clear it.
+            self.player._last_ability_affinities = tuple(getattr(self.queued_ability, "affinities", ()))
 
             # Execute active ability
             log_str, dmg_dealt, is_crit = self.queued_ability.execute(self)
