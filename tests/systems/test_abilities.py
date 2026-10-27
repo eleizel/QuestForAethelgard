@@ -252,6 +252,52 @@ def test_passive_abilities(monkeypatch):
     assert new_stats.defense == pytest.approx(10.5)  # +5%
 
 
+
+def test_rogue_standard_effects(monkeypatch):
+    from src.data.abilities import get_ability_by_id
+    from src.entities.enemy import EnemyTier
+
+    player = Player(name="RogueTest", class_id="rogue")
+    player.base_stats = Stats(max_hp=100, attack=20, defense=0, speed=15, crit_chance=0.1)
+    player.current_hp = 100
+    enemy = Enemy(name="Target", stats=Stats(100, 10, 0, 10, 0.0), tier=EnemyTier.COMMON,
+                  floor_level=1, exp_reward=1, gold_reward=1)
+    enemy.base_stats = Stats(max_hp=100, attack=10, defense=0, speed=10, crit_chance=0.0)
+    enemy.current_hp = 100
+    combat = CombatSystem(player, enemy)
+
+    def exact_damage(self, raw_damage, defense_penetration=0.0):
+        return raw_damage
+    monkeypatch.setattr(Enemy, "take_damage", exact_damage)
+
+    # Poison Shiv applies the existing poison status as well as its direct hit.
+    poison_shiv = get_ability_by_id("poison_shiv")
+    assert poison_shiv is not None
+    poison_shiv.execute(combat)
+    poison = next((status for status in enemy.statuses if status.id == "poison"), None)
+    assert poison is not None
+    assert poison.duration == 5
+    assert poison.potency == 2
+
+    # Exposed Weakness applies a 25% bonus to one subsequent damaging strike only.
+    exposed = get_ability_by_id("exposed_weakness")
+    assert exposed is not None
+    player.abilities.add_ability(exposed)
+    exposed.on_attack_dealt(player, enemy, 10, True)
+    assert getattr(player, "_next_strike_bonus", False) is True
+    assert combat.damage_enemy(100) == 125
+    assert getattr(player, "_next_strike_bonus", False) is False
+    assert combat.damage_enemy(100) == 100
+
+    # Shadow Step updates the combat gauge through the combat reference.
+    shadow_step = get_ability_by_id("shadow_step")
+    assert shadow_step is not None
+    player.abilities.add_ability(shadow_step)
+    combat.player_gauge = 10
+    shadow_step.on_damage_taken(player, 10)
+    assert combat.player_gauge == 25
+
+
 def test_ability_registry_and_retrieval():
     from src.data.abilities import get_random_abilities, ABILITY_REGISTRY
 
