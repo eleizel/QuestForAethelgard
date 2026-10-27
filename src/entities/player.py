@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import src.systems.inventory
 from src.data.classes import CLASS_REGISTRY
 from src.entities.actor import Actor, Stats
@@ -15,7 +17,8 @@ class Player(Actor):
         self.class_id = class_id
         class_def = CLASS_REGISTRY[self.class_id]
 
-        super().__init__(name=name, base_stats=class_def.base_stats)
+        # Each run needs its own mutable stats; events permanently modify these.
+        super().__init__(name=name, base_stats=replace(class_def.base_stats))
 
         self.level: int = 1
         self.experience: int = 0

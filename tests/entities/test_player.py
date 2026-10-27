@@ -87,6 +87,17 @@ def test_effective_stats_base():
     assert stats.crit_chance == pytest.approx(player.base_stats.crit_chance)
 
 
+def test_player_base_stats_are_not_shared_with_class_template():
+    template_attack = CLASS_REGISTRY["warrior"].base_stats.attack
+    first = Player(class_id="warrior")
+    first.base_stats.attack += 5
+
+    second = Player(class_id="warrior")
+
+    assert CLASS_REGISTRY["warrior"].base_stats.attack == template_attack
+    assert second.base_stats.attack == template_attack
+
+
 def test_rogue_has_modest_survivability_tuning():
     rogue = CLASS_REGISTRY["rogue"]
 

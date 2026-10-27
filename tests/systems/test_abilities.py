@@ -228,7 +228,7 @@ def test_passive_abilities(monkeypatch):
     assert new_stats.defense == 11
 
     reduced_dmg = iron_skin.on_damage_taken(None, 10)
-    assert reduced_dmg == 9  # 10 - 2
+    assert reduced_dmg == 8  # 10 - 2
     reduced_dmg = iron_skin.on_damage_taken(None, 1)
     assert reduced_dmg == 1  # max(1, 1 - 2)
 
@@ -247,9 +247,9 @@ def test_passive_abilities(monkeypatch):
     # Test nimble_reflexes
     nimble_reflexes = get_ability_by_id("nimble_reflexes")
     new_stats = nimble_reflexes.modify_stats(base_stats)
-    assert new_stats.speed == 11  # base 10 + 3
-    assert new_stats.crit_chance == pytest.approx(0.15)  # base 0.1 + 0.06
-    assert new_stats.defense == 10.5  # base 10 + 1
+    assert new_stats.speed == 13  # base 10 + 3
+    assert new_stats.crit_chance == pytest.approx(0.16)  # base 0.1 + 0.06
+    assert new_stats.defense == 11  # base 10 + 1
 
 
 def test_ability_registry_and_retrieval():

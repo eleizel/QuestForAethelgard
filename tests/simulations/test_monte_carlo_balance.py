@@ -11,7 +11,8 @@ Its automated policy picks the safest available biome in PATHFINDER mode, choose
 map nodes using a survivability/reward heuristic, takes generated gear upgrades,
 uses healing items/skills when hurt, and selects randomly from ability drafts.
 The developer-only `pw_kill` ability is excluded from balance runs.
-Events and shops are entered but their optional choices/purchases are not resolved.
+Events choose the option with the strongest estimated player-state value; shops
+buy/equip useful upgrades, stat elixirs, and healing supplies when affordable.
 FATE and PATHFINDER receive the same trial seed for each class. Biome selection
 uses a separate seeded stream so FATE's random biome draw does not shift the
 shared economy/event random stream before the first encounter.
@@ -23,7 +24,9 @@ import os
 import random
 import statistics
 import sys
+from copy import deepcopy
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -102,6 +105,166 @@ def _gear_score(item: Any) -> float:
         + 0.5 * bonus.speed
         + 50 * bonus.crit_chance
     )
+
+
+def _player_policy_score(player: Any) -> float:
+    """Estimate a player's combat value and useful resources for event choices."""
+    from src.data.items import StatPotion
+    from src.entities.item import ConsumableItem, EquipmentItem
+
+    stats = player.effective_stats
+    score = (
+        stats.attack * 1.5
+        + stats.defense * 1.2
+        + stats.speed * 1.5
+        + stats.max_hp * 0.25
+        + player.current_hp * 0.45
+        + stats.crit_chance * 100
+        + player.gold * 0.03
+        + len(player.pending_ability_choices) * 18
+    )
+    for item in player.inventory.pouch:
+        if isinstance(item, EquipmentItem):
+            current = player.inventory.equipment.get(item.slot)
+            score += max(0.0, _gear_score(item) - (_gear_score(current) if current else 0.0)) * 0.25
+        elif isinstance(item, StatPotion):
+            bonus = item.stat_bonus
+            score += (
+                bonus.attack * 1.5
+                + bonus.defense * 1.2
+                + bonus.speed * 1.5
+                + bonus.max_hp * 0.25
+                + bonus.crit_chance * 100
+            )
+        elif isinstance(item, ConsumableItem):
+            score += 6 + min(item.heal_amount, max(0, player.max_hp - player.current_hp)) * 0.1
+            if item.cleanses_debuffs and player.statuses:
+                score += 3
+    for status in player.statuses:
+        if getattr(status, "id", "") in {"poison", "burn", "bleed"}:
+            score -= status.potency * status.duration * 0.5
+    return score
+
+
+def _resolve_simulated_event(state: Any) -> str | None:
+    """Choose the available event option with the best simulated player outcome."""
+    event = state.current_event
+    if event is None:
+        return None
+    choices = [choice for choice in event.choices if choice.is_available(state)]
+    if not choices:
+        return None
+
+    from_state = random.getstate()
+    scored_choices: list[tuple[float, int, Any]] = []
+    for index, choice in enumerate(choices):
+        random.setstate(from_state)
+        trial_player = deepcopy(state.player)
+        choice.action_hook(SimpleNamespace(player=trial_player))
+        score = _player_policy_score(trial_player)
+        scored_choices.append((score, -index, choice))
+    random.setstate(from_state)
+
+    _score, _order, selected = max(scored_choices, key=lambda row: (row[0], row[1]))
+    event.resolved_text = selected.action_hook(state)
+    return event.id
+
+
+def _equip_pouch_upgrades(state: Any) -> int:
+    """Equip newly acquired pouch gear when it improves that slot."""
+    from src.entities.item import EquipmentItem
+
+    inventory = state.player.inventory
+    equipped = 0
+    for index in range(len(inventory.pouch) - 1, -1, -1):
+        item = inventory.pouch[index]
+        if not isinstance(item, EquipmentItem):
+            continue
+        if item.required_class is not None and item.required_class != state.player.class_id:
+            continue
+        current = inventory.equipment.get(item.slot)
+        if current is not None and _gear_score(item) <= _gear_score(current):
+            continue
+        can_equip, _reason = inventory.can_equip(item, state.player)
+        if not can_equip:
+            continue
+        inventory.remove_from_pouch(index)
+        old_item = inventory.equip(item)
+        if old_item is not None:
+            inventory.add_to_pouch(old_item)
+        equipped += 1
+    return equipped
+
+
+def _shop_item_utility(player: Any, item: Any, price: int) -> float:
+    from src.data.items import StatPotion
+    from src.entities.item import ConsumableItem, EquipmentItem
+
+    if isinstance(item, EquipmentItem):
+        current = player.inventory.equipment.get(item.slot)
+        gain = _gear_score(item) - (_gear_score(current) if current else 0.0)
+        return gain - price * 0.03
+    if isinstance(item, StatPotion):
+        bonus = item.stat_bonus
+        gain = (
+            bonus.attack * 1.5
+            + bonus.defense * 1.2
+            + bonus.speed * 1.5
+            + bonus.max_hp * 0.25
+            + bonus.crit_chance * 100
+        )
+        gain += min(item.heal_amount, max(0, player.max_hp - player.current_hp)) * 0.2
+        return gain - price * 0.03
+    if isinstance(item, ConsumableItem) and item.heal_amount > 0:
+        has_healing = any(belt_item and belt_item.heal_amount > 0 for belt_item in player.inventory.belt)
+        has_healing = has_healing or any(
+            getattr(pouch_item, "heal_amount", 0) > 0 for pouch_item in player.inventory.pouch
+        )
+        if not has_healing:
+            return item.heal_amount * 0.2 - price * 0.04
+    return float("-inf")
+
+
+def _purchase_simulated_shop_items(state: Any) -> tuple[int, int]:
+    """Buy affordable upgrades and reserve healing, applying them as a player can."""
+    from src.data.items import StatPotion
+    from src.entities.item import ConsumableItem, EquipmentItem
+    from src.systems.inventory import MAX_POUCH_SLOTS
+
+    inventory = state.player.inventory
+    bought = 0
+    gold_spent = 0
+    stock = state.merchant_stock
+    while stock and len(inventory.pouch) < MAX_POUCH_SLOTS:
+        candidates = [
+            (_shop_item_utility(state.player, item, price), index, item, price)
+            for index, (item, price) in enumerate(stock)
+            if price <= state.player.gold
+        ]
+        if not candidates:
+            break
+        utility, index, item, price = max(candidates, key=lambda row: (row[0], -row[1]))
+        if utility <= 0:
+            break
+
+        state.player.gold -= price
+        gold_spent += price
+        bought += 1
+        stock.pop(index)
+        if isinstance(item, EquipmentItem):
+            old_item = inventory.equip(item)
+            if old_item is not None:
+                inventory.add_to_pouch(old_item)
+        elif isinstance(item, StatPotion):
+            item.use(state.player)
+        elif isinstance(item, ConsumableItem) and item.heal_amount > 0:
+            empty_slot = next((i for i, belt_item in enumerate(inventory.belt) if belt_item is None), None)
+            if empty_slot is not None:
+                inventory.belt[empty_slot] = item
+            else:
+                inventory.add_to_pouch(item)
+    state.merchant_stock = []
+    return bought, gold_spent
 
 
 def _collect_loot_and_ability_drafts(
@@ -198,6 +361,9 @@ def _new_act_record() -> dict[str, Any]:
         "enemy_actions_skipped_by_stun": 0,
         "potions_used": 0,
         "potion_hp_restored": 0,
+        "events_resolved": 0,
+        "shop_items_bought": 0,
+        "shop_gold_spent": 0,
         "ability_uses": {},
     }
 
@@ -208,13 +374,29 @@ def _instrument_combat(combat: Any, run: dict[str, Any], act: dict[str, Any], en
     original_enemy_action = combat._execute_enemy_attack
     original_status_ticks = combat._process_status_ticks
     original_rewards = combat._distribute_rewards
+    original_enemy_take_damage = combat.enemy.take_damage
+    tracking_player_strike = False
+
+    def tracked_enemy_take_damage(raw_damage: int, defense_penetration: float = 0.0) -> int:
+        nonlocal tracking_player_strike
+        damage = original_enemy_take_damage(raw_damage, defense_penetration)
+        if tracking_player_strike and damage > 0:
+            encounter["player_damage_hits"] += 1
+            if not combat.enemy.is_alive:
+                encounter["player_direct_kill"] = True
+        return damage
 
     def player_action() -> None:
+        nonlocal tracking_player_strike
         ability = combat.queued_ability
         was_stunned = combat.player.has_status("stun")
         player_hp_before = combat.player.current_hp
         enemy_hp_before = combat.enemy.current_hp
-        original_player_action()
+        tracking_player_strike = True
+        try:
+            original_player_action()
+        finally:
+            tracking_player_strike = False
         _increment(
             (run, act, encounter),
             "player_actions" if not was_stunned else "player_actions_skipped_by_stun",
@@ -295,6 +477,62 @@ def _instrument_combat(combat: Any, run: dict[str, Any], act: dict[str, Any], en
     combat._execute_enemy_attack = enemy_action
     combat._process_status_ticks = status_ticks
     combat._distribute_rewards = distribute_rewards
+    combat.enemy.take_damage = tracked_enemy_take_damage
+
+
+def test_combat_instrumentation_counts_real_damage_hits() -> None:
+    class DummyActor:
+        def __init__(self, hp: int) -> None:
+            self.current_hp = hp
+
+        @property
+        def is_alive(self) -> bool:
+            return self.current_hp > 0
+
+        def has_status(self, _status_id: str) -> bool:
+            return False
+
+        def take_damage(self, raw_damage: int, _defense_penetration: float = 0.0) -> int:
+            damage = min(self.current_hp, raw_damage)
+            self.current_hp -= damage
+            return damage
+
+    class DummyCombat:
+        def __init__(self) -> None:
+            self.player = DummyActor(100)
+            self.enemy = DummyActor(10)
+            self.queued_ability = None
+
+        def _execute_player_attack(self) -> None:
+            self.enemy.take_damage(6)
+            self.enemy.take_damage(4)
+
+        def _execute_enemy_attack(self) -> None:
+            return None
+
+        def _process_status_ticks(self, _actor: Any) -> None:
+            return None
+
+        def _distribute_rewards(self) -> None:
+            return None
+
+    combat = DummyCombat()
+    encounter = {
+        "player_actions": 0,
+        "player_actions_skipped_by_stun": 0,
+        "damage_dealt": 0,
+        "largest_hit_dealt": 0,
+        "hp_restored_in_combat": 0,
+        "player_damage_hits": 0,
+        "player_direct_kill": False,
+        "ability_uses": {},
+    }
+    _instrument_combat(combat, {}, {}, encounter)
+
+    combat._execute_player_attack()
+
+    assert encounter["player_damage_hits"] == 2
+    assert encounter["player_direct_kill"] is True
 
 
 def _queue_ability_if_ready(combat: Any, rng: random.Random) -> None:
@@ -357,6 +595,10 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
         "potions_used": 0,
         "potion_hp_restored": 0,
         "gold_from_nodes": 0,
+        "events_resolved": 0,
+        "shop_items_bought": 0,
+        "shop_gold_spent": 0,
+        "event_choices": {},
         "death": None,
         "damage_dealt": 0,
         "damage_taken": 0,
@@ -441,6 +683,34 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
                             state.player.gold - gold_before_node,
                         )
 
+                    if state.current_mode == GameMode.EVENTS and state.current_event is not None:
+                        event_id = _resolve_simulated_event(state)
+                        if event_id is not None:
+                            _increment((metrics, act_record), "events_resolved")
+                            metrics["event_choices"][event_id] = metrics["event_choices"].get(event_id, 0) + 1
+                            (
+                                event_loot,
+                                event_upgrades,
+                                event_drafts,
+                                event_equipment,
+                                event_abilities,
+                            ) = _collect_loot_and_ability_drafts(state, rng)
+                            _increment((metrics, act_record), "loot_items", event_loot)
+                            _increment((metrics, act_record), "ability_drafts", event_drafts)
+                            for item_id in event_equipment:
+                                metrics["equipment_selected"][item_id] = metrics["equipment_selected"].get(item_id, 0) + 1
+                            for ability_id in event_abilities:
+                                metrics["abilities_selected"][ability_id] = metrics["abilities_selected"].get(ability_id, 0) + 1
+                        event_upgrades += _equip_pouch_upgrades(state)
+                        _increment((metrics, act_record), "equipment_upgrades", event_upgrades)
+                        state.current_event = None
+                        state.switch_mode(GameMode.MAP)
+                    elif state.current_mode == GameMode.SHOP:
+                        bought, gold_spent = _purchase_simulated_shop_items(state)
+                        _increment((metrics, act_record), "shop_items_bought", bought)
+                        _increment((metrics, act_record), "shop_gold_spent", gold_spent)
+                        state.switch_mode(GameMode.MAP)
+
                     if state.combat is None or state.current_mode != GameMode.COMBAT:
                         continue
 
@@ -457,8 +727,10 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
                         "enemy_name": enemy.name,
                         "enemy_hp": enemy.max_hp,
                         "enemy_attack": enemy.base_stats.attack,
+                        "enemy_speed": enemy.base_stats.speed,
                         "player_hp_start": state.player.current_hp,
                         "player_max_hp_start": state.player.max_hp,
+                        "player_speed_start": state.player.effective_stats.speed,
                         "won": False,
                         "ticks": 0,
                         "player_actions": 0,
@@ -474,6 +746,8 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
                         "largest_hit_taken": 0,
                         "largest_status_tick_dealt": 0,
                         "largest_status_tick_taken": 0,
+                        "player_damage_hits": 0,
+                        "player_direct_kill": False,
                         "ability_uses": {},
                     }
                     metrics["encounters"].append(encounter)
@@ -688,6 +962,9 @@ def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "mean_gold": statistics.mean(row["gold"] for row in rows),
         "mean_gold_awarded": statistics.mean(row["gold_awarded"] for row in rows),
         "mean_gold_from_nodes": statistics.mean(row["gold_from_nodes"] for row in rows),
+        "mean_events_resolved": statistics.mean(row["events_resolved"] for row in rows),
+        "mean_shop_items_bought": statistics.mean(row["shop_items_bought"] for row in rows),
+        "mean_shop_gold_spent": statistics.mean(row["shop_gold_spent"] for row in rows),
         "mean_xp_awarded": statistics.mean(row["xp_awarded"] for row in rows),
         "mean_xp_remainder": statistics.mean(row["experience"] for row in rows),
         "mean_player_actions": statistics.mean(row["player_actions"] for row in rows),
@@ -730,7 +1007,7 @@ def _print_detailed_tables(
         "damage_taken,status_taken,total_taken,"
         "combat_hp_restored,levelup_hp_restored,potion_hp_restored,rest_healing,"
         "act_transition_healing,potions,"
-        "equipment_upgrades,ability_drafts,"
+        "equipment_upgrades,ability_drafts,events_resolved,shop_items_bought,shop_gold_spent,"
         "xp_awarded,xp_remainder,gold_held,gold_awarded,gold_from_nodes,"
         "player_actions,enemy_actions,stun_skips,max_hit_taken_p90"
     )
@@ -745,7 +1022,9 @@ def _print_detailed_tables(
             f"{summary['mean_potion_hp_restored']:.1f},{summary['mean_rest_healing']:.1f},"
             f"{summary['mean_act_transition_healing']:.1f},"
             f"{summary['mean_potions']:.2f},{summary['mean_equipment_upgrades']:.2f},"
-            f"{summary['mean_ability_drafts']:.2f},{summary['mean_xp_awarded']:.1f},"
+            f"{summary['mean_ability_drafts']:.2f},{summary['mean_events_resolved']:.2f},"
+            f"{summary['mean_shop_items_bought']:.2f},{summary['mean_shop_gold_spent']:.1f},"
+            f"{summary['mean_xp_awarded']:.1f},"
             f"{summary['mean_xp_remainder']:.1f},{summary['mean_gold']:.1f},"
             f"{summary['mean_gold_awarded']:.1f},{summary['mean_gold_from_nodes']:.1f},"
             f"{summary['mean_player_actions']:.1f},"
@@ -757,7 +1036,7 @@ def _print_detailed_tables(
     print(
         "class,route,act,clear%,clear_95ci,mean_floor,max_floor,nodes_mean_by_type,combat_tiers_mean,"
         "damage_dealt,damage_taken,status_taken,hp_restored,levelup_hp,potion_hp,rest_healing,"
-        "act_transition_healing,"
+        "act_transition_healing,events,shop_items,shop_gold_spent,"
         "xp,gold,potions,upgrades"
     )
     for class_id, route, rows, _summary in summaries:
@@ -794,6 +1073,8 @@ def _print_detailed_tables(
                 f"{mean_act_metric('hp_restored_on_level_up'):.1f},"
                 f"{mean_act_metric('potion_hp_restored'):.1f},{mean_act_metric('rest_healing'):.1f},"
                 f"{mean_act_metric('act_transition_healing'):.1f},"
+                f"{mean_act_metric('events_resolved'):.2f},{mean_act_metric('shop_items_bought'):.2f},"
+                f"{mean_act_metric('shop_gold_spent'):.1f},"
                 f"{mean_act_metric('xp_awarded'):.1f},{mean_act_metric('gold_awarded'):.1f},"
                 f"{mean_act_metric('potions_used'):.2f},{mean_act_metric('equipment_upgrades'):.2f}"
             )
@@ -816,6 +1097,77 @@ def _print_detailed_tables(
                 f"{statistics.mean(encounter['damage_taken'] for encounter in selected):.1f},"
                 f"{statistics.mean(encounter['status_damage_taken'] for encounter in selected):.1f}"
             )
+
+    print("\n=== DESGASTE EN COMBATES COMUNES POR ACTO ===")
+    print(
+        "class,route,act,encounters,one_hit_kill%,enemy_acted%,"
+        "mean_player_hits,mean_player_actions,mean_enemy_actions,mean_damage_taken"
+    )
+    for class_id, route, rows, _summary in summaries:
+        common_encounters = [
+            encounter
+            for row in rows
+            for encounter in row["encounters"]
+            if encounter["tier"] == "COMMON"
+        ]
+        for act in (1, 2, 3):
+            selected = [encounter for encounter in common_encounters if encounter["act"] == act]
+            if not selected:
+                continue
+            one_hit_kills = sum(
+                encounter["won"]
+                and encounter["player_direct_kill"]
+                and encounter["player_damage_hits"] == 1
+                for encounter in selected
+            )
+            enemy_acted = sum(encounter["enemy_actions"] > 0 for encounter in selected)
+            print(
+                f"{class_id},{route},{act},{len(selected)},"
+                f"{one_hit_kills / len(selected):.1%},{enemy_acted / len(selected):.1%},"
+                f"{statistics.mean(encounter['player_damage_hits'] for encounter in selected):.2f},"
+                f"{statistics.mean(encounter['player_actions'] for encounter in selected):.2f},"
+                f"{statistics.mean(encounter['enemy_actions'] for encounter in selected):.2f},"
+                f"{statistics.mean(encounter['damage_taken'] + encounter['status_damage_taken'] for encounter in selected):.1f}"
+            )
+
+    print("\n=== ENEMIGOS COMUNES QUE NO LLEGAN A ATACAR ===")
+    print(
+        "class,route,act,enemy_id,encounters,one_hit_kill%,enemy_acted%,"
+        "enemy_speed,player_speed,mean_player_hits,mean_enemy_actions,mean_damage_taken"
+    )
+    for class_id, route, rows, _summary in summaries:
+        common = [
+            encounter
+            for row in rows
+            for encounter in row["encounters"]
+            if encounter["tier"] == "COMMON"
+        ]
+        archetypes = sorted({encounter["enemy_id"] for encounter in common})
+        for act in (1, 2, 3):
+            for enemy_id in archetypes:
+                selected = [
+                    encounter
+                    for encounter in common
+                    if encounter["act"] == act and encounter["enemy_id"] == enemy_id
+                ]
+                if not selected:
+                    continue
+                attacked = sum(encounter["enemy_actions"] > 0 for encounter in selected)
+                one_hit_kills = sum(
+                    encounter["won"]
+                    and encounter["player_direct_kill"]
+                    and encounter["player_damage_hits"] == 1
+                    for encounter in selected
+                )
+                print(
+                    f"{class_id},{route},{act},{enemy_id},{len(selected)},"
+                    f"{one_hit_kills / len(selected):.1%},{attacked / len(selected):.1%},"
+                    f"{statistics.mean(encounter['enemy_speed'] for encounter in selected):.1f},"
+                    f"{statistics.mean(encounter['player_speed_start'] for encounter in selected):.1f},"
+                    f"{statistics.mean(encounter['player_damage_hits'] for encounter in selected):.2f},"
+                    f"{statistics.mean(encounter['enemy_actions'] for encounter in selected):.2f},"
+                    f"{statistics.mean(encounter['damage_taken'] + encounter['status_damage_taken'] for encounter in selected):.1f}"
+                )
 
     print("\n=== TASA CONDICIONAL DE VICTORIA CONTRA JEFE POR ACTO ===")
     print("class,route,act,boss_encounters,wins,win%,win_95ci")

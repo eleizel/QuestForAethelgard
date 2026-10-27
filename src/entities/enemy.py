@@ -15,7 +15,7 @@ class EnemyTier(Enum):
     BOSS = 4
 
 TIER_HP_MULT: dict[EnemyTier, float] = {
-    EnemyTier.COMMON:   1.00,
+    EnemyTier.COMMON:   1.25,
     EnemyTier.UNCOMMON: 1.15,
     EnemyTier.ELITE:    1.80,
     EnemyTier.BOSS:     3.00,
@@ -33,6 +33,7 @@ TIER_ATK_MULT: dict[EnemyTier, float] = {
 ACT_3_START_FLOOR = 25
 ACT_3_BOSS_HP_MULT = 2.50
 ACT_3_BOSS_ATK_MULT = 1.35
+COMMON_ENEMY_SPEED_BONUS = 2
 
 # Reward scaling is kept explicit so enum values do not implicitly set economy balance.
 TIER_REWARD_MULT: dict[EnemyTier, float] = {
@@ -127,7 +128,12 @@ def generate_enemy(
         max_hp=max(1, int(template.base_hp * (1 + floor_offset * 0.045) * hp_mult)),
         attack=max(1, int(template.base_atk * (1 + floor_offset * 0.030) * atk_mult)),
         defense=max(0, int(template.base_def * (1 + floor_offset * 0.025))),
-        speed=min(25, template.base_spd + floor_offset // 5),
+        speed=min(
+            25,
+            template.base_spd
+            + floor_offset // 5
+            + (COMMON_ENEMY_SPEED_BONUS if tier == EnemyTier.COMMON else 0),
+        ),
         crit_chance=template.base_crit,
     )
 
