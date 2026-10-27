@@ -305,14 +305,6 @@ def execute_fireball(combat: CombatSystem) -> tuple[str, int, bool]:
     return t("log_fireball", player=combat.player.name, dmg=actual_dmg), actual_dmg, False
 
 
-def execute_frost_nova(combat: CombatSystem) -> tuple[str, int, bool]:
-    from src.core.i18n import t
-    dmg = int(combat.player.effective_stats.attack * 0.95)
-    actual_dmg = combat.damage_enemy(dmg)
-    combat.enemy_gauge = max(0, combat.enemy_gauge - 45)
-    return t("log_frost_nova", player=combat.player.name, dmg=actual_dmg), actual_dmg, False
-
-
 def execute_chain_lightning(combat: CombatSystem) -> tuple[str, int, bool]:
     from src.core.i18n import i18n, t
     rng = combat.rng
@@ -326,19 +318,25 @@ def execute_chain_lightning(combat: CombatSystem) -> tuple[str, int, bool]:
     return t("log_chain_lightning", player=combat.player.name, dmg=actual_dmg, crit=crit_msg), actual_dmg, is_crit
 
 
-def modify_arcane_ward(stats: Stats) -> Stats:
-    return stats.add(type(stats)(max_hp=stats.max_hp*0.20,
-                                 attack=stats.attack*0.15,
-                                 defense=stats.defense*0.10,
-                                 speed=0,
-                                 crit_chance=0.10))
+def execute_creeping_hands(combat: CombatSystem) -> tuple[str, int, bool]:
+    from src.core.i18n import t
+    from src.systems.status import get_status_by_id
+
+    attack = combat.player.effective_stats.attack
+    actual_damage = combat.damage_enemy(int(attack * 0.70))
+    if combat.enemy.is_alive:
+        vulnerable = get_status_by_id("vulnerable", duration=5, potency=15)
+        if vulnerable:
+            combat.enemy.apply_status(vulnerable)
+    return t("log_creeping_hands", player=combat.player.name, dmg=actual_damage), actual_damage, False
 
 
-def hook_mana_barrier(actor: Actor, raw_damage: int) -> int:
-    return max(1, raw_damage * 0.80)
+def hook_bone_barrier(actor: Actor, raw_damage: int) -> int:
+    """Reduce incoming damage by 20%."""
+    return max(1, int(raw_damage * 0.80))
 
 
-def hook_pyromania(actor: Actor, target: Actor, damage: int, is_crit: bool) -> None:
+def hook_soulfire(actor: Actor, target: Actor, damage: int, is_crit: bool) -> None:
     """Basic attacks have a 30% chance to add one stack of Burn."""
     from src.systems.status import get_status_by_id
     combat = getattr(actor, "combat_ref", None)
@@ -346,6 +344,11 @@ def hook_pyromania(actor: Actor, target: Actor, damage: int, is_crit: bool) -> N
         burn = get_status_by_id("burn", duration=8, potency=1)
         if burn:
             target.apply_status(burn)
+
+
+def hook_ice_shards(actor: Actor, raw_damage: int) -> int:
+    """Reduce incoming damage by 10%; direct-hit reflection is handled by combat."""
+    return max(1, int(raw_damage * 0.90))
 
 
 # =============================================================================
@@ -557,22 +560,24 @@ STANDARD_ABILITIES: list[Ability] = [
     # Mage Standard
     Ability(id="fireball", name="Fireball", description="High-impact blast dealing 185% ATK fire damage.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
-            execute_hook=execute_fireball,cooldown=2,),
-    Ability(id="frost_nova", name="Frost Nova", description="Deals 95% ATK and freezes 45 enemy action gauge.",
-            ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
-            execute_hook=execute_frost_nova,cooldown=4,),
+            execute_hook=execute_fireball, cooldown=2, affinities=("archmage",)),
     Ability(id="chain_lightning", name="Chain Lightning", description="Deals 130% ATK. Crits refund 40 player gauge.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
-            execute_hook=execute_chain_lightning,cooldown=3,),
-    Ability(id="arcane_ward", name="Arcane Ward", description="+20% Max HP, +15% ATK, +10% DEF, +10% Crit.",
+            execute_hook=execute_chain_lightning, cooldown=3, affinities=("archmage",)),
+    Ability(id="creeping_hands", name="Creeping Hands",
+            description="Deals 70% ATK and makes the enemy take 15% more damage for 5 ticks. 4-turn cooldown.",
+            ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
+            execute_hook=execute_creeping_hands, cooldown=4, affinities=("warlock",)),
+    Ability(id="soulfire", name="Soulfire", description="Basic attacks have a 30% chance to add a Burn stack.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
-            modify_stats_hook=modify_arcane_ward,),
-    Ability(id="mana_barrier", name="Mana Barrier", description="Kinetic barrier absorbs 20% damage from all attacks.",
+            on_attack_dealt_hook=hook_soulfire, affinities=("warlock",)),
+    Ability(id="bone_barrier", name="Bone Barrier", description="Reduces incoming damage by 20%.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
-            on_damage_taken_hook=hook_mana_barrier,),
-    Ability(id="pyromania", name="Pyromania", description="Basic attacks have a 30% chance to add a Burn stack.",
+            on_damage_taken_hook=hook_bone_barrier, affinities=("warlock",)),
+    Ability(id="ice_shards", name="Ice Shards",
+            description="Reduces incoming damage by 10% and reflects 10% of direct damage taken.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
-            on_attack_dealt_hook=hook_pyromania,),
+            on_damage_taken_hook=hook_ice_shards, affinities=("archmage",)),
 ]
 
 EPIC_ABILITIES: list[Ability] = [

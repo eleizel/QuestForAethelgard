@@ -137,8 +137,9 @@ class CombatSystem:
 
     def damage_enemy(self, raw_damage: int, defense_penetration: float = 0.0) -> int:
         """Resolve player damage, including vulnerabilities and passives."""
-        if self.enemy.has_status("vulnerable"):
-            raw_damage = int(raw_damage * 1.30)
+        vulnerable = next((status for status in self.enemy.statuses if status.id == "vulnerable"), None)
+        if vulnerable:
+            raw_damage = int(raw_damage * (1 + vulnerable.potency / 100))
 
         has_cull_the_weak = any(
             ability.id == "cull_the_weak" for ability in self.player.abilities.passive
@@ -239,11 +240,11 @@ class CombatSystem:
             log_key = "combat_whirlwind_crit" if extra_crit else "combat_whirlwind_hit"
             self.combat_logs.append(_t(log_key, actor=self.player.name, target=self.enemy.name, damage=extra_damage))
 
-        # Trigger passive hooks for attack dealt. Pyromania is deliberately
+        # Trigger passive hooks for attack dealt. Soulfire is deliberately
         # restricted to basic attacks; other passives may still react to abilities.
         if dmg_dealt > 0:
             for passive in self.player.abilities.passive:
-                if passive.id == "pyromania" and not is_basic_attack:
+                if passive.id == "soulfire" and not is_basic_attack:
                     continue
                 passive.on_attack_dealt(self.player, self.enemy, dmg_dealt, is_crit)
 
@@ -268,8 +269,9 @@ class CombatSystem:
                 return
 
         raw_dmg, is_crit = self.enemy.calculate_attack(self.rng)
-        if self.player.has_status("vulnerable"):
-            raw_dmg = int(raw_dmg * 1.30)
+        vulnerable = next((status for status in self.player.statuses if status.id == "vulnerable"), None)
+        if vulnerable:
+            raw_dmg = int(raw_dmg * (1 + vulnerable.potency / 100))
         dmg_dealt = self.player.take_damage(raw_dmg)
 
         # Audio feedback: Sound 1 (Crit) or Sound 0 (Hit)
@@ -279,6 +281,16 @@ class CombatSystem:
             self.combat_logs.append(_t("combat_crit", actor=self.enemy.name, target=self.player.name, damage=dmg_dealt))
         else:
             self.combat_logs.append(_t("combat_hit", actor=self.enemy.name, target=self.player.name, damage=dmg_dealt))
+
+        if dmg_dealt > 0 and self.enemy.is_alive and any(
+                ability.id == "ice_shards" for ability in self.player.abilities.passive):
+            reflected_raw = int(dmg_dealt * 0.10)
+            if reflected_raw > 0:
+                reflected = self.enemy.take_damage(reflected_raw)
+                if reflected > 0:
+                    self.combat_logs.append(
+                        _t("combat_ice_shards_reflect", actor=self.player.name,
+                           target=self.enemy.name, damage=reflected))
 
         if getattr(self.enemy, "on_hit_status", None) and self.rng.random() < getattr(self.enemy, "status_chance", 0.0):
             from src.systems.status import get_status_by_id
