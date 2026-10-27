@@ -161,10 +161,6 @@ def execute_shieldbreaker_strike(combat: CombatSystem) -> tuple[str, int, bool]:
     return t("log_shieldbreaker_strike", player=combat.player.name, dmg=actual_damage), actual_damage, False
 
 
-def hook_defensive_superiority(actor: Actor, raw_damage: int) -> int:
-    return raw_damage
-
-
 def hook_paladin_guard(actor: Actor, raw_damage: int) -> int:
     affinities = getattr(actor, "_last_ability_affinities", ())
     if "paladin" in affinities:
@@ -433,7 +429,7 @@ STANDARD_ABILITIES: list[Ability] = [
     Ability(id="defensive_superiority", name="Defensive Superiority",
             description="Gain DEF-based armor penetration, up to 75%, when your DEF exceeds the enemy's.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
-            on_damage_taken_hook=hook_defensive_superiority, affinities=("paladin",)),
+            affinities=("paladin",)),
     Ability(id="paladin_guard", name="Paladin Guard",
             description="Take 10% less damage while your last active ability had Paladin affinity.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
