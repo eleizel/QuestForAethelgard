@@ -99,7 +99,7 @@ def generate_enemy(
         crit_chance=template.base_crit,
     )
 
-    exp_reward = int(50 * multiplier * tier.value)
+    exp_reward = int(70 * multiplier * tier.value)
     gold_reward = int(rand.randint(6, 16) * multiplier * tier.value)
 
     title_prefix = ""

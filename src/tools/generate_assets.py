@@ -93,6 +93,15 @@ ENEMY_SPRITE_COORDS: Final[dict[str, tuple[int, int]]] = {
     "blood_god_avatar": (112, 128),
 }
 
+# =============================================================================
+# CLASS PORTRAIT COORDINATES (Image Bank 0: 48x64 pixels)
+# =============================================================================
+CLASS_PORTRAIT_COORDS: Final[dict[str, tuple[int, int]]] = {
+    "warrior": (0, 144),
+    "rogue": (48, 144),
+    "mage": (96, 144),
+}
+
 
 def build_assets() -> None:
     pyxel.init(256, 256, title="Asset Builder", headless=True)
@@ -105,6 +114,480 @@ def build_assets() -> None:
     # =========================================================================
     # IMAGE BANK 0: CHARACTERS, NPCS & ITEMS
     # =========================================================================
+    def create_warrior_portrait() -> list[str]:
+        """Generates 48x64 detailed portrait for Warrior (Hero)."""
+        W, H = 48, 64
+        g = [["0"] * W for _ in range(H)]
+
+        # Gothic Halo Arch in background
+        for y in range(4, 38):
+            for x in range(6, 42):
+                dx = x - 24
+                dy = y - 20
+                d2 = dx * dx + dy * dy
+                if 144 <= d2 <= 289:
+                    g[y][x] = "1"
+                elif 290 <= d2 <= 360 and (x + y) % 2 == 0:
+                    g[y][x] = "5"
+
+        # Red Mantle / Cloak draped behind shoulders
+        for y in range(24, 64):
+            w_cloak = min(22, int((y - 20) * 0.7) + 6)
+            for x in range(24 - w_cloak, 24 + w_cloak + 1):
+                if 0 <= x < W:
+                    g[y][x] = "8"
+                    if x < 12 or x > 35:
+                        g[y][x] = "2" if (x + y) % 3 == 0 else "8"
+                    elif x in (24 - w_cloak, 24 + w_cloak):
+                        g[y][x] = "2"
+
+        # Golden Swept Hair & Volume
+        hair_coords = [
+            (6, 20, 28), (7, 18, 30), (8, 16, 32), (9, 15, 33), (10, 14, 34),
+            (11, 13, 35), (12, 13, 35), (13, 12, 36), (14, 12, 36), (15, 12, 36),
+            (16, 12, 36), (17, 12, 36), (18, 12, 36), (19, 13, 35), (20, 13, 35),
+            (21, 14, 34), (22, 14, 34), (23, 15, 33), (24, 16, 32), (25, 17, 31)
+        ]
+        for y, x1, x2 in hair_coords:
+            for x in range(x1, x2 + 1):
+                g[y][x] = "a"
+                if y < 10 or x < 20:
+                    g[y][x] = "7" if (x + y) % 4 == 0 else "a"
+                elif y > 18 or x > 30:
+                    g[y][x] = "9" if (x + y) % 2 == 0 else "4"
+
+        # Face & Skin
+        face_rows = [
+            (16, 17, 31), (17, 17, 31), (18, 17, 31), (19, 16, 32),
+            (20, 16, 32), (21, 16, 32), (22, 16, 32), (23, 17, 31),
+            (24, 17, 31), (25, 18, 30), (26, 18, 30), (27, 19, 29),
+            (28, 19, 29), (29, 20, 28), (30, 21, 27), (31, 22, 26),
+            (32, 22, 26), (33, 23, 25), (34, 23, 25)
+        ]
+        for y, x1, x2 in face_rows:
+            for x in range(x1, x2 + 1):
+                g[y][x] = "f"
+                if x >= x2 - 2:
+                    g[y][x] = "e"
+
+        # Neck
+        for y in range(34, 43):
+            for x in range(20, 29):
+                g[y][x] = "f"
+                if x in (20, 28) or y > 38:
+                    g[y][x] = "e"
+
+        # Forehead Bangs
+        bangs = [
+            (14, 16, "aaaaa99aaaaa"),
+            (15, 15, "7aaaaa99aaaaa9"),
+            (16, 15, "7aa99aaa99aaaa"),
+            (17, 14, "aa999     99aa"),
+            (18, 14, "a99         9a"),
+            (19, 13, "a9           9"),
+        ]
+        for y, sx, row in bangs:
+            for i, ch in enumerate(row):
+                if ch != " ":
+                    g[y][sx + i] = ch
+
+        # Circlet & Gem
+        for x in range(16, 33):
+            g[17][x] = "a"
+        g[17][24] = "7"
+        g[16][24] = "c"
+        g[17][23] = "9"
+        g[17][25] = "9"
+
+        # Eyes & Eyebrows
+        for x in range(18, 22): g[19][x] = "9"
+        for x in range(27, 31): g[19][x] = "9"
+        g[21][19] = "7"
+        g[21][20] = "5"
+        g[22][19] = "5"
+        g[22][20] = "0"
+        g[21][28] = "5"
+        g[21][29] = "7"
+        g[22][28] = "0"
+        g[22][29] = "5"
+
+        # Nose & Mouth
+        g[24][24] = "e"
+        g[25][24] = "e"
+        g[26][23] = "e"
+        g[26][24] = "f"
+        g[26][25] = "e"
+        g[27][24] = "4"
+        for x in range(22, 27): g[29][x] = "e"
+        g[29][23] = "4"
+        g[29][24] = "4"
+        g[29][25] = "4"
+        g[30][24] = "e"
+
+        # Steel Armor Plate & Pauldrons
+        for y in range(40, 64):
+            span = min(22, int((y - 38) * 1.4) + 6)
+            for x in range(24 - span, 24 + span + 1):
+                if 0 <= x < W:
+                    g[y][x] = "6"
+                    if x < 24 - span + 3 or x > 24 + span - 3:
+                        g[y][x] = "5"
+                    elif x in (24 - span, 24 + span):
+                        g[y][x] = "1"
+
+        # Golden Gorget
+        for y in range(40, 45):
+            for x in range(18, 31):
+                g[y][x] = "a"
+                if x in (18, 30) or y == 44: g[y][x] = "9"
+        g[42][24] = "7"
+
+        # Breastplate Lion Crest
+        for y in range(46, 58):
+            g[y][24] = "a"
+            g[y][23] = "9"
+            g[y][25] = "9"
+        for x in range(19, 30):
+            g[49][x] = "a"
+            g[50][x] = "9"
+        g[49][24] = "7"
+
+        # Steel Plate Highlights
+        for y in range(45, 60):
+            g[y][15] = "7"
+            g[y][16] = "7"
+            g[y][13] = "6"
+            g[y][14] = "6"
+            g[y][17] = "6"
+            g[y][20] = "5"
+            g[y][21] = "1"
+            g[y][27] = "1"
+            g[y][28] = "5"
+
+        # Pauldron Trim
+        for y in range(45, 64):
+            g[y][6] = "a"
+            g[y][7] = "9"
+            g[y][8] = "7"
+            g[y][9] = "6"
+            g[y][40] = "9"
+            g[y][41] = "a"
+            g[y][38] = "6"
+            g[y][39] = "7"
+
+        # Outer Cape Folds
+        for y in range(42, 64):
+            g[y][3] = "8"
+            g[y][4] = "8"
+            g[y][5] = "2"
+            g[y][42] = "2"
+            g[y][43] = "8"
+            g[y][44] = "8"
+
+        return ["".join(row) for row in g]
+
+    def create_rogue_portrait() -> list[str]:
+        """Generates 48x64 detailed portrait for Rogue."""
+        W, H = 48, 64
+        g = [["0"] * W for _ in range(H)]
+
+        # Background Shadow Smoke
+        for y in range(4, 40):
+            for x in range(4, 44):
+                dx = x - 24
+                dy = y - 22
+                d2 = dx * dx + dy * dy
+                if 144 <= d2 <= 320:
+                    if (x * 2 + y * 3) % 7 == 0:
+                        g[y][x] = "1"
+                    elif (x + y) % 6 == 0:
+                        g[y][x] = "2"
+
+        # Hood Contour
+        hood_profile = [
+            (4, 23, 25), (5, 22, 26), (6, 21, 27), (7, 20, 28), (8, 19, 29),
+            (9, 18, 30), (10, 17, 31), (11, 16, 32), (12, 15, 33), (13, 14, 34),
+            (14, 13, 35), (15, 12, 36), (16, 11, 37), (17, 11, 37), (18, 10, 38),
+            (19, 10, 38), (20, 10, 38), (21, 10, 38), (22, 11, 37), (23, 11, 37),
+            (24, 11, 37), (25, 12, 36), (26, 12, 36), (27, 13, 35), (28, 13, 35)
+        ]
+        for y, x1, x2 in hood_profile:
+            for x in range(x1, x2 + 1):
+                g[y][x] = "1"
+                if x in (x1, x1 + 1):
+                    g[y][x] = "5" if (x + y) % 2 == 0 else "6"
+                elif x in (x2 - 1, x2):
+                    g[y][x] = "0"
+
+        # Deep Shadow Interior Cavity
+        for y in range(16, 32):
+            cav_w = min(11, int((y - 14) * 0.9) + 4)
+            for x in range(24 - cav_w, 24 + cav_w + 1):
+                g[y][x] = "0"
+
+        # Glowing Red Eyes
+        g[20][18] = "8"
+        g[20][19] = "e"
+        g[20][20] = "8"
+        g[21][18] = "8"
+        g[21][19] = "7"
+        g[21][20] = "8"
+        g[22][19] = "8"
+        g[20][27] = "8"
+        g[20][28] = "e"
+        g[20][29] = "8"
+        g[21][27] = "8"
+        g[21][28] = "7"
+        g[21][29] = "8"
+        g[22][28] = "8"
+
+        # Nose Bridge & Cheek Highlight
+        g[25][24] = "f"
+        g[26][24] = "f"
+        g[27][24] = "e"
+        g[24][16] = "f"
+        g[25][17] = "f"
+        g[26][18] = "e"
+
+        # Dark Face Mask
+        for y in range(28, 38):
+            mw = min(7, int((37 - y) * 0.8) + 4)
+            for x in range(24 - mw, 24 + mw + 1):
+                g[y][x] = "2"
+                if x in (24 - mw, 24 - mw + 1):
+                    g[y][x] = "5"
+                elif x in (24 + mw - 1, 24 + mw):
+                    g[y][x] = "0"
+                elif (x + y) % 4 == 0:
+                    g[y][x] = "1"
+
+        # Crimson Scarf Collar
+        for y in range(36, 45):
+            sw = min(12, int((y - 34) * 1.2) + 6)
+            for x in range(24 - sw, 24 + sw + 1):
+                g[y][x] = "8"
+                if x < 24 - sw + 2:
+                    g[y][x] = "e"
+                elif x > 24 + sw - 2:
+                    g[y][x] = "2"
+        clasp = [(40, 23, "9a9"), (41, 23, "a7a"), (42, 23, "9a9")]
+        for y, sx, row in clasp:
+            for i, ch in enumerate(row): g[y][sx + i] = ch
+
+        # Studded Leather Armor
+        for y in range(44, 64):
+            span = min(22, int((y - 42) * 1.3) + 7)
+            for x in range(24 - span, 24 + span + 1):
+                if 0 <= x < W:
+                    g[y][x] = "4"
+                    if x < 24 - span + 3 or x > 24 + span - 3:
+                        g[y][x] = "0"
+                    elif x in (24 - span + 3, 24 - span + 4):
+                        g[y][x] = "d"
+                    elif (x + y) % 5 == 0:
+                        g[y][x] = "5"
+
+        # Silver Rivets
+        stud_points = [
+            (48, 10), (52, 9), (56, 8), (60, 7),
+            (48, 38), (52, 39), (56, 40), (60, 41),
+            (46, 18), (50, 18), (54, 19), (58, 20),
+            (46, 30), (50, 29), (54, 28), (58, 27)
+        ]
+        for sy, sx in stud_points:
+            g[sy][sx] = "7"
+            g[sy][sx + 1] = "6"
+
+        # Diagonal Baldric Strap
+        for i in range(16):
+            bx = 12 + int(i * 1.5)
+            by = 46 + i
+            if 0 <= bx < W - 2 and 0 <= by < H:
+                g[by][bx] = "d"
+                g[by][bx + 1] = "4"
+                g[by][bx + 2] = "0"
+                if i in (4, 10):
+                    g[by][bx] = "a"
+                    g[by][bx + 1] = "7"
+
+        # Strapped Dagger
+        dagger = [
+            (43, 34, "7c7"), (44, 33, "aa9"), (45, 34, "00"),
+            (46, 34, "44"), (47, 34, "44"), (48, 32, "9aaaa9"),
+            (49, 34, "66"), (50, 34, "55"), (51, 34, "55"),
+        ]
+        for y, sx, row in dagger:
+            for i, ch in enumerate(row):
+                if 0 <= sx + i < W and 0 <= y < H:
+                    g[y][sx + i] = ch
+
+        return ["".join(row) for row in g]
+
+    def create_mage_portrait() -> list[str]:
+        """Generates 48x64 detailed portrait for Mage."""
+        W, H = 48, 64
+        g = [["0"] * W for _ in range(H)]
+
+        # Arcane Mana Sparkles
+        sparkles = [
+            (8, 8), (14, 5), (6, 38), (12, 42), (24, 4), (28, 44),
+            (38, 6), (44, 18), (4, 18), (42, 38), (7, 44), (40, 50)
+        ]
+        for sy, sx in sparkles:
+            if 0 <= sx < W and 0 <= sy < H:
+                g[sy][sx] = "c"
+                if sx + 1 < W: g[sy][sx + 1] = "7"
+                if sy + 1 < H: g[sy + 1][sx] = "6"
+
+        # Pointed Wizard Hat
+        hat_tip = [
+            (2, 32, "22"), (3, 30, "221"), (4, 28, "2221"), (5, 26, "22211"),
+            (6, 25, "222211"), (7, 24, "222211"), (8, 23, "2222211"), (9, 22, "2222211"),
+            (10, 21, "22222211"), (11, 20, "222222211"), (12, 19, "2222222211"),
+            (13, 18, "22222222211"), (14, 17, "222222222211"), (15, 16, "2222222222211"),
+            (16, 15, "22222222222211"), (17, 14, "222222222222211"),
+        ]
+        for y, sx, row in hat_tip:
+            for i, ch in enumerate(row):
+                if 0 <= sx + i < W:
+                    g[y][sx + i] = ch
+
+        # Hat Band & Buckle
+        for y in range(18, 21):
+            for x in range(13, 37):
+                g[y][x] = "c" if y == 19 else "1"
+        for y in range(18, 21):
+            g[y][22] = "9"
+            g[y][23] = "a"
+            g[y][24] = "7"
+            g[y][25] = "a"
+            g[y][26] = "9"
+        g[19][24] = "c"
+
+        # Wide Hat Brim
+        for y, x1, x2 in [(21, 10, 38), (22, 7, 41), (23, 6, 42), (24, 7, 41)]:
+            for x in range(x1, x2 + 1):
+                g[y][x] = "2"
+                if y == 21:
+                    g[y][x] = "e" if (x + y) % 3 == 0 else "2"
+                elif y == 24 or x in (x1, x2):
+                    g[y][x] = "1"
+
+        # Flowing Silver Hair
+        for y in range(25, 54):
+            for x in range(11, 18):
+                g[y][x] = "7"
+                if x == 11 or (x + y) % 3 == 0:
+                    g[y][x] = "d"
+                elif (x + y) % 5 == 0:
+                    g[y][x] = "6"
+            for x in range(31, 38):
+                g[y][x] = "7"
+                if x == 37 or (x + y) % 3 == 0:
+                    g[y][x] = "d"
+                elif (x + y) % 5 == 0:
+                    g[y][x] = "6"
+
+        # Face & Skin
+        face_rows = [
+            (25, 17, 31), (26, 17, 31), (27, 17, 31), (28, 17, 31),
+            (29, 18, 30), (30, 18, 30), (31, 18, 30), (32, 19, 29),
+            (33, 19, 29), (34, 20, 28), (35, 20, 28), (36, 21, 27),
+            (37, 21, 27), (38, 22, 26), (39, 23, 25), (40, 23, 25)
+        ]
+        for y, x1, x2 in face_rows:
+            for x in range(x1, x2 + 1):
+                g[y][x] = "f"
+                if x in (x1, x2):
+                    g[y][x] = "e"
+
+        # Neck
+        for y in range(40, 47):
+            for x in range(22, 27):
+                g[y][x] = "f" if x in (23, 24, 25) else "e"
+
+        # Eyebrows & Glowing Cyan Eyes
+        for x in range(18, 22): g[26][x] = "d"
+        for x in range(27, 31): g[26][x] = "d"
+        g[28][19] = "c"
+        g[28][20] = "7"
+        g[29][19] = "1"
+        g[29][20] = "c"
+        g[28][28] = "7"
+        g[28][29] = "c"
+        g[29][28] = "c"
+        g[29][29] = "1"
+
+        # Nose & Mouth
+        g[31][24] = "e"
+        g[32][24] = "e"
+        g[33][23] = "e"
+        g[33][24] = "f"
+        g[34][24] = "e"
+        g[36][23] = "e"
+        g[36][24] = "8"
+        g[36][25] = "e"
+        g[37][24] = "e"
+
+        # High Ornate Collar
+        collar = [
+            (42, 14, "221"), (42, 31, "122"),
+            (43, 15, "22a"), (43, 30, "a22"),
+            (44, 16, "2aa"), (44, 29, "aa2"),
+        ]
+        for y, sx, row in collar:
+            for i, ch in enumerate(row): g[y][sx + i] = ch
+
+        # Robe Body
+        for y in range(46, 64):
+            span = min(22, int((y - 44) * 1.3) + 7)
+            for x in range(24 - span, 24 + span + 1):
+                if 0 <= x < W:
+                    g[y][x] = "2"
+                    if x < 24 - span + 2 or x > 24 + span - 2:
+                        g[y][x] = "1"
+                    elif (x + y) % 6 == 0:
+                        g[y][x] = "e"
+
+        # Brooch Gem at Throat
+        g[47][24] = "a"
+        g[48][23] = "a"
+        g[48][24] = "c"
+        g[48][25] = "a"
+        g[49][22] = "9"
+        g[49][23] = "c"
+        g[49][24] = "7"
+        g[49][25] = "c"
+        g[49][26] = "9"
+        g[50][23] = "a"
+        g[50][24] = "c"
+        g[50][25] = "a"
+        g[51][24] = "9"
+
+        # Runic Embroidery down Front
+        for y in range(52, 64):
+            g[y][21] = "a"
+            g[y][27] = "a"
+            if y % 3 == 0:
+                g[y][23] = "c"
+                g[y][25] = "c"
+                g[y][24] = "7"
+            else:
+                g[y][24] = "1"
+
+        # Mantle Gold Embroidery
+        for y in range(50, 64):
+            lx = 24 - int((y - 44) * 1.1)
+            rx = 24 + int((y - 44) * 1.1)
+            if 8 <= lx < W: g[y][lx] = "a"
+            if 0 <= rx < 40: g[y][rx] = "a"
+
+        return ["".join(row) for row in g]
+
+    # 48x64 Character Portraits in Bank 0 at Row y=144
+    pyxel.images[0].set(0, 144, create_warrior_portrait())
+    pyxel.images[0].set(48, 144, create_rogue_portrait())
+    pyxel.images[0].set(96, 144, create_mage_portrait())
 
     # Warrior Hero (16x16) at (0, 0)
     hero_sprite = [
@@ -552,20 +1035,20 @@ def build_assets() -> None:
         for y in range(2, 30):
             for x in range(4, W - 4): g[y][x] = "1"
         for x in range(4, W - 4):
-            g[2][x] = "a";
-            g[3][x] = "9";
-            g[28][x] = "9";
+            g[2][x] = "a"
+            g[3][x] = "9"
+            g[28][x] = "9"
             g[29][x] = "a"
         for y in range(2, 30):
-            g[y][4] = "a";
-            g[y][5] = "9";
-            g[y][W - 6] = "9";
+            g[y][4] = "a"
+            g[y][5] = "9"
+            g[y][W - 6] = "9"
             g[y][W - 5] = "a"
         for x in range(8, W - 8):
-            g[5][x] = "4";
+            g[5][x] = "4"
             g[26][x] = "4"
         for y in range(5, 27):
-            g[y][8] = "4";
+            g[y][8] = "4"
             g[y][W - 9] = "4"
         for cy, cx in [(2, 4), (2, W - 6), (28, 4), (28, W - 6)]:
             g[cy][cx] = "7"
@@ -621,40 +1104,40 @@ def build_assets() -> None:
     def create_humanoid_lich():
         W, H = 24, 28
         g = [["0" for _ in range(W)] for _ in range(H)]
-        g[2][20] = "c";
-        g[2][21] = "7";
-        g[1][20] = "c";
+        g[2][20] = "c"
+        g[2][21] = "7"
+        g[1][20] = "c"
         g[1][21] = "c"
-        g[3][19] = "a";
-        g[3][22] = "a";
-        g[4][20] = "a";
+        g[3][19] = "a"
+        g[3][22] = "a"
+        g[4][20] = "a"
         g[4][21] = "a"
         for sy in range(5, 27): g[sy][21] = "4"
-        g[13][21] = "7";
+        g[13][21] = "7"
         g[14][21] = "7"
 
         for x in range(9, 14): g[3][x] = "1"
         for x in range(8, 15): g[4][x] = "1"
-        g[4][10] = "2";
-        g[4][11] = "2";
+        g[4][10] = "2"
+        g[4][11] = "2"
         g[4][12] = "2"
-        g[2][11] = "1";
+        g[2][11] = "1"
         g[1][11] = "a"
 
         for y in range(5, 10):
             for x in range(9, 14): g[y][x] = "0"
 
-        g[5][10] = "7";
-        g[5][11] = "7";
+        g[5][10] = "7"
+        g[5][11] = "7"
         g[5][12] = "7"
-        g[6][10] = "e";
-        g[6][11] = "7";
+        g[6][10] = "e"
+        g[6][11] = "7"
         g[6][12] = "e"
-        g[7][10] = "7";
-        g[7][11] = "0";
+        g[7][10] = "7"
+        g[7][11] = "0"
         g[7][12] = "7"
-        g[8][10] = "7";
-        g[8][11] = "5";
+        g[8][10] = "7"
+        g[8][11] = "5"
         g[8][12] = "7"
 
         for y in range(9, 12):
@@ -662,22 +1145,22 @@ def build_assets() -> None:
             for x in range(11 - w // 2, 11 + w // 2 + 1):
                 if 0 <= x < W and g[y][x] == "0":
                     g[y][x] = "2" if (x + y) % 2 == 0 else "1"
-        g[10][11] = "a";
+        g[10][11] = "a"
         g[11][11] = "9"
 
-        g[11][7] = "2";
-        g[11][6] = "1";
-        g[12][6] = "2";
+        g[11][7] = "2"
+        g[11][6] = "1"
+        g[12][6] = "2"
         g[12][5] = "1"
-        g[13][5] = "2";
+        g[13][5] = "2"
         g[13][4] = "1"
-        g[12][3] = "7";
+        g[12][3] = "7"
         g[12][4] = "7"
-        g[11][2] = "7";
-        g[12][1] = "c";
+        g[11][2] = "7"
+        g[12][1] = "c"
         g[13][2] = "7"
-        g[11][0] = "c";
-        g[12][0] = "7";
+        g[11][0] = "c"
+        g[12][0] = "7"
         g[13][1] = "c"
 
         for y in range(12, 18):
@@ -686,7 +1169,7 @@ def build_assets() -> None:
                     g[y][x] = "1" if (x == 8 or x == 14) else "2"
         for y in range(14, 26):
             g[y][11] = "0"
-            g[y][9] = "1";
+            g[y][9] = "1"
             g[y][13] = "1"
 
         for y in range(18, 27):
@@ -697,7 +1180,7 @@ def build_assets() -> None:
 
         for x in range(4, 19):
             if (x * 7) % 3 == 0:
-                g[26][x] = "0";
+                g[26][x] = "0"
                 g[27][x] = "0"
             elif g[26][x] != "0":
                 g[27][x] = "1"
@@ -712,10 +1195,10 @@ def build_assets() -> None:
         for y in range(22, 32):
             for x in range(2, 22): g[y][x] = "5"
         for x in range(2, 22):
-            g[22][x] = "6";
+            g[22][x] = "6"
             g[31][x] = "1"
         for y in range(23, 31):
-            g[y][2] = "6";
+            g[y][2] = "6"
             g[y][21] = "1"
             if y == 27:
                 for x in range(2, 22): g[y][x] = "1"
@@ -763,6 +1246,10 @@ def build_assets() -> None:
 def get_enemy_sprite(archetype_id: str) -> tuple[int, int]:
     """Retrieve Bank 0 (u, v) tile coordinates for any enemy archetype."""
     return ENEMY_SPRITE_COORDS.get(archetype_id, (16, 0))
+
+def get_class_portrait(class_id: str) -> tuple[int, int]:
+    """Retrieve Bank 0 (u, v) tile coordinates for a class portrait (48x64)."""
+    return CLASS_PORTRAIT_COORDS.get(class_id, (0, 144))
 
 
 if __name__ == "__main__":

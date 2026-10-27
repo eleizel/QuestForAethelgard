@@ -296,45 +296,64 @@ class ClassSelectView(View):
         sel_cls_def = CLASS_REGISTRY[sel_cls_id]
 
         # --- LEFT ALCOVE: Stone Chamber with Hero Standing ---
+        # =====================================================================
+        # 3. DUAL-CHAMBER DETAIL PANEL (y=112 to y=222)
+        # =====================================================================
+        panel_x, panel_y, panel_w, panel_h = 6, 112, SCREEN_WIDTH - 12, 110
+        renderer.draw_box(panel_x, panel_y, panel_w, panel_h, bg_col=COLOR_DARK_BLUE, border_col=COLOR_LIGHT_BLUE)
+        pyxel.rectb(panel_x + 1, panel_y + 1, panel_w - 2, panel_h - 2, COLOR_NAVY)
+
+        sel_cls_id = self.classes[self.selected_index]
+        sel_cls_def = CLASS_REGISTRY[sel_cls_id]
+
+        # --- LEFT ALCOVE: Detailed Character Portrait & Hero Plaque ---
         alcove_w = 58
         pyxel.rect(panel_x + 2, panel_y + 2, alcove_w, panel_h - 4, COLOR_NAVY)
-        # Masonry stone lines
-        for ay in range(panel_y + 6, panel_y + panel_h - 10, 8):
-            pyxel.line(panel_x + 2, ay, panel_x + 1 + alcove_w, ay, COLOR_DARK_BLUE)
-            offset = 4 if (ay // 8) % 2 == 0 else alcove_w // 2
-            pyxel.pset(panel_x + 2 + offset, ay + 4, COLOR_GRAY)
 
-        # Hanging Crimson Wall Banner in Alcove
-        hbx, hby = panel_x + 6, panel_y + 6
-        pyxel.rect(hbx, hby, 12, 24, COLOR_RED)
-        pyxel.tri(hbx, hby + 24, hbx + 6, hby + 30, hbx + 11, hby + 24, COLOR_RED)
-        pyxel.rectb(hbx, hby, 12, 24, COLOR_ORANGE)
-        pyxel.pset(hbx + 5, hby + 10, COLOR_YELLOW)
-        pyxel.pset(hbx + 6, hby + 10, COLOR_YELLOW)
+        # Ornate Portrait Framing (52x68 frame for 48x64 sprite)
+        port_w, port_h = 48, 64
+        port_x = panel_x + 2 + (alcove_w - port_w) // 2  # x = 13 (centered)
+        port_y = panel_y + 6  # y = 118
 
-        # Stone Pedestal & Shadow
-        ped_x = panel_x + 14
-        ped_y = panel_y + panel_h - 22
-        pyxel.elli(ped_x, ped_y + 10, 32, 8, COLOR_BLACK)
+        frame_x = port_x - 2  # x = 11
+        frame_y = port_y - 2  # y = 116
+        frame_w = port_w + 4  # w = 52
+        frame_h = port_h + 4  # h = 68
 
-        # Selected Hero Sprite in Alcove
-        pu, pv = sprite_coords.get(sel_cls_id, (0, 0))
-        hx = ped_x + 8
-        hy = ped_y - 4
-        pyxel.blt(hx, hy, 0, pu, pv, 16, 16, 0)
+        pyxel.rect(frame_x, frame_y, frame_w, frame_h, COLOR_BLACK)
+        pyxel.rectb(frame_x, frame_y, frame_w, frame_h, COLOR_LIGHT_BLUE)
+        pyxel.rectb(frame_x + 1, frame_y + 1, frame_w - 2, frame_h - 2, COLOR_YELLOW if pulse == 0 else COLOR_ORANGE)
 
-        if sel_cls_id == "warrior":
-            pyxel.line(hx + 14, hy + 6, hx + 21, hy - 1, COLOR_CYAN)
-            pyxel.line(hx + 15, hy + 6, hx + 22, hy - 1, COLOR_WHITE)
-        elif sel_cls_id == "rogue":
-            pyxel.line(hx - 3, hy + 11, hx + 1, hy + 7, COLOR_WHITE)
-            pyxel.line(hx + 15, hy + 7, hx + 19, hy + 11, COLOR_WHITE)
-        elif sel_cls_id == "mage":
-            pyxel.line(hx + 13, hy + 14, hx + 19, hy + 2, COLOR_BROWN)
-            pyxel.circ(hx + 19, hy + 2, 2, COLOR_CYAN)
-            pyxel.pset(hx + 19, hy + 2, COLOR_WHITE)
+        # Corner Studs on Portrait Frame
+        pyxel.pset(frame_x + 1, frame_y + 1, COLOR_WHITE)
+        pyxel.pset(frame_x + frame_w - 2, frame_y + 1, COLOR_WHITE)
+        pyxel.pset(frame_x + 1, frame_y + frame_h - 2, COLOR_WHITE)
+        pyxel.pset(frame_x + frame_w - 2, frame_y + frame_h - 2, COLOR_WHITE)
 
-        # Vertical Divider Line
+        # Blit 48x64 Portrait from Bank 0
+        from src.tools.generate_assets import get_class_portrait
+        port_u, port_v = get_class_portrait(sel_cls_id)
+        pyxel.blt(port_x, port_y, 0, port_u, port_v, port_w, port_h, 0)
+
+        # Hero Plaque below Portrait (y = 188..216)
+        plaque_x = frame_x
+        plaque_y = frame_y + frame_h + 4
+        plaque_w = frame_w
+        plaque_h = (panel_y + panel_h - 4) - plaque_y
+
+        renderer.draw_box(plaque_x, plaque_y, plaque_w, plaque_h, bg_col=COLOR_BLACK, border_col=COLOR_LIGHT_BLUE)
+        pyxel.rectb(plaque_x + 1, plaque_y + 1, plaque_w - 2, plaque_h - 2, COLOR_NAVY)
+
+        # Centered Name and Role Tag
+        p_name = sel_cls_def.localized_name
+        p_arch = t(f"arch_{sel_cls_id}")
+        tw_name = renderer.get_text_width(p_name)
+        tw_arch = renderer.get_text_width(p_arch)
+
+        renderer.draw_text(plaque_x + max(2, (plaque_w - tw_name) // 2), plaque_y + 4, p_name, COLOR_YELLOW)
+        renderer.draw_text(plaque_x + max(2, (plaque_w - tw_arch) // 2), plaque_y + 13, p_arch, COLOR_GRAY)
+
+        # Vertical Divider Line between Left Alcove and Right Stats
         div_x = panel_x + alcove_w + 3
         pyxel.line(div_x, panel_y + 4, div_x, panel_y + panel_h - 5, COLOR_LIGHT_BLUE)
 
