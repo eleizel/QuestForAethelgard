@@ -57,6 +57,12 @@ class Actor:
                     existing.duration = effect.duration
                     existing.potency = max(existing.potency, effect.potency)
                     return
+                if effect.id == "poison" and (effect.max_stacks > 1 or existing.max_stacks > 1):
+                    existing.max_stacks = max(existing.max_stacks, effect.max_stacks)
+                    existing.stacks = min(existing.max_stacks, existing.stacks + effect.stacks)
+                    existing.duration = effect.duration
+                    existing.potency = max(existing.potency, effect.potency)
+                    return
                 existing.duration = max(existing.duration, effect.duration)
                 existing.potency = max(existing.potency, effect.potency)
                 return

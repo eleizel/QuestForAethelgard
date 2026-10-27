@@ -186,6 +186,14 @@ def modify_blood_frenzy(actor: Actor, stats: Stats) -> Stats:
     return stats.add(type(stats)(max_hp=0, attack=bonus_attack, defense=0, speed=0, crit_chance=0.0))
 
 
+def hook_toxic_blood(actor: Actor, raw_damage: int) -> int:
+    """Take 10% less damage while the current enemy is poisoned."""
+    combat = getattr(actor, "combat_ref", None)
+    if combat and combat.enemy.has_status("poison"):
+        return max(1, int(raw_damage * 0.90))
+    return raw_damage
+
+
 # =============================================================================
 # 3. ROGUE STANDARD SKILLS (3 Actives, 3 Passives)
 # =============================================================================
@@ -194,21 +202,58 @@ def execute_poison_shiv(combat: CombatSystem) -> tuple[str, int, bool]:
     from src.core.i18n import t
     from src.systems.status import get_status_by_id
     attack = combat.player.effective_stats.attack
-    dmg = int(attack * 1.05)
-    actual_dmg = combat.damage_enemy(dmg)
+    actual_dmg = combat.damage_enemy(int(attack * 1.05))
     if combat.enemy.current_hp > 0:
-        poison = get_status_by_id("poison", duration=5, potency=max(1, int(attack * 0.10)))
+        can_stack = any(a.id == "venomous_accumulation" for a in combat.player.abilities.passive)
+        poison = get_status_by_id("poison", duration=5, potency=max(1, int(attack * 0.10)),
+                                  max_stacks=3 if can_stack else 1)
         if poison:
             combat.enemy.apply_status(poison)
     combat.enemy_gauge = max(0, combat.enemy_gauge - 30)
     return t("log_poison_shiv", player=combat.player.name, dmg=actual_dmg), actual_dmg, False
 
 
-def execute_smoke_bomb(combat: CombatSystem) -> tuple[str, int, bool]:
+def execute_venomous_extraction(combat: CombatSystem) -> tuple[str, int, bool]:
     from src.core.i18n import t
-    combat.enemy_gauge = max(0, combat.enemy_gauge - 50)
-    combat.player_gauge = min(100, combat.player_gauge + 25)
-    return t("log_smoke_bomb", player=combat.player.name), 0, False
+    poison = next((status for status in combat.enemy.statuses if status.id == "poison"), None)
+    stacks = poison.stacks if poison else 0
+    attack = combat.player.effective_stats.attack
+    actual = combat.damage_enemy(int(attack * (0.60 + 0.30 * stacks)))
+    if poison:
+        combat.enemy.remove_status("poison")
+    return t("log_venomous_extraction", player=combat.player.name, dmg=actual, stacks=stacks), actual, False
+
+
+def execute_dirty_tricks(combat: CombatSystem) -> tuple[str, int, bool]:
+    from src.core.i18n import t
+    from src.systems.status import get_status_by_id
+    actual = combat.damage_enemy(int(combat.player.effective_stats.attack * 0.70))
+    blinded = False
+    if combat.enemy.is_alive:
+        vulnerable = get_status_by_id("vulnerable", duration=2)
+        if vulnerable:
+            combat.enemy.apply_status(vulnerable)
+        if combat.rng.random() < 0.40:
+            blind = get_status_by_id("blind", duration=1)
+            if blind:
+                combat.enemy.apply_status(blind)
+                blinded = True
+    return t("log_dirty_tricks", player=combat.player.name, dmg=actual,
+             blind=t("log_dirty_tricks_blind_suffix") if blinded else t("log_empty_suffix")), actual, False
+
+
+def execute_hilt_strike(combat: CombatSystem) -> tuple[str, int, bool]:
+    from src.core.i18n import t
+    from src.systems.status import get_status_by_id
+    actual = combat.damage_enemy(int(combat.player.effective_stats.attack * 0.80))
+    stunned = False
+    if combat.enemy.is_alive and combat.rng.random() < 0.40:
+        stun = get_status_by_id("stun", duration=1)
+        if stun:
+            combat.enemy.apply_status(stun)
+            stunned = True
+    return t("log_hilt_strike", player=combat.player.name, dmg=actual,
+             stunned=t("log_hilt_strike_stun_suffix") if stunned else t("log_empty_suffix")), actual, False
 
 
 def execute_flurry_of_daggers(combat: CombatSystem) -> tuple[str, int, bool]:
@@ -237,6 +282,16 @@ def hook_exposed_weakness(actor: Actor, target: Actor, damage: int, is_crit: boo
     """A critical hit empowers the player's next damaging strike by 25%."""
     if is_crit and damage > 0 and hasattr(actor, "base_stats"):
         setattr(actor, "_next_strike_bonus", True)
+
+
+def modify_whirlwind_defense(stats: Stats) -> Stats:
+    added = stats.defense * 0.10
+    return stats.add(type(stats)(max_hp=0, attack=0, defense=added, speed=0, crit_chance=0.0))
+
+
+def hook_whirlwind_defense(actor: Actor, target: Actor, damage: int, is_crit: bool) -> None:
+    if is_crit and damage > 0:
+        actor.activate_stance("whirlwind_defense")
 
 
 # =============================================================================
@@ -454,21 +509,50 @@ STANDARD_ABILITIES: list[Ability] = [
     # Rogue Standard
     Ability(id="poison_shiv", name="Poison Shiv", description="Deals 105% ATK, applies 5 ticks of poison, and drains 30 enemy gauge.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
-            execute_hook=execute_poison_shiv,cooldown=3,),
-    Ability(id="smoke_bomb", name="Smoke Bomb", description="Stalls enemy by 50 gauge; grants +25 player gauge.",
+            execute_hook=execute_poison_shiv, cooldown=3, affinities=("venomancer",)),
+    Ability(id="dirty_tricks", name="Dirty Tricks",
+            description="Deals 70% ATK, applies Vulnerable for 2 ticks, and has a 40% chance to Blind for 1 tick.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
-            execute_hook=execute_smoke_bomb,cooldown=4,),
+            execute_hook=execute_dirty_tricks, cooldown=4),
     Ability(id="flurry_of_daggers", name="Flurry of Daggers",
             description="3 strikes at 55% ATK (+15% Crit chance each).", ability_type=AbilityType.ACTIVE,
-            rarity=AbilityRarity.STANDARD, required_class="rogue", execute_hook=execute_flurry_of_daggers,cooldown=3,),
+            rarity=AbilityRarity.STANDARD, required_class="rogue",
+            execute_hook=execute_flurry_of_daggers, cooldown=3, affinities=("duelist",)),
     Ability(id="nimble_reflexes", name="Nimble Reflexes", description="+10% Speed, +5% Crit Chance, +5% Defense.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
-            modify_stats_hook=modify_nimble_reflexes,),
+            modify_stats_hook=modify_nimble_reflexes, affinities=("duelist",)),
     Ability(id="exposed_weakness", name="Exposed Weakness",
             description="Critical hits empower your next damaging strike by 25%.", ability_type=AbilityType.PASSIVE,
-            rarity=AbilityRarity.STANDARD, required_class="rogue", on_attack_dealt_hook=hook_exposed_weakness,),
+            rarity=AbilityRarity.STANDARD, required_class="rogue",
+            on_attack_dealt_hook=hook_exposed_weakness, affinities=("duelist",)),
     Ability(id="shadow_step", name="Shadow Step", description="When you lose HP, gain 15 player action gauge.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue"),
+
+    Ability(id="venomous_accumulation", name="Venomous Accumulation",
+            description="Poison applications stack up to 3 times and refresh its 5-tick duration.",
+            ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
+            affinities=("venomancer",)),
+    Ability(id="toxic_blood", name="Toxic Blood",
+            description="Take 10% less damage while your enemy is poisoned.",
+            ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
+            on_damage_taken_hook=hook_toxic_blood, affinities=("venomancer",)),
+    Ability(id="venomous_extraction", name="Venomous Extraction",
+            description="Deals 60% ATK plus 30% ATK per Poison stack, then consumes Poison. 4-turn cooldown.",
+            ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
+            execute_hook=execute_venomous_extraction, cooldown=4, affinities=("venomancer",)),
+    Ability(id="riposte", name="Riposte",
+            description="25% chance to block an attack. A block prepares a 50% ATK counter on the next damage taken.",
+            ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
+            affinities=("duelist",), is_stance=True),
+    Ability(id="whirlwind_defense", name="Whirlwind Defense",
+            description="+10% DEF. A critical hit prepares a stance: the next basic attack adds a 25% ATK strike that can crit.",
+            ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
+            modify_stats_hook=modify_whirlwind_defense, on_attack_dealt_hook=hook_whirlwind_defense,
+            affinities=("duelist",), is_stance=True),
+    Ability(id="hilt_strike", name="Hilt Strike",
+            description="Deals 80% ATK and has a 40% chance to stun for 1 turn. 4-turn cooldown.",
+            ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
+            execute_hook=execute_hilt_strike, cooldown=4, affinities=("duelist",)),
 
     # Mage Standard
     Ability(id="fireball", name="Fireball", description="High-impact blast dealing 185% ATK fire damage.",

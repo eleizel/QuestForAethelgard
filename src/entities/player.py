@@ -14,7 +14,8 @@ class Player(Actor):
     """The player-controlled champion venturing through Aethelgard."""
 
     def __init__(self, name: str = "Sir Aethelgard", class_id: str = "warrior") -> None:
-        self.class_id = class_id
+        # Preserve saved IDs from previous names for this promotion.
+        self.class_id = {"assassin": "venomancer", "envenomator": "venomancer"}.get(class_id, class_id)
         class_def = CLASS_REGISTRY[self.class_id]
 
         # Each run needs its own mutable stats; events permanently modify these.
@@ -30,12 +31,25 @@ class Player(Actor):
         self.pending_ability_choices: list[str] = []  # "STANDARD" or "EPIC"
         self.combat_def_buff: int = 0
         self.abilities = PlayerAbilities()
+        self._active_stances: set[str] = set()
 
         from src.data.abilities import get_ability_by_id
         for ab_id in class_def.starting_abilities:
             ability = get_ability_by_id(ab_id)
             if ability:
                 self.abilities.add_ability(ability)
+
+    def activate_stance(self, stance_id: str) -> None:
+        self._active_stances.add(stance_id)
+
+    def has_stance(self, stance_id: str) -> bool:
+        return stance_id in self._active_stances
+
+    def consume_stance(self, stance_id: str) -> bool:
+        if stance_id not in self._active_stances:
+            return False
+        self._active_stances.remove(stance_id)
+        return True
 
     @property
     def class_name(self) -> str:
@@ -94,6 +108,14 @@ class Player(Actor):
             combat = getattr(self, "combat_ref", None)
             if combat:
                 combat.player_gauge = min(100, combat.player_gauge + 15)
+
+        if actual_damage > 0 and self.consume_stance("riposte") and self.is_alive:
+            combat = getattr(self, "combat_ref", None)
+            if combat and combat.enemy.is_alive:
+                counter = int(self.effective_stats.attack * 0.50)
+                dealt = combat.damage_enemy(counter)
+                from src.core.i18n import t
+                combat.combat_logs.append(t("combat_riposte_counter", actor=self.name, damage=dealt))
 
         return actual_damage
 

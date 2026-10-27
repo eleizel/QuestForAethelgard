@@ -227,7 +227,7 @@ class CombatView(View):
         if game_state.player.statuses:
             status_y = 52
             for s in game_state.player.statuses[:3]:
-                tag = f"{s.badge} {s.duration}"
+                tag = f"{s.badge} {s.stacks} {s.duration}" if s.max_stacks > 1 else f"{s.badge} {s.duration}"
                 tw = renderer.get_text_width(tag)
                 pill_w = tw + 6
                 pill_x = 14
@@ -240,7 +240,7 @@ class CombatView(View):
         if combat.enemy.statuses:
             status_y = 52
             for s in combat.enemy.statuses[:3]:
-                tag = f"{s.badge} {s.duration}"
+                tag = f"{s.badge} {s.stacks} {s.duration}" if s.max_stacks > 1 else f"{s.badge} {s.duration}"
                 tw = renderer.get_text_width(tag)
                 pill_w = tw + 6
                 pill_x = arena_x + arena_w - pill_w - 6

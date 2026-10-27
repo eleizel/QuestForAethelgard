@@ -55,6 +55,7 @@ class Ability:
             on_attack_dealt_hook: Callable[[Actor, Actor, int, bool], None] | None = None,
             modify_actor_stats_hook: Callable[[Actor, Stats], Stats] | None = None,
             affinities: tuple[str, ...] = (),
+            is_stance: bool = False,
     ) -> None:
         self.id: str = id
         self._raw_name: str = name
@@ -69,6 +70,7 @@ class Ability:
         self.on_attack_dealt_hook = on_attack_dealt_hook
         self.modify_actor_stats_hook = modify_actor_stats_hook
         self.affinities: tuple[str, ...] = tuple(affinities)
+        self.is_stance: bool = is_stance
 
     @property
     def name(self) -> str:
