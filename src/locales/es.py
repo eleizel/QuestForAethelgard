@@ -369,7 +369,7 @@ TRANSLATIONS_ES = {
     "ability_mana_barrier_name": "Barrera de Mana",
     "ability_mana_barrier_desc": "Escudo cinético que reduce un 20% el daño recibido.",
     "ability_pyromania_name": "Piromania",
-    "ability_pyromania_desc": "Los ataques tienen 30% de prob. de quemar por 40% ATQ.",
+    "ability_pyromania_desc": "Los ataques básicos tienen un 30% de probabilidad de añadir 1 carga de Quemadura (1% de PV máx. por carga, hasta 3).",
     "ability_colossus_stance_name": "Postura del Coloso",
     "ability_colossus_stance_desc": "Con PV < 35%, reduces el dano un 50% y ganas +30% ATQ.",
     "ability_blade_storm_name": "Tormenta de Hojas",
