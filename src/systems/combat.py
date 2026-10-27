@@ -170,6 +170,8 @@ class CombatSystem:
         if not self._can_actor_act(self.player):
             return
 
+        is_basic_attack = self.queued_ability is None
+
         # Reckless Assault's vulnerability lasts until this next player action.
         self.player._reckless_assault_vulnerable = False
 
@@ -223,9 +225,12 @@ class CombatSystem:
                         self.combat_logs.append(
                             _t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name))
 
-        # Triggers passive hooks for attack dealt
-        if dmg_dealt > 0 or getattr(self, "queued_ability", None):
+        # Trigger passive hooks for attack dealt. Pyromania is deliberately
+        # restricted to basic attacks; other passives may still react to abilities.
+        if dmg_dealt > 0 or not is_basic_attack:
             for passive in self.player.abilities.passive:
+                if passive.id == "pyromania" and not is_basic_attack:
+                    continue
                 passive.on_attack_dealt(self.player, self.enemy, dmg_dealt, is_crit)
 
         if self.player.abilities.has_veterans_instincts and is_crit:
