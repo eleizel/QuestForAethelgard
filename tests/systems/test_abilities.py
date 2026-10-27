@@ -425,3 +425,87 @@ def test_paladin_standard_abilities(monkeypatch):
     assert guard.on_damage_taken(player, 100) == 90
     player._last_ability_affinities = ("berserker",)
     assert guard.on_damage_taken(player, 100) == 100
+
+
+
+def test_burn_stacks_scale_with_max_hp_and_ignore_defense():
+    from src.systems.status import get_status_by_id
+
+    enemy = Enemy(
+        name="BurnTarget",
+        stats=Stats(max_hp=1000, attack=10, defense=999, speed=10, crit_chance=0.0),
+        tier=__import__("src.entities.enemy", fromlist=["EnemyTier"]).EnemyTier.COMMON,
+        floor_level=1,
+        exp_reward=1,
+        gold_reward=1,
+    )
+    enemy.current_hp = 1000
+
+    for _ in range(3):
+        burn = get_status_by_id("burn", duration=8, potency=1)
+        assert burn is not None
+        enemy.apply_status(burn)
+
+    active_burn = next(status for status in enemy.statuses if status.id == "burn")
+    assert active_burn.stacks == 3
+    assert active_burn.max_stacks == 3
+    assert active_burn.duration == 8
+
+    # Reapplication adds no more than three stacks and refreshes the duration.
+    active_burn.duration = 2
+    burn = get_status_by_id("burn", duration=8, potency=1)
+    assert burn is not None
+    enemy.apply_status(burn)
+    assert active_burn.stacks == 3
+    assert active_burn.duration == 8
+
+    # 3 stacks deal 3% of max HP (30) and bypass the enemy's 999 DEF.
+    player = Player(name="TickSource", class_id="mage")
+    combat = CombatSystem(player, enemy)
+    combat._process_status_ticks(enemy)
+    assert enemy.current_hp == 970
+
+
+def test_pyromania_triggers_on_basic_attacks_but_not_abilities():
+    from src.data.abilities import get_ability_by_id
+    from src.entities.enemy import EnemyTier
+
+    player = Player(name="PyromaniaTest", class_id="mage")
+    player.base_stats = Stats(max_hp=100, attack=10, defense=0, speed=10, crit_chance=0.0)
+    player.current_hp = 100
+    enemy = Enemy(
+        name="PyromaniaTarget",
+        stats=Stats(max_hp=1000, attack=10, defense=0, speed=10, crit_chance=0.0),
+        tier=EnemyTier.COMMON,
+        floor_level=1,
+        exp_reward=1,
+        gold_reward=1,
+    )
+    enemy.current_hp = 1000
+    combat = CombatSystem(player, enemy)
+
+    class ProcRNG:
+        def random(self):
+            return 0.0
+
+        def uniform(self, a, b):
+            return 1.0
+
+    combat.rng = ProcRNG()
+    pyromania = get_ability_by_id("pyromania")
+    assert pyromania is not None
+    player.abilities.add_ability(pyromania)
+
+    combat.player_gauge = 100
+    combat._execute_player_attack()
+    burn = next((status for status in enemy.statuses if status.id == "burn"), None)
+    assert burn is not None
+    assert burn.stacks == 1
+
+    # An active spell must not trigger Pyromania, even when its damage lands.
+    enemy.statuses.clear()
+    enemy.current_hp = 1000
+    combat.player_gauge = 100
+    combat.queued_ability = get_ability_by_id("arcane_bolt")
+    combat._execute_player_attack()
+    assert not enemy.has_status("burn")
