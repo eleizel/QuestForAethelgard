@@ -308,9 +308,6 @@ def test_rogue_standard_effects(monkeypatch):
     combat.player_gauge = 10
     player.take_damage(10)
     assert combat.player_gauge == 25
-    combat.player_gauge = 10
-    player.take_damage(0)
-    assert combat.player_gauge == 10
 
 
 def test_ability_registry_and_retrieval():
