@@ -25,7 +25,7 @@ from src.config import (
     SCREEN_WIDTH,
 )
 from src.core.game_state import GameMode
-from src.core.i18n import t
+from src.core.i18n import t, i18n
 from src.ui.renderer import Renderer
 from src.ui.views.base import View
 
@@ -348,15 +348,18 @@ class EventsView(View):
             pyxel.rect(btn_x, btn_y, btn_w, btn_h, COLOR_BLACK)
             pyxel.rectb(btn_x, btn_y, btn_w, btn_h, COLOR_LIGHT_BLUE)
 
-        # Decorative Corner Ticks protruding from button
-        pyxel.line(btn_x - 2, btn_y - 2, btn_x + 3, btn_y - 2, COLOR_LIGHT_BLUE)
-        pyxel.line(btn_x - 2, btn_y - 2, btn_x - 2, btn_y + 3, COLOR_LIGHT_BLUE)
+            # Decorative Corner Ticks protruding from button
+            pyxel.line(btn_x - 2, btn_y - 2, btn_x + 3, btn_y - 2, COLOR_LIGHT_BLUE)
+            pyxel.line(btn_x - 2, btn_y - 2, btn_x - 2, btn_y + 3, COLOR_LIGHT_BLUE)
 
-        pyxel.line(btn_x + btn_w + 1, btn_y - 2, btn_x + btn_w - 4, btn_y - 2, COLOR_LIGHT_BLUE)
-        pyxel.line(btn_x + btn_w + 1, btn_y - 2, btn_x + btn_w + 1, btn_y + 3, COLOR_LIGHT_BLUE)
+            pyxel.line(btn_x + btn_w + 1, btn_y - 2, btn_x + btn_w - 4, btn_y - 2, COLOR_LIGHT_BLUE)
+            pyxel.line(btn_x + btn_w + 1, btn_y - 2, btn_x + btn_w + 1, btn_y + 3, COLOR_LIGHT_BLUE)
 
-        pyxel.line(btn_x - 2, btn_y + btn_h + 1, btn_x + 3, btn_y + btn_h + 1, COLOR_LIGHT_BLUE)
-        pyxel.line(btn_x - 2, btn_y + btn_h + 1, btn_x - 2, btn_y + btn_h - 4, COLOR_LIGHT_BLUE)
+            pyxel.line(btn_x - 2, btn_y + btn_h + 1, btn_x + 3, btn_y + btn_h + 1, COLOR_LIGHT_BLUE)
+            pyxel.line(btn_x - 2, btn_y + btn_h + 1, btn_x - 2, btn_y + btn_h - 4, COLOR_LIGHT_BLUE)
 
-        pyxel.line(btn_x + btn_w + 1, btn_y + btn_h + 1, btn_x + btn_w - 4, btn_y + btn_h + 1, COLOR_LIGHT_BLUE)
-        pyxel.line(btn_x + btn_w + 1, btn_y + btn_h + 1, btn_x + btn_w + 1, btn_y + btn_h - 4, COLOR_LIGHT_BLUE)
+            pyxel.line(btn_x + btn_w + 1, btn_y + btn_h + 1, btn_x + btn_w - 4, btn_y + btn_h + 1, COLOR_LIGHT_BLUE)
+            pyxel.line(btn_x + btn_w + 1, btn_y + btn_h + 1, btn_x + btn_w + 1, btn_y + btn_h - 4, COLOR_LIGHT_BLUE)
+
+            btn_label = "[CONTINUE]" if i18n.locale == "en" else "[CONTINUAR]"
+            renderer.draw_text(btn_x + (btn_w - renderer.get_text_width(btn_label)) // 2, btn_y + 6, btn_label, COLOR_WHITE)
