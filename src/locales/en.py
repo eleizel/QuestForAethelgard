@@ -394,6 +394,12 @@ TRANSLATIONS_EN = {
     "ability_time_dilation_desc": "+25% ATK, +30% Speed, +25% Crit Chance.",
     "ability_phoenix_rebirth_name": "Phoenix Rebirth",
     "ability_phoenix_rebirth_desc": "Once per combat, lethal blow heals to 50% HP.",
+    "ability_shieldbreaker_strike_name": "Shieldbreaker Strike",
+    "ability_shieldbreaker_strike_desc": "Deals damage equal to 100% ATK plus 50% DEF.",
+    "ability_defensive_superiority_name": "Defensive Superiority",
+    "ability_defensive_superiority_desc": "Gain DEF-based armor penetration, up to 75%, when your DEF exceeds the enemy's.",
+    "ability_paladin_guard_name": "Paladin Guard",
+    "ability_paladin_guard_desc": "Take 10% less damage while your last active ability had Paladin affinity.",
     "ability_cull_the_weak_name": "Cull the Weak",
     "ability_cull_the_weak_desc": "Deal 30% more damage to enemies at or below 30% Max HP.",
     "ability_blood_frenzy_name": "Blood Frenzy",
@@ -410,6 +416,7 @@ TRANSLATIONS_EN = {
     "ability_pw_kill_desc": "Insta-kill enemy for testing.",
 
     # Ability Combat Execution Logs
+    "log_shieldbreaker_strike": "{player} strikes through the enemy's guard for {dmg} damage!",
     "log_reckless_assault": "{player} launches Reckless Assault for {dmg} damage!",
     "log_cross_cut": "{player} uses Cross Cut! Deals {dmg} damage across 2 strikes.",
     "log_shadow_strike": "{player} lunges with Shadow Strike for {dmg} damage{crit}!",
