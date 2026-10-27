@@ -515,3 +515,146 @@ def test_pyromania_triggers_on_basic_attacks_but_not_abilities(monkeypatch):
     combat.queued_ability = get_ability_by_id("arcane_bolt")
     combat._execute_player_attack()
     assert not enemy.has_status("burn")
+
+
+
+def test_rogue_affinity_ability_roster():
+    from src.data.abilities import get_ability_by_id
+    expected = {
+        "venomous_accumulation": "venomancer", "toxic_blood": "venomancer",
+        "venomous_extraction": "venomancer", "riposte": "duelist",
+        "whirlwind_defense": "duelist", "hilt_strike": "duelist",
+    }
+    for ability_id, affinity in expected.items():
+        ability = get_ability_by_id(ability_id)
+        assert ability is not None and affinity in ability.affinities
+    assert get_ability_by_id("smoke_bomb") is None
+    assert get_ability_by_id("dirty_tricks") is not None
+
+
+def test_venom_stacks_tick_and_extract():
+    from src.data.abilities import get_ability_by_id
+    from src.entities.enemy import EnemyTier
+    player = Player(name="VenomTest", class_id="rogue")
+    player.base_stats = Stats(max_hp=100, attack=100, defense=0, speed=10, crit_chance=0.0)
+    enemy = Enemy(name="VenomTarget", stats=Stats(1000, 10, 0, 10, 0.0),
+                  tier=EnemyTier.COMMON, floor_level=1, exp_reward=1, gold_reward=1)
+    enemy.current_hp = 1000
+    combat = CombatSystem(player, enemy)
+    mastery = get_ability_by_id("venomous_accumulation")
+    shiv = get_ability_by_id("poison_shiv")
+    extraction = get_ability_by_id("venomous_extraction")
+    assert mastery and shiv and extraction
+    player.abilities.add_ability(mastery)
+    for _ in range(3):
+        shiv.execute(combat)
+    poison = next(status for status in enemy.statuses if status.id == "poison")
+    assert (poison.stacks, poison.max_stacks, poison.duration) == (3, 3, 5)
+    combat._process_status_ticks(enemy)
+    assert enemy.current_hp == 655
+    _, damage, _ = extraction.execute(combat)
+    assert damage == 150 and enemy.current_hp == 505
+    assert not enemy.has_status("poison")
+
+
+def test_poison_without_venom_mastery_does_not_stack():
+    from src.systems.status import get_status_by_id
+    from src.entities.enemy import EnemyTier
+    enemy = Enemy(name="PlainPoisonTarget", stats=Stats(100, 1, 0, 1, 0.0),
+                  tier=EnemyTier.COMMON, floor_level=1, exp_reward=1, gold_reward=1)
+    for _ in range(2):
+        effect = get_status_by_id("poison", duration=5, potency=3)
+        assert effect
+        enemy.apply_status(effect)
+    poison = next(status for status in enemy.statuses if status.id == "poison")
+    assert poison.stacks == 1
+
+
+def test_toxic_blood_reduces_damage_while_enemy_is_poisoned():
+    from src.data.abilities import get_ability_by_id
+    from src.systems.status import get_status_by_id
+    from src.entities.enemy import EnemyTier
+    player = Player(name="ToxicBloodTest", class_id="rogue")
+    player.base_stats = Stats(100, 10, 0, 10, 0.0)
+    player.current_hp = 100
+    enemy = Enemy(name="PoisonedTarget", stats=Stats(100, 10, 0, 10, 0.0),
+                  tier=EnemyTier.COMMON, floor_level=1, exp_reward=1, gold_reward=1)
+    CombatSystem(player, enemy)
+    passive = get_ability_by_id("toxic_blood")
+    poison = get_status_by_id("poison")
+    assert passive and poison
+    player.abilities.add_ability(passive)
+    enemy.apply_status(poison)
+    assert player.take_damage(100) == 90
+
+
+def test_dirty_tricks_and_hilt_strike_apply_control():
+    from src.data.abilities import get_ability_by_id
+    from src.entities.enemy import EnemyTier
+    player = Player(name="ControlTest", class_id="rogue")
+    player.base_stats = Stats(100, 100, 0, 10, 0.0)
+    enemy = Enemy(name="ControlTarget", stats=Stats(1000, 10, 0, 10, 0.0),
+                  tier=EnemyTier.COMMON, floor_level=1, exp_reward=1, gold_reward=1)
+    combat = CombatSystem(player, enemy)
+    class ProcRNG:
+        def random(self): return 0.0
+        def uniform(self, a, b): return 1.0
+    combat.rng = ProcRNG()
+    dirty = get_ability_by_id("dirty_tricks")
+    hilt = get_ability_by_id("hilt_strike")
+    assert dirty and hilt
+    dirty.execute(combat)
+    assert enemy.has_status("vulnerable") and enemy.has_status("blind")
+    hilt.execute(combat)
+    assert enemy.has_status("stun")
+
+
+def test_riposte_blocks_then_counters_on_next_damage(monkeypatch):
+    from src.data.abilities import get_ability_by_id
+    from src.entities.enemy import EnemyTier
+    player = Player(name="RiposteTest", class_id="rogue")
+    player.base_stats = Stats(100, 40, 0, 10, 0.0)
+    enemy = Enemy(name="RiposteTarget", stats=Stats(100, 10, 0, 10, 0.0),
+                  tier=EnemyTier.COMMON, floor_level=1, exp_reward=1, gold_reward=1)
+    enemy.current_hp = 100
+    combat = CombatSystem(player, enemy)
+    monkeypatch.setattr("src.systems.combat.pyxel.play", lambda *args: None)
+    riposte = get_ability_by_id("riposte")
+    assert riposte and riposte.is_stance
+    player.abilities.add_ability(riposte)
+    class BlockRNG:
+        def random(self): return 0.0
+        def uniform(self, a, b): return 1.0
+    combat.rng = BlockRNG()
+    hp = player.current_hp
+    combat._execute_enemy_attack()
+    assert player.current_hp == hp and player.has_stance("riposte")
+    player.take_damage(10)
+    assert enemy.current_hp == 80 and not player.has_stance("riposte")
+
+
+def test_whirlwind_stance_adds_critical_hit_to_next_basic_attack(monkeypatch):
+    from src.data.abilities import get_ability_by_id
+    from src.entities.enemy import EnemyTier
+    player = Player(name="WhirlwindTest", class_id="rogue")
+    player.base_stats = Stats(100, 100, 10, 10, 1.0)
+    enemy = Enemy(name="WhirlwindTarget", stats=Stats(1000, 10, 0, 10, 0.0),
+                  tier=EnemyTier.COMMON, floor_level=1, exp_reward=1, gold_reward=1)
+    enemy.current_hp = 1000
+    combat = CombatSystem(player, enemy)
+    monkeypatch.setattr("src.systems.combat.pyxel.play", lambda *args: None)
+    whirlwind = get_ability_by_id("whirlwind_defense")
+    assert whirlwind and whirlwind.is_stance
+    player.abilities.add_ability(whirlwind)
+    assert player.effective_stats.defense == pytest.approx(11)
+    class CritRNG:
+        def random(self): return 0.0
+        def uniform(self, a, b): return 1.0
+    combat.rng = CritRNG()
+    combat.player_gauge = 100
+    combat._execute_player_attack()
+    assert player.has_stance("whirlwind_defense")
+    combat.player_gauge = 100
+    combat._execute_player_attack()
+    assert enemy.current_hp == 663
+    assert player.has_stance("whirlwind_defense")

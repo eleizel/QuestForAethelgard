@@ -72,7 +72,8 @@ def _hook_burn(combat: CombatSystem, target: Actor, status: StatusEffect) -> tup
 
 def _hook_poison(combat: CombatSystem, target: Actor, status: StatusEffect) -> tuple[str, int]:
     from src.core.i18n import t
-    dmg = target.take_damage(status.potency)
+    # Attack-scaled poison remains mitigated by defense.
+    dmg = target.take_damage(status.potency * status.stacks)
     return t("status_tick_poison", target=target.name, dmg=dmg), dmg
 
 
@@ -94,11 +95,13 @@ def create_burn(duration: int = 8, potency: int = 1) -> StatusEffect:
     )
 
 
-def create_poison(duration: int = 10, potency: int = 2) -> StatusEffect:
+def create_poison(duration: int = 5, potency: int = 2, max_stacks: int = 1) -> StatusEffect:
+    """Create attack-scaled poison; Venomous Accumulation enables stacking."""
     return StatusEffect(
         id="poison", name="Poison", badge="PSN", color=11,  # COLOR_LIME
         status_type=StatusType.DEBUFF, trigger=StatusTrigger.ON_TICK,
         duration=duration, potency=potency, on_tick_hook=_hook_poison,
+        stacks=1, max_stacks=max_stacks,
     )
 
 

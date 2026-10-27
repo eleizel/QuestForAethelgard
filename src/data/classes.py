@@ -44,7 +44,7 @@ CLASS_REGISTRY: Final[dict[str, ClassDefinition]] = {
         tier=1,
         base_stats=Stats(max_hp=85, attack=14, defense=2, speed=15, crit_chance=0.10),
         growth_per_level=Stats(max_hp=11, attack=3, defense=1, speed=2, crit_chance=0.01),
-        promotions=["assassin", "duelist"],
+        promotions=["venomancer", "duelist"],
         description="A nimble and deadly striking expert.",
         starting_abilities=["shadow_strike", "pw_kill"]
     ),
@@ -76,14 +76,14 @@ CLASS_REGISTRY: Final[dict[str, ClassDefinition]] = {
         promotions=[],
         description="A furious warrior who sacrifices defense for raw power."
     ),
-    "assassin": ClassDefinition(
-        id="assassin",
-        name="Assassin",
+    "venomancer": ClassDefinition(
+        id="venomancer",
+        name="Venomancer",
         tier=2,
-        base_stats=Stats(max_hp=110, attack=32, defense=6, speed=25, crit_chance=0.28),
-        growth_per_level=Stats(max_hp=12, attack=4, defense=2, speed=3, crit_chance=0.02),
+        base_stats=Stats(max_hp=125, attack=27, defense=8, speed=18, crit_chance=0.10),
+        growth_per_level=Stats(max_hp=16, attack=4, defense=2, speed=2, crit_chance=0.005),
         promotions=[],
-        description="A master of critical strikes and evasion."
+        description="A patient poisoner who weakens foes and turns lingering toxins into sudden damage."
     ),
     "duelist": ClassDefinition(
         id="duelist",

@@ -42,6 +42,7 @@ class CombatSystem:
     ) -> None:
         self.player: Player = player
         self.enemy: Enemy = enemy
+        self.player._active_stances.clear()
         # Passive hooks may update combat-owned resources such as action gauge.
         self.player.combat_ref = self
         self.rng: random.Random = random.Random(seed)
@@ -127,7 +128,7 @@ class CombatSystem:
                 self._execute_enemy_attack()
         elif self.enemy_gauge >= ACTION_THRESHOLD:
             self._execute_enemy_attack()
-            if self.player.is_alive and self.player_gauge >= ACTION_THRESHOLD:
+            if self.enemy.is_alive and self.player.is_alive and self.player_gauge >= ACTION_THRESHOLD:
                 self._execute_player_attack()
 
         self._evaluate_battle_outcome()
@@ -135,7 +136,10 @@ class CombatSystem:
         return self.result
 
     def damage_enemy(self, raw_damage: int, defense_penetration: float = 0.0) -> int:
-        """Resolve player damage, including execute bonuses, against the current enemy."""
+        """Resolve player damage, including vulnerabilities and passives."""
+        if self.enemy.has_status("vulnerable"):
+            raw_damage = int(raw_damage * 1.30)
+
         has_cull_the_weak = any(
             ability.id == "cull_the_weak" for ability in self.player.abilities.passive
         )
@@ -171,6 +175,7 @@ class CombatSystem:
             return
 
         is_basic_attack = self.queued_ability is None
+        whirlwind_ready = is_basic_attack and self.player.consume_stance("whirlwind_defense")
 
         # Reckless Assault's vulnerability lasts until this next player action.
         self.player._reckless_assault_vulnerable = False
@@ -202,8 +207,6 @@ class CombatSystem:
                 is_crit = False
             else:
                 raw_dmg, is_crit = self.player.calculate_attack(self.rng)
-                if self.enemy.has_status("vulnerable"):
-                    raw_dmg = int(raw_dmg * 1.30)
                 dmg_dealt = self.damage_enemy(raw_dmg)
                 if is_crit:
                     self.combat_logs.append(
@@ -224,6 +227,17 @@ class CombatSystem:
                         self.enemy.apply_status(effect)
                         self.combat_logs.append(
                             _t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name))
+
+        if whirlwind_ready and dmg_dealt > 0 and self.enemy.is_alive:
+            extra_crit = self.rng.random() < self.player.effective_stats.crit_chance
+            extra_raw = int(self.player.effective_stats.attack * 0.25)
+            if extra_crit:
+                extra_raw = int(extra_raw * 1.5)
+            extra_damage = self.damage_enemy(extra_raw)
+            dmg_dealt += extra_damage
+            is_crit = is_crit or extra_crit
+            log_key = "combat_whirlwind_crit" if extra_crit else "combat_whirlwind_hit"
+            self.combat_logs.append(_t(log_key, actor=self.player.name, target=self.enemy.name, damage=extra_damage))
 
         # Trigger passive hooks for attack dealt. Pyromania is deliberately
         # restricted to basic attacks; other passives may still react to abilities.
@@ -246,6 +260,12 @@ class CombatSystem:
         if self.enemy.has_status("blind") and self.rng.random() < 0.50:
             self.combat_logs.append(_t("combat_blind_miss", actor=self.enemy.name))
             return
+
+        if any(ability.id == "riposte" for ability in self.player.abilities.passive):
+            if self.rng.random() < 0.25:
+                self.player.activate_stance("riposte")
+                self.combat_logs.append(_t("combat_riposte_block", actor=self.player.name))
+                return
 
         raw_dmg, is_crit = self.enemy.calculate_attack(self.rng)
         if self.player.has_status("vulnerable"):

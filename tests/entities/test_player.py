@@ -289,3 +289,12 @@ def test_gain_experience_ability_milestones():
     player.pending_ability_choices.clear()
     player._check_ability_milestone()
     assert player.pending_ability_choices == ["EPIC"]
+
+
+
+def test_rogue_promotions_and_legacy_assassin_save_alias():
+    rogue = Player(class_id="rogue")
+    assert set(CLASS_REGISTRY["rogue"].promotions) == {"venomancer", "duelist"}
+    for legacy_id in ("assassin", "envenomator"):
+        legacy_player = Player(class_id=legacy_id)
+        assert legacy_player.class_id == "venomancer"
