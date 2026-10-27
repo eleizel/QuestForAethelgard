@@ -357,7 +357,7 @@ TRANSLATIONS_EN = {
     "ability_exposed_weakness_name": "Exposed Weakness",
     "ability_exposed_weakness_desc": "Critical hits empower your next damaging strike by 25%.",
     "ability_shadow_step_name": "Shadow Step",
-    "ability_shadow_step_desc": "Taking damage accelerates player gauge by +15.",
+    "ability_shadow_step_desc": "When you lose HP, gain +15 player action gauge.",
     "ability_fireball_name": "Fireball",
     "ability_fireball_desc": "High-impact blast dealing 185% ATK fire damage.",
     "ability_frost_nova_name": "Frost Nova",
