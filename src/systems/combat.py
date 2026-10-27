@@ -132,11 +132,23 @@ class CombatSystem:
 
         return self.result
 
+    def damage_enemy(self, raw_damage: int, defense_penetration: float = 0.0) -> int:
+        """Resolve player damage, including execute bonuses, against the current enemy."""
+        has_cull_the_weak = any(
+            ability.id == "cull_the_weak" for ability in self.player.abilities.passive
+        )
+        if has_cull_the_weak and self.enemy.current_hp > 0 and self.enemy.current_hp <= self.enemy.max_hp * 0.30:
+            raw_damage = int(raw_damage * 1.30)
+        return self.enemy.take_damage(raw_damage, defense_penetration=defense_penetration)
+
     def _execute_player_attack(self) -> None:
         """Execute a player strike against the enemy, or an ability if queued."""
         self.player_gauge -= ACTION_THRESHOLD
         if not self._can_actor_act(self.player):
             return
+
+        # Reckless Assault's vulnerability lasts until this next player action.
+        self.player._reckless_assault_vulnerable = False
 
         # Decrement all independent cooldowns by 1 on player action
         for ab_id in list(self.cooldowns.keys()):
@@ -164,7 +176,7 @@ class CombatSystem:
                 raw_dmg, is_crit = self.player.calculate_attack(self.rng)
                 if self.enemy.has_status("vulnerable"):
                     raw_dmg = int(raw_dmg * 1.30)
-                dmg_dealt = self.enemy.take_damage(raw_dmg)
+                dmg_dealt = self.damage_enemy(raw_dmg)
                 if is_crit:
                     self.combat_logs.append(
                         _t("combat_crit", actor=self.player.name, target=self.enemy.name, damage=dmg_dealt))
