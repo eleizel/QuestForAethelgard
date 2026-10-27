@@ -289,3 +289,41 @@ def test_ability_registry_and_retrieval():
     from src.data.abilities import STANDARD_ABILITIES
 
     assert len(random_fallback) == len(STANDARD_ABILITIES)
+
+
+def test_berserker_standard_abilities(monkeypatch):
+    from src.data.abilities import get_ability_by_id
+    from src.entities.enemy import EnemyTier
+
+    player = Player(name="BerserkerTest", class_id="warrior")
+    player.base_stats = Stats(max_hp=100, attack=100, defense=0, speed=10, crit_chance=0.0)
+    player.current_hp = 100
+    enemy = Enemy(name="Target", stats=Stats(100, 10, 20, 10, 0.0), tier=EnemyTier.COMMON,
+                  floor_level=1, exp_reward=1, gold_reward=1)
+    enemy.base_stats = Stats(max_hp=100, attack=10, defense=20, speed=10, crit_chance=0.0)
+    enemy.current_hp = 100
+    combat = CombatSystem(player, enemy)
+
+    def exact_damage(self, raw_damage, defense_penetration=0.0):
+        return raw_damage
+    monkeypatch.setattr(Enemy, "take_damage", exact_damage)
+
+    reckless = get_ability_by_id("reckless_assault")
+    assert reckless is not None and reckless.affinities == ("berserker",)
+    _, damage, crit = reckless.execute(combat)
+    assert damage == 150 and not crit
+    assert player._reckless_assault_vulnerable is True
+
+    blood_frenzy = get_ability_by_id("blood_frenzy")
+    assert blood_frenzy is not None
+    assert player.effective_stats.attack == 100
+    player.current_hp = 50
+    assert player.effective_stats.attack == 125
+    player.current_hp = 20
+    assert player.effective_stats.attack == 140
+
+    cull = get_ability_by_id("cull_the_weak")
+    assert cull is not None and cull.affinities == ("berserker",)
+    player.abilities.add_ability(cull)
+    enemy.current_hp = 30
+    assert combat.damage_enemy(100) == 130
