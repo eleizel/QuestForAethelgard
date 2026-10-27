@@ -88,6 +88,13 @@ class Player(Actor):
 
         actual_damage = min(self.current_hp, mitigated)
         self.current_hp -= actual_damage
+
+        # Shadow Step triggers only when the player actually loses HP, not on fully mitigated hits.
+        if actual_damage > 0 and any(a.id == "shadow_step" for a in self.abilities.passive):
+            combat = getattr(self, "combat_ref", None)
+            if combat:
+                combat.player_gauge = min(100, combat.player_gauge + 15)
+
         return actual_damage
 
     def gain_experience(self, amount: int, foe_type: str | None = None) -> bool:

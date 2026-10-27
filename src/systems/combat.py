@@ -42,6 +42,8 @@ class CombatSystem:
     ) -> None:
         self.player: Player = player
         self.enemy: Enemy = enemy
+        # Passive hooks may update combat-owned resources such as action gauge.
+        self.player.combat_ref = self
         self.rng: random.Random = random.Random(seed)
 
         # Action gauges (0 to ACTION_THRESHOLD)
@@ -155,6 +157,11 @@ class CombatSystem:
             # Combine penetrations multiplicatively to avoid adding percentages past 100%.
             defense_penetration = 1.0 - (1.0 - defense_penetration) * (1.0 - passive_penetration)
 
+        # Exposed Weakness empowers exactly the next damaging strike after a critical hit.
+        if getattr(self.player, "_next_strike_bonus", False):
+            raw_damage = int(raw_damage * 1.25)
+            self.player._next_strike_bonus = False
+
         return self.enemy.take_damage(raw_damage, defense_penetration=defense_penetration)
 
     def _execute_player_attack(self) -> None:
@@ -162,6 +169,8 @@ class CombatSystem:
         self.player_gauge -= ACTION_THRESHOLD
         if not self._can_actor_act(self.player):
             return
+
+        is_basic_attack = self.queued_ability is None
 
         # Reckless Assault's vulnerability lasts until this next player action.
         self.player._reckless_assault_vulnerable = False
@@ -216,13 +225,16 @@ class CombatSystem:
                         self.combat_logs.append(
                             _t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name))
 
-        # Triggers passive hooks for attack dealt
-        if dmg_dealt > 0 or getattr(self, "queued_ability", None):
+        # Trigger passive hooks for attack dealt. Pyromania is deliberately
+        # restricted to basic attacks; other passives may still react to abilities.
+        if dmg_dealt > 0:
             for passive in self.player.abilities.passive:
+                if passive.id == "pyromania" and not is_basic_attack:
+                    continue
                 passive.on_attack_dealt(self.player, self.enemy, dmg_dealt, is_crit)
 
         if self.player.abilities.has_veterans_instincts and is_crit:
-            self.player_gauge += 20
+            self.player_gauge = min(100, self.player_gauge + 20)
             self.combat_logs.append(_t("combat_veteran", player=self.player.name))
 
     def _execute_enemy_attack(self) -> None:
