@@ -11,7 +11,9 @@ SCREEN_WIDTH: Final[int] = 256
 SCREEN_HEIGHT: Final[int] = 256
 FPS: Final[int] = 30
 import os
-RESOURCE_PATH: Final[str] = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets/game.pyxres")
+
+RESOURCE_PATH: Final[str] = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                         "assets/game.pyxres")
 
 # Pyxel Palette Color Indices (0 to 15)
 COLOR_BLACK: Final[int] = 0

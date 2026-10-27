@@ -1,6 +1,7 @@
 # Quest for Aethelgard
 
-*Quest for Aethelgard* is a retro-styled tactical roguelike RPG built with the [Pyxel](https://github.com/kitao/pyxel) retro game engine.
+*Quest for Aethelgard* is a retro-styled tactical roguelike RPG built with the [Pyxel](https://github.com/kitao/pyxel)
+retro game engine.
 
 ---
 
@@ -42,20 +43,25 @@ QuestForAethelgard/
 ## Architectural Highlights
 
 - **Pyxel Engine & Lifecycle (`src/core/engine.py`)**:
-  Manages initialization (`init`), frame tick updates (`update`), and screen drawing (`draw`) targeting a 256x256 retro canvas at 30 FPS.
+  Manages initialization (`init`), frame tick updates (`update`), and screen drawing (`draw`) targeting a 256x256 retro
+  canvas at 30 FPS.
 - **Master State Machine (`src/core/game_state.py`)**:
-  Orchestrates screen transitions and game modes across `MAP`, `COMBAT`, `INVENTORY`, `EVENTS`, `GAME_OVER`, and `VICTORY`.
+  Orchestrates screen transitions and game modes across `MAP`, `COMBAT`, `INVENTORY`, `EVENTS`, `GAME_OVER`, and
+  `VICTORY`.
 - **Entities & Class Promotions (`src/entities/`)**:
-  - `actor.py`: Base entity with health point management, damage mitigation, and attack calculations.
-  - `player.py`: Hero character featuring branching class promotions (Novice -> Warrior/Mage/Rogue -> Paladin/Archmage/Assassin), stat points, and progression.
-  - `enemy.py`: Tier-scaled adversaries (Common, Uncommon, Elite, Boss) with dynamic attribute scaling per dungeon floor.
+    - `actor.py`: Base entity with health point management, damage mitigation, and attack calculations.
+    - `player.py`: Hero character featuring branching class promotions (Novice -> Warrior/Mage/Rogue ->
+      Paladin/Archmage/Assassin), stat points, and progression.
+    - `enemy.py`: Tier-scaled adversaries (Common, Uncommon, Elite, Boss) with dynamic attribute scaling per dungeon
+      floor.
 - **Tactical Systems (`src/systems/`)**:
-  - `combat.py`: Deterministic tick-based auto-battle simulation driven by actor speed and action gauges.
-  - `inventory.py`: Complete inventory system with 6+2 Equipment (Head, Chest, Hands, Legs, Main Hand, Off Hand + Ring, Amulet), a 10-slot Pouch, and a 3-slot quick-use Belt.
-  - `map_gen.py`: Reverse-tree node graph generator replicating convergent Slay the Spire style floor progression.
+    - `combat.py`: Deterministic tick-based auto-battle simulation driven by actor speed and action gauges.
+    - `inventory.py`: Complete inventory system with 6+2 Equipment (Head, Chest, Hands, Legs, Main Hand, Off Hand +
+      Ring, Amulet), a 10-slot Pouch, and a 3-slot quick-use Belt.
+    - `map_gen.py`: Reverse-tree node graph generator replicating convergent Slay the Spire style floor progression.
 - **UI & Views (`src/ui/`)**:
-  - `renderer.py`: HUD overlay, battle logs, gauge bars, and stat panels.
-  - `views.py`: Dedicated views for Map navigation, Combat, Inventory, and Room Encounters.
+    - `renderer.py`: HUD overlay, battle logs, gauge bars, and stat panels.
+    - `views.py`: Dedicated views for Map navigation, Combat, Inventory, and Room Encounters.
 
 ---
 
@@ -88,12 +94,12 @@ QuestForAethelgard/
 ## Default Controls
 
 - **Map Screen**:
-  - `[1] - [4]`: Select available node on the next floor
-  - `[I]`: Open / close Inventory
+    - `[1] - [4]`: Select available node on the next floor
+    - `[I]`: Open / close Inventory
 - **Combat Screen**:
-  - `[SPACE]`: Advance combat tick manually (auto-ticks automatically)
+    - `[SPACE]`: Advance combat tick manually (auto-ticks automatically)
 - **Inventory Screen**:
-  - `[1] - [3]`: Use quick consumable from Belt slots
-  - `[I]` or `[ESC]`: Close Inventory
+    - `[1] - [3]`: Use quick consumable from Belt slots
+    - `[I]` or `[ESC]`: Close Inventory
 - **Event Screen**:
-  - `[SPACE]` or `[ENTER]`: Return to Map
+    - `[SPACE]` or `[ENTER]`: Return to Map

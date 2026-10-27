@@ -14,7 +14,6 @@ Provides:
 
 from __future__ import annotations
 
-import random
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Callable
@@ -42,17 +41,17 @@ class Ability:
     """Core class representing an active skill or passive effect."""
 
     def __init__(
-        self,
-        id: str,
-        name: str,
-        description: str,
-        ability_type: AbilityType,
-        rarity: AbilityRarity,
-        required_class: str | None = None,  # None = Universal, or 'warrior', 'rogue', 'mage'
-        execute_hook: Callable[[CombatSystem], tuple[str, int, bool]] | None = None,
-        modify_stats_hook: Callable[[Stats], Stats] | None = None,
-        on_damage_taken_hook: Callable[[Actor, int], int] | None = None,
-        on_attack_dealt_hook: Callable[[Actor, Actor, int, bool], None] | None = None,
+            self,
+            id: str,
+            name: str,
+            description: str,
+            ability_type: AbilityType,
+            rarity: AbilityRarity,
+            required_class: str | None = None,  # None = Universal, or 'warrior', 'rogue', 'mage'
+            execute_hook: Callable[[CombatSystem], tuple[str, int, bool]] | None = None,
+            modify_stats_hook: Callable[[Stats], Stats] | None = None,
+            on_damage_taken_hook: Callable[[Actor, int], int] | None = None,
+            on_attack_dealt_hook: Callable[[Actor, Actor, int, bool], None] | None = None,
     ) -> None:
         self.id: str = id
         self._raw_name: str = name
@@ -159,18 +158,3 @@ class PlayerAbilities:
         if 0 <= slot_index < len(target_list):
             target_list[slot_index] = ability
             self._update_cached_flags()
-
-
-
-from src.data.abilities import (
-    ABILITY_REGISTRY,
-    ARCANE_BOLT,
-    CROSS_CUT,
-    EPIC_ABILITIES,
-    PW_KILL,
-    SHADOW_STRIKE,
-    STANDARD_ABILITIES,
-    get_ability_by_id,
-    get_random_abilities,
-)
-

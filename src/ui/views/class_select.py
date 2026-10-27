@@ -1,11 +1,7 @@
 """View switching architecture including CombatView, MapView, and InventoryView."""
 
 from __future__ import annotations
-from src.ui.views.base import View, CombatPopup, ENEMY_SPRITE_COORDS, SPEED_INTERVALS, SPEED_LABELS
 
-import math
-import random
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pyxel
@@ -16,32 +12,26 @@ from src.config import (
     COLOR_CYAN,
     COLOR_DARK_BLUE,
     COLOR_GRAY,
-    COLOR_GREEN,
     COLOR_LIGHT_BLUE,
     COLOR_LIME,
     COLOR_NAVY,
     COLOR_ORANGE,
     COLOR_PEACH,
-    COLOR_PINK,
     COLOR_PURPLE,
     COLOR_RED,
     COLOR_WHITE,
     COLOR_YELLOW,
-    SCREEN_HEIGHT,
     SCREEN_WIDTH,
 )
 from src.core.game_state import GameMode
 from src.core.i18n import i18n, t
-from src.entities import Enemy
-from src.systems.abilities import Ability, AbilityRarity, AbilityType, get_random_abilities
-from src.systems.combat import ACTION_THRESHOLD
-from src.systems.inventory import MAX_BELT_SLOTS, MAX_POUCH_SLOTS, EquipSlot
-from src.systems.map_gen import NodeType
-from src.ui import renderer
+from src.data.abilities import get_random_abilities
 from src.ui.renderer import Renderer
+from src.ui.views.base import View
 
 if TYPE_CHECKING:
     from src.core.game_state import GameState
+
 
 # =============================================================================
 # BIOME ENEMY SPRITE COORDINATE MAP (Bank 0)
@@ -225,9 +215,9 @@ class ClassSelectView(View):
 
         # Class weapon badge icons in Bank 0
         weapon_badges = {
-            "warrior": (72, 0),   # Sword
-            "rogue": (32, 16),    # Dagger
-            "mage": (56, 16),     # Staff with orb
+            "warrior": (72, 0),  # Sword
+            "rogue": (32, 16),  # Dagger
+            "mage": (56, 16),  # Staff with orb
         }
         sprite_coords = {
             "warrior": (0, 0),
@@ -247,7 +237,8 @@ class ClassSelectView(View):
 
             # Selected Gold Studs & Double Border
             if is_selected:
-                pyxel.rectb(card_x + 1, card_y + 1, card_w - 2, card_h - 2, COLOR_YELLOW if pulse == 0 else COLOR_ORANGE)
+                pyxel.rectb(card_x + 1, card_y + 1, card_w - 2, card_h - 2,
+                            COLOR_YELLOW if pulse == 0 else COLOR_ORANGE)
                 # Corner accents
                 pyxel.pset(card_x + 2, card_y + 2, COLOR_WHITE)
                 pyxel.pset(card_x + card_w - 3, card_y + 2, COLOR_WHITE)
@@ -263,7 +254,8 @@ class ClassSelectView(View):
 
             # Class Name & Archetype
             cls_def = CLASS_REGISTRY[cls_id]
-            renderer.draw_text(card_x + 22, card_y + 5, cls_def.localized_name, COLOR_YELLOW if is_selected else COLOR_WHITE)
+            renderer.draw_text(card_x + 22, card_y + 5, cls_def.localized_name,
+                               COLOR_YELLOW if is_selected else COLOR_WHITE)
             archetype = t(f"arch_{cls_id}")
             renderer.draw_text(card_x + 22, card_y + 13, archetype, COLOR_GRAY)
 
@@ -386,7 +378,7 @@ class ClassSelectView(View):
 
         # --- STARTING SKILL (Right sub-column) ---
         skill_x = sub_div_x + 6
-        from src.systems.abilities import get_ability_by_id
+        from src.data.abilities import get_ability_by_id
         starting_skill_id = sel_cls_def.starting_abilities[0] if sel_cls_def.starting_abilities else "None"
         skill = get_ability_by_id(starting_skill_id)
 
@@ -413,12 +405,15 @@ class ClassSelectView(View):
         # 4. BOTTOM ACTION CONTROL BAR (y=228 to y=248)
         # =====================================================================
         # Back Button with Left Arrow
-        renderer.draw_button(6, 228, 58, 18, "◄ [ BACK ]" if i18n.locale == "en" else "◄ [ VOLVER ]", bg_col=COLOR_BLACK, border_col=COLOR_GRAY, text_col=COLOR_WHITE)
+        renderer.draw_button(6, 228, 58, 18, "◄ [ BACK ]" if i18n.locale == "en" else "◄ [ VOLVER ]",
+                             bg_col=COLOR_BLACK, border_col=COLOR_GRAY, text_col=COLOR_WHITE)
 
         # Central Route Selection Toggle
         mode_label = t("route_fate") if self.route_mode == "FATE" else t("route_pathfinder")
-        renderer.draw_button(70, 228, 96, 18, mode_label, bg_col=COLOR_BLACK, border_col=COLOR_DARK_BLUE, text_col=COLOR_YELLOW if self.route_mode == "PATHFINDER" else COLOR_WHITE)
+        renderer.draw_button(70, 228, 96, 18, mode_label, bg_col=COLOR_BLACK, border_col=COLOR_DARK_BLUE,
+                             text_col=COLOR_YELLOW if self.route_mode == "PATHFINDER" else COLOR_WHITE)
 
         # Begin Journey Button with Golden Border and Play Triangle
         b_label = "► [ BEGIN ]" if i18n.locale == "en" else "► [ INICIAR ]"
-        renderer.draw_button(172, 228, 78, 18, b_label, bg_col=COLOR_BLACK, border_col=COLOR_YELLOW, text_col=COLOR_YELLOW)
+        renderer.draw_button(172, 228, 78, 18, b_label, bg_col=COLOR_BLACK, border_col=COLOR_YELLOW,
+                             text_col=COLOR_YELLOW)

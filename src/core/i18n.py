@@ -1,9 +1,12 @@
 """Localization engine for Quest for Aethelgard."""
 
 from __future__ import annotations
+
 from typing import Any
+
 from src.locales.en import TRANSLATIONS_EN
 from src.locales.es import TRANSLATIONS_ES
+
 
 class LocalizationManager:
     def __init__(self) -> None:
@@ -30,6 +33,7 @@ class LocalizationManager:
             except Exception:
                 return pattern
         return pattern
+
 
 i18n = LocalizationManager()
 t = i18n.t

@@ -1,14 +1,21 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import TYPE_CHECKING
+
 from src.entities.actor import Stats
+
 if TYPE_CHECKING:
     from src.entities.actor import Actor
+
+
 class ItemType(Enum):
     EQUIPMENT = auto()
     CONSUMABLE = auto()
     MATERIAL = auto()
+
+
 class EquipSlot(Enum):
     HEAD = "Head"
     SHOULDERS = "Shoulders"
@@ -18,12 +25,16 @@ class EquipSlot(Enum):
     LEGS = "Legs"
     MAIN_HAND = "Main Hand"
     OFF_HAND = "Off Hand"
+
+
 class WeaponType(Enum):
     ONE_HANDED = auto()
     TWO_HANDED = auto()
     SHIELD = auto()
     FOCUS = auto()
     WAND = auto()
+
+
 @dataclass
 class Item:
     id: str
@@ -31,14 +42,18 @@ class Item:
     description: str
     item_type: ItemType = ItemType.MATERIAL
     gold_value: int = 10
+
     @property
     def localized_name(self) -> str:
         from src.core.i18n import t
         return t(f"item_{self.id}_name")
+
     @property
     def localized_description(self) -> str:
         from src.core.i18n import t
         return t(f"item_{self.id}_desc")
+
+
 @dataclass
 class EquipmentItem(Item):
     slot: EquipSlot = EquipSlot.MAIN_HAND
@@ -49,6 +64,8 @@ class EquipmentItem(Item):
     on_hit_status: str | None = None
     on_hit_chance: float = 0.0
     immune_statuses: list[str] = field(default_factory=list)
+
+
 @dataclass
 class ConsumableItem(Item):
     heal_amount: int = 25
@@ -57,6 +74,7 @@ class ConsumableItem(Item):
     applied_status: str | None = None
     status_duration: int = 0
     status_potency: int = 0
+
     def use(self, target: Actor) -> bool:
         if not target.is_alive:
             return False

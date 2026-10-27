@@ -1,11 +1,9 @@
 """View switching architecture including CombatView, MapView, and InventoryView."""
 
 from __future__ import annotations
-from src.ui.views.base import View, CombatPopup, ENEMY_SPRITE_COORDS, SPEED_INTERVALS, SPEED_LABELS
 
 import math
 import random
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pyxel
@@ -22,26 +20,22 @@ from src.config import (
     COLOR_NAVY,
     COLOR_ORANGE,
     COLOR_PEACH,
-    COLOR_PINK,
-    COLOR_PURPLE,
     COLOR_RED,
     COLOR_WHITE,
     COLOR_YELLOW,
-    SCREEN_HEIGHT,
     SCREEN_WIDTH,
 )
-from src.core.game_state import GameMode
-from src.core.i18n import i18n, t
+from src.core.i18n import t
 from src.entities import Enemy
-from src.systems.abilities import Ability, AbilityRarity, AbilityType, get_random_abilities
+from src.data.abilities import get_random_abilities
 from src.systems.combat import ACTION_THRESHOLD
-from src.systems.inventory import MAX_BELT_SLOTS, MAX_POUCH_SLOTS, EquipSlot
-from src.systems.map_gen import NodeType
-from src.ui import renderer
+from src.systems.inventory import MAX_BELT_SLOTS
 from src.ui.renderer import Renderer
+from src.ui.views.base import View, CombatPopup, ENEMY_SPRITE_COORDS, SPEED_INTERVALS, SPEED_LABELS
 
 if TYPE_CHECKING:
     from src.core.game_state import GameState
+
 
 # =============================================================================
 # BIOME ENEMY SPRITE COORDINATE MAP (Bank 0)
@@ -109,7 +103,10 @@ class CombatView(View):
         speed_frames = SPEED_INTERVALS[self.speed_index]
 
         # Advance combat (auto-tick, space, or tap on arena/log)
-        if pyxel.btnp(pyxel.KEY_SPACE) or (pyxel.frame_count % speed_frames == 0) or Renderer.is_clicked(0, 24, SCREEN_WIDTH, 68) or Renderer.is_clicked(0, 202, SCREEN_WIDTH, 54):
+        if pyxel.btnp(pyxel.KEY_SPACE) or (pyxel.frame_count % speed_frames == 0) or Renderer.is_clicked(0, 24,
+                                                                                                         SCREEN_WIDTH,
+                                                                                                         68) or Renderer.is_clicked(
+                0, 202, SCREEN_WIDTH, 54):
             old_p_hp = game_state.player.current_hp
             old_e_hp = game_state.combat.enemy.current_hp
             game_state.update_combat()
@@ -306,7 +303,8 @@ class CombatView(View):
             renderer.draw_text(pop.x, pop.y, pop.text, pop.color)
 
         # Speed Button in the bottom-right corner of the dungeon arena
-        renderer.draw_button(222, 79, 28, 11, f"[{SPEED_LABELS[self.speed_index]}]", bg_col=COLOR_BLACK, border_col=COLOR_YELLOW, text_col=COLOR_YELLOW)
+        renderer.draw_button(222, 79, 28, 11, f"[{SPEED_LABELS[self.speed_index]}]", bg_col=COLOR_BLACK,
+                             border_col=COLOR_YELLOW, text_col=COLOR_YELLOW)
 
         # Arena Outer Border
         pyxel.rectb(arena_x, arena_y, arena_w, arena_h, COLOR_DARK_BLUE)
@@ -328,11 +326,13 @@ class CombatView(View):
         # Player Name & HP Bar
         p_name = game_state.player.name[:14]
         renderer.draw_text(pc_x + 27, pc_y + 4, p_name, COLOR_YELLOW)
-        renderer.draw_bar(pc_x + 27, pc_y + 13, 90, 5, game_state.player.current_hp, game_state.player.max_hp, fill_col=COLOR_GREEN, bg_col=COLOR_RED)
+        renderer.draw_bar(pc_x + 27, pc_y + 13, 90, 5, game_state.player.current_hp, game_state.player.max_hp,
+                          fill_col=COLOR_GREEN, bg_col=COLOR_RED)
 
         # Numeric Stats
         p_stats = game_state.player.effective_stats
-        renderer.draw_text(pc_x + 27, pc_y + 20, f"HP:  {game_state.player.current_hp}/{game_state.player.max_hp}", COLOR_WHITE)
+        renderer.draw_text(pc_x + 27, pc_y + 20, f"HP:  {game_state.player.current_hp}/{game_state.player.max_hp}",
+                           COLOR_WHITE)
         renderer.draw_text(pc_x + 27, pc_y + 28, f"ATK: {p_stats.attack:<3} DEF: {p_stats.defense}", COLOR_WHITE)
         crit_pct = int(p_stats.crit_chance * 100)
         renderer.draw_text(pc_x + 27, pc_y + 36, f"SPD: {p_stats.speed:<3} CRIT: {crit_pct}%", COLOR_WHITE)
@@ -348,9 +348,11 @@ class CombatView(View):
         pyxel.blt(ec_x + 5, ec_y + 5, 0, eu, ev, 16, 16, 0)
 
         # Enemy Name & HP Bar
-        e_name = combat.enemy.display_name if len(combat.enemy.display_name) <= 14 else combat.enemy.display_name[:13] + "."
+        e_name = combat.enemy.display_name if len(combat.enemy.display_name) <= 14 else combat.enemy.display_name[
+                                                                                            :13] + "."
         renderer.draw_text(ec_x + 27, ec_y + 4, e_name, COLOR_YELLOW)
-        renderer.draw_bar(ec_x + 27, ec_y + 13, 90, 5, combat.enemy.current_hp, combat.enemy.max_hp, fill_col=COLOR_GREEN, bg_col=COLOR_RED)
+        renderer.draw_bar(ec_x + 27, ec_y + 13, 90, 5, combat.enemy.current_hp, combat.enemy.max_hp,
+                          fill_col=COLOR_GREEN, bg_col=COLOR_RED)
 
         # Numeric Stats
         e_stats = combat.enemy.effective_stats
@@ -365,8 +367,10 @@ class CombatView(View):
         renderer.draw_text(4, 142, t("tick_gauges"), COLOR_YELLOW)
 
         # Player meter aligned with player card (x=4, w=122); Enemy meter aligned with enemy card (x=130, w=122)
-        renderer.draw_bar(4, 150, 122, 5, combat.player_gauge, ACTION_THRESHOLD, fill_col=COLOR_LIGHT_BLUE, bg_col=COLOR_NAVY)
-        renderer.draw_bar(130, 150, 122, 5, combat.enemy_gauge, ACTION_THRESHOLD, fill_col=COLOR_ORANGE, bg_col=COLOR_NAVY)
+        renderer.draw_bar(4, 150, 122, 5, combat.player_gauge, ACTION_THRESHOLD, fill_col=COLOR_LIGHT_BLUE,
+                          bg_col=COLOR_NAVY)
+        renderer.draw_bar(130, 150, 122, 5, combat.enemy_gauge, ACTION_THRESHOLD, fill_col=COLOR_ORANGE,
+                          bg_col=COLOR_NAVY)
 
         # =====================================================================
         # 4. SPLIT ACTION COMMAND PANEL (y=158 to y=198)
@@ -389,10 +393,10 @@ class CombatView(View):
 
             if b_item:
                 pyxel.rectb(cmd_x + 8, sy - 1, 108, 10, COLOR_LIGHT_BLUE if b_idx == 0 else COLOR_NAVY)
-                renderer.draw_text(cmd_x + 11, sy, f"{b_idx+1}. {b_item.localized_name[:10]}", COLOR_WHITE)
+                renderer.draw_text(cmd_x + 11, sy, f"{b_idx + 1}. {b_item.localized_name[:10]}", COLOR_WHITE)
                 renderer.draw_text(cmd_x + 78, sy, f"[+{b_item.heal_amount} HP]", COLOR_LIME)
             else:
-                renderer.draw_text(cmd_x + 11, sy, f"{b_idx+1}. {t('empty_slot_short')}", COLOR_GRAY)
+                renderer.draw_text(cmd_x + 11, sy, f"{b_idx + 1}. {t('empty_slot_short')}", COLOR_GRAY)
 
         # --- RIGHT COLUMN: Active Skills ---
         skills = game_state.player.abilities.active
@@ -410,14 +414,14 @@ class CombatView(View):
                     pyxel.pset(div_x + 5, sy + 2, COLOR_BLACK)
                     pyxel.pset(div_x + 7, sy + 2, COLOR_BLACK)
 
-                ab_name = f"{a_idx+4}. {ab.localized_name[:12]}"
+                ab_name = f"{a_idx + 4}. {ab.localized_name[:12]}"
                 renderer.draw_text(div_x + 12, sy, ab_name, COLOR_YELLOW if is_queued else COLOR_WHITE)
 
                 tag = "WAIT" if is_queued else "CAST"
                 tag_col = COLOR_YELLOW if is_queued else COLOR_LIGHT_BLUE
                 renderer.draw_text(cmd_x + cmd_w - 28, sy, tag, tag_col)
             else:
-                renderer.draw_text(div_x + 12, sy, f"{a_idx+4}. (Empty)", COLOR_GRAY)
+                renderer.draw_text(div_x + 12, sy, f"{a_idx + 4}. (Empty)", COLOR_GRAY)
 
         # =====================================================================
         # 5. GOTHIC COMBAT ACTIVITY LOG (y=202 to y=254)

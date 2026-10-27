@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import pyxel
 import os
-from src.core.i18n import t
+
+import pyxel
+
 from src.config import (
     COLOR_BLACK,
     COLOR_DARK_BLUE,
@@ -18,6 +19,7 @@ from src.config import (
     COLOR_YELLOW,
     SCREEN_WIDTH,
 )
+from src.core.i18n import t
 from src.entities.actor import Stats
 from src.entities.player import Player
 
@@ -52,15 +54,15 @@ class Renderer:
         return len(text) * char_w
 
     def draw_button(
-        self,
-        x: int,
-        y: int,
-        w: int,
-        h: int,
-        label: str,
-        bg_col: int = COLOR_NAVY,
-        border_col: int = COLOR_WHITE,
-        text_col: int = COLOR_YELLOW,
+            self,
+            x: int,
+            y: int,
+            w: int,
+            h: int,
+            label: str,
+            bg_col: int = COLOR_NAVY,
+            border_col: int = COLOR_WHITE,
+            text_col: int = COLOR_YELLOW,
     ) -> bool:
         """Draw a touch button and return True if clicked/tapped this frame."""
         clicked = self.is_clicked(x, y, w, h)
@@ -78,7 +80,8 @@ class Renderer:
         pyxel.rect(x, y, w, h, bg_col)
         pyxel.rectb(x, y, w, h, border_col)
 
-    def draw_bar(self, x: int, y: int, w: int, h: int, current: int, maximum: int, fill_col: int = COLOR_LIME, bg_col: int = COLOR_RED) -> None:
+    def draw_bar(self, x: int, y: int, w: int, h: int, current: int, maximum: int, fill_col: int = COLOR_LIME,
+                 bg_col: int = COLOR_RED) -> None:
         """Render a percentage-filled meter bar (e.g., HP gauge, tick meter)."""
         pyxel.rect(x, y, w, h, bg_col)
         if maximum > 0:
@@ -111,17 +114,17 @@ class Renderer:
         self.draw_button(222, 3, 30, 16, t("inv_title"))
 
     def draw_stat_panel(
-        self,
-        x: int,
-        y: int,
-        w: int,
-        h: int,
-        title: str,
-        stats: Stats,
-        hp: int,
-        max_hp: int,
-        color_scheme: int = COLOR_NAVY,
-        statuses: list | None = None,
+            self,
+            x: int,
+            y: int,
+            w: int,
+            h: int,
+            title: str,
+            stats: Stats,
+            hp: int,
+            max_hp: int,
+            color_scheme: int = COLOR_NAVY,
+            statuses: list | None = None,
     ) -> None:
         """Render actor statistics box."""
         self.draw_box(x, y, w, h, bg_col=color_scheme, border_col=COLOR_WHITE)
@@ -162,13 +165,13 @@ class Renderer:
         return wrapped_lines
 
     def draw_combat_logs(
-        self,
-        logs: list[str],
-        x: int,
-        y: int,
-        w: int,
-        h: int,
-        max_entries: int = 7,
+            self,
+            logs: list[str],
+            x: int,
+            y: int,
+            w: int,
+            h: int,
+            max_entries: int = 7,
     ) -> None:
         """Render recent battle activity feed."""
         self.draw_box(x, y, w, h, bg_col=COLOR_BLACK, border_col=COLOR_GRAY)

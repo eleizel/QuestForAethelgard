@@ -8,8 +8,6 @@ Provides:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum, auto
 from typing import TYPE_CHECKING, Final
 
 from src.entities.actor import Stats
@@ -22,14 +20,11 @@ from src.entities.item import (
     EquipSlot,
     EquipmentItem,
     Item,
-    ItemType,
     WeaponType,
 )
 
 MAX_POUCH_SLOTS: Final[int] = 10
 MAX_BELT_SLOTS: Final[int] = 3
-
-
 
 
 class Inventory:

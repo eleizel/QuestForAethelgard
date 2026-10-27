@@ -42,7 +42,8 @@ class Actor:
         # Check for immunities from equipment if player
         if hasattr(self, "inventory"):
             immune = []
-            for slot in ['Head', 'Shoulders', 'Chest', 'Waist', 'Hands', 'Legs', 'Main Hand', 'Off Hand', 'Ring', 'Amulet']:
+            for slot in ['Head', 'Shoulders', 'Chest', 'Waist', 'Hands', 'Legs', 'Main Hand', 'Off Hand', 'Ring',
+                         'Amulet']:
                 item = self.inventory.get_equipment_in_slot(slot)
                 if item and getattr(item, "immune_statuses", None):
                     immune.extend(item.immune_statuses)

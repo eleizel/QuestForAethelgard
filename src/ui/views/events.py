@@ -1,27 +1,21 @@
 """View switching architecture including CombatView, MapView, and InventoryView."""
 
 from __future__ import annotations
-from src.ui.views.base import View, CombatPopup, ENEMY_SPRITE_COORDS, SPEED_INTERVALS, SPEED_LABELS
 
 import math
-import random
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pyxel
 
 from src.config import (
     COLOR_BLACK,
-    COLOR_BROWN,
     COLOR_CYAN,
     COLOR_DARK_BLUE,
     COLOR_GRAY,
     COLOR_GREEN,
     COLOR_LIGHT_BLUE,
-    COLOR_LIME,
     COLOR_NAVY,
     COLOR_ORANGE,
-    COLOR_PEACH,
     COLOR_PINK,
     COLOR_PURPLE,
     COLOR_RED,
@@ -31,17 +25,13 @@ from src.config import (
     SCREEN_WIDTH,
 )
 from src.core.game_state import GameMode
-from src.core.i18n import i18n, t
-from src.entities import Enemy
-from src.systems.abilities import Ability, AbilityRarity, AbilityType, get_random_abilities
-from src.systems.combat import ACTION_THRESHOLD
-from src.systems.inventory import MAX_BELT_SLOTS, MAX_POUCH_SLOTS, EquipSlot
-from src.systems.map_gen import NodeType
-from src.ui import renderer
+from src.core.i18n import t
 from src.ui.renderer import Renderer
+from src.ui.views.base import View
 
 if TYPE_CHECKING:
     from src.core.game_state import GameState
+
 
 # =============================================================================
 # BIOME ENEMY SPRITE COORDINATE MAP (Bank 0)
@@ -54,7 +44,8 @@ class EventsView(View):
 
         if event is None or event.resolved_text:
             # Resolved state
-            if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.KEY_RETURN) or Renderer.is_clicked(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT):
+            if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.KEY_RETURN) or Renderer.is_clicked(0, 0, SCREEN_WIDTH,
+                                                                                                  SCREEN_HEIGHT):
                 pyxel.play(0, 3)
                 game_state.current_event = None
                 game_state.switch_mode(GameMode.MAP)
@@ -114,7 +105,7 @@ class EventsView(View):
             pyxel.rect(sx - 12, cy - 4, 24, 12, COLOR_DARK_BLUE)
             # Anvil Top
             pyxel.rect(sx - 18, cy - 8, 36, 6, COLOR_LIGHT_BLUE)
-            pyxel.rect(sx + 18, cy - 6, 8, 4, COLOR_LIGHT_BLUE) # Horn
+            pyxel.rect(sx + 18, cy - 6, 8, 4, COLOR_LIGHT_BLUE)  # Horn
             # Glowing slag
             pyxel.rect(sx - 4, cy - 10, 12, 4, COLOR_ORANGE)
             pyxel.rect(sx - 2, cy - 11, 8, 2, COLOR_RED)
@@ -153,7 +144,7 @@ class EventsView(View):
                 by = cy + 5 + math.sin(angle) * 10
                 pyxel.line(sx, cy + 5, bx, by, COLOR_GREEN)
                 if i % 90 == 0:
-                    pyxel.pset(bx, by, COLOR_RED) # Blood/Roses
+                    pyxel.pset(bx, by, COLOR_RED)  # Blood/Roses
             # Silhouette
             pyxel.rect(sx - 8, cy - 5, 16, 10, COLOR_DARK_BLUE)
             pyxel.elli(sx - 5, cy - 12, 10, 8, COLOR_DARK_BLUE)
@@ -294,7 +285,8 @@ class EventsView(View):
 
         event = getattr(game_state, "current_event", None)
         header_title = event.title if event else t("room_encounter_header")
-        renderer.draw_text(SCREEN_WIDTH // 2 - renderer.get_text_width(header_title) // 2, py + 6, header_title, COLOR_YELLOW)
+        renderer.draw_text(SCREEN_WIDTH // 2 - renderer.get_text_width(header_title) // 2, py + 6, header_title,
+                           COLOR_YELLOW)
 
         # =====================================================================
         # 3. BESPOKE SCENE ILLUSTRATION
@@ -321,7 +313,8 @@ class EventsView(View):
             if is_resolved:
                 renderer.draw_text(tx, txt_start_y + li * 12, line, COLOR_YELLOW)
             else:
-                is_reward = any(k in line.lower() for k in ("gold", "oro", "heal", "cura", "obtained", "obtenido", "gained"))
+                is_reward = any(
+                    k in line.lower() for k in ("gold", "oro", "heal", "cura", "obtained", "obtenido", "gained"))
                 renderer.draw_text(tx, txt_start_y + li * 12, line, COLOR_YELLOW if is_reward else COLOR_WHITE)
 
         # =====================================================================
@@ -344,7 +337,7 @@ class EventsView(View):
                 pyxel.rect(btn_x, btn_y, btn_w, btn_h, bg_col)
                 pyxel.rectb(btn_x, btn_y, btn_w, btn_h, border_col)
 
-                label = f"[{i+1}] {choice.label}"
+                label = f"[{i + 1}] {choice.label}"
                 renderer.draw_text(btn_x + 8, btn_y + 6, label, text_col)
         else:
             # Ornate [CONTINUE] Button (Resolved or No Event)
@@ -367,6 +360,3 @@ class EventsView(View):
 
         pyxel.line(btn_x + btn_w + 1, btn_y + btn_h + 1, btn_x + btn_w - 4, btn_y + btn_h + 1, COLOR_LIGHT_BLUE)
         pyxel.line(btn_x + btn_w + 1, btn_y + btn_h + 1, btn_x + btn_w + 1, btn_y + btn_h - 4, COLOR_LIGHT_BLUE)
-
-        btn_label = "[CONTINUE]" if i18n.locale == "en" else "[CONTINUAR]"
-        renderer.draw_text(btn_x + (btn_w - renderer.get_text_width(btn_label)) // 2, btn_y + 6, btn_label, COLOR_WHITE)

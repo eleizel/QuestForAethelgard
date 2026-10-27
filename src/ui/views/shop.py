@@ -1,11 +1,7 @@
 """View switching architecture including CombatView, MapView, and InventoryView."""
 
 from __future__ import annotations
-from src.ui.views.base import View, CombatPopup, ENEMY_SPRITE_COORDS, SPEED_INTERVALS, SPEED_LABELS
 
-import math
-import random
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pyxel
@@ -16,13 +12,11 @@ from src.config import (
     COLOR_CYAN,
     COLOR_DARK_BLUE,
     COLOR_GRAY,
-    COLOR_GREEN,
     COLOR_LIGHT_BLUE,
     COLOR_LIME,
     COLOR_NAVY,
     COLOR_ORANGE,
     COLOR_PEACH,
-    COLOR_PINK,
     COLOR_PURPLE,
     COLOR_RED,
     COLOR_WHITE,
@@ -32,16 +26,13 @@ from src.config import (
 )
 from src.core.game_state import GameMode
 from src.core.i18n import i18n, t
-from src.entities import Enemy
-from src.systems.abilities import Ability, AbilityRarity, AbilityType, get_random_abilities
-from src.systems.combat import ACTION_THRESHOLD
-from src.systems.inventory import MAX_BELT_SLOTS, MAX_POUCH_SLOTS, EquipSlot
-from src.systems.map_gen import NodeType
-from src.ui import renderer
+from src.systems.inventory import MAX_POUCH_SLOTS
 from src.ui.renderer import Renderer
+from src.ui.views.base import View
 
 if TYPE_CHECKING:
     from src.core.game_state import GameState
+
 
 # =============================================================================
 # BIOME ENEMY SPRITE COORDINATE MAP (Bank 0)
@@ -141,7 +132,8 @@ class ShopView(View):
             scroll_offset = max(0, min(self.buy_cursor - 2, max(0, len(stock) - 5)))
             visible_count = min(5, len(stock) - scroll_offset)
 
-            buy_triggered = pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_B) or Renderer.is_clicked(7, 227, 72, 18)
+            buy_triggered = pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_B) or Renderer.is_clicked(7, 227, 72,
+                                                                                                           18)
 
             # Click selection on catalog items
             for vi in range(visible_count):
@@ -188,7 +180,8 @@ class ShopView(View):
             scroll_offset = max(0, min(self.sell_cursor - 2, max(0, len(pouch) - 5)))
             visible_count = min(5, len(pouch) - scroll_offset)
 
-            sell_triggered = pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_S) or Renderer.is_clicked(7, 227, 72, 18)
+            sell_triggered = pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_S) or Renderer.is_clicked(7, 227, 72,
+                                                                                                            18)
 
             for vi in range(visible_count):
                 real_idx = scroll_offset + vi
@@ -306,7 +299,8 @@ class ShopView(View):
         pyxel.rectb(dia_x + 1, dia_y + 1, dia_w - 2, dia_h - 2, COLOR_NAVY)
 
         # Corner accents on dialogue box
-        for cx, cy in [(dia_x + 2, dia_y + 2), (dia_x + dia_w - 3, dia_y + 2), (dia_x + 2, dia_y + dia_h - 3), (dia_x + dia_w - 3, dia_y + dia_h - 3)]:
+        for cx, cy in [(dia_x + 2, dia_y + 2), (dia_x + dia_w - 3, dia_y + 2), (dia_x + 2, dia_y + dia_h - 3),
+                       (dia_x + dia_w - 3, dia_y + dia_h - 3)]:
             pyxel.pset(cx, cy, COLOR_LIGHT_BLUE)
 
         m_name = t("wandering_merchant")
@@ -397,7 +391,9 @@ class ShopView(View):
                         slot_str = t(f"slot_{item.slot.name.lower()}")
                         renderer.draw_text(tx, ry + 12, f"[{slot_str[:10]}]", COLOR_GRAY)
                     elif isinstance(item, ConsumableItem):
-                        renderer.draw_text(tx, ry + 12, f"Heals {item.heal_amount}" if i18n.locale == "en" else f"Cura {item.heal_amount}", COLOR_LIME)
+                        renderer.draw_text(tx, ry + 12,
+                                           f"Heals {item.heal_amount}" if i18n.locale == "en" else f"Cura {item.heal_amount}",
+                                           COLOR_LIME)
 
                     # Gold Coin & Price
                     pyxel.blt(col_x + rw - 35, ry + 7, 0, 40, 24, 8, 8, 0)
@@ -443,7 +439,9 @@ class ShopView(View):
                         slot_str = t(f"slot_{item.slot.name.lower()}")
                         renderer.draw_text(tx, ry + 12, f"[{slot_str[:10]}]", COLOR_GRAY)
                     elif isinstance(item, ConsumableItem):
-                        renderer.draw_text(tx, ry + 12, f"Heals {item.heal_amount}" if i18n.locale == "en" else f"Cura {item.heal_amount}", COLOR_LIME)
+                        renderer.draw_text(tx, ry + 12,
+                                           f"Heals {item.heal_amount}" if i18n.locale == "en" else f"Cura {item.heal_amount}",
+                                           COLOR_LIME)
 
                     pyxel.blt(col_x + rw - 35, ry + 7, 0, 40, 24, 8, 8, 0)
                     renderer.draw_text(col_x + rw - 25, ry + 8, f"{sell_price}G", COLOR_YELLOW)
@@ -465,7 +463,9 @@ class ShopView(View):
             pyxel.blt(fx + 7, fy + 7, 0, iu, iv, 8, 8, 0)
 
             renderer.draw_text(ins_x + 31, ins_y + 6, inspected_item.localized_name[:11], COLOR_YELLOW)
-            type_label = t(f"slot_{inspected_item.slot.name.lower()}") if isinstance(inspected_item, EquipmentItem) else ("Consumable" if i18n.locale == "en" else "Consumible")
+            type_label = t(f"slot_{inspected_item.slot.name.lower()}") if isinstance(inspected_item,
+                                                                                     EquipmentItem) else (
+                "Consumable" if i18n.locale == "en" else "Consumible")
             renderer.draw_text(ins_x + 31, ins_y + 15, type_label[:11], COLOR_GRAY)
         else:
             pyxel.line(fx + 4, fy + 4, fx + 17, fy + 17, COLOR_NAVY)
@@ -483,7 +483,8 @@ class ShopView(View):
                 renderer.draw_text(ins_x + 6, desc_y, dl, COLOR_WHITE)
                 desc_y += 8
         else:
-            renderer.draw_text(ins_x + 6, desc_y, "Select an item." if i18n.locale == "en" else "Elige un objeto.", COLOR_GRAY)
+            renderer.draw_text(ins_x + 6, desc_y, "Select an item." if i18n.locale == "en" else "Elige un objeto.",
+                               COLOR_GRAY)
             desc_y += 16
 
         # Sub-divider
@@ -494,22 +495,31 @@ class ShopView(View):
         if isinstance(inspected_item, EquipmentItem):
             st = inspected_item.stats_bonus
             if st.attack > 0:
-                renderer.draw_text(ins_x + 6, stat_y, f"ATK: +{st.attack}", COLOR_WHITE); stat_y += 8
+                renderer.draw_text(ins_x + 6, stat_y, f"ATK: +{st.attack}", COLOR_WHITE);
+                stat_y += 8
             if st.defense > 0:
-                renderer.draw_text(ins_x + 6, stat_y, f"DEF: +{st.defense}", COLOR_WHITE); stat_y += 8
+                renderer.draw_text(ins_x + 6, stat_y, f"DEF: +{st.defense}", COLOR_WHITE);
+                stat_y += 8
             if st.speed != 0:
-                renderer.draw_text(ins_x + 6, stat_y, f"SPD: {st.speed:+d}", COLOR_WHITE); stat_y += 8
+                renderer.draw_text(ins_x + 6, stat_y, f"SPD: {st.speed:+d}", COLOR_WHITE);
+                stat_y += 8
             if st.max_hp > 0:
-                renderer.draw_text(ins_x + 6, stat_y, f"HP : +{st.max_hp}", COLOR_WHITE); stat_y += 8
+                renderer.draw_text(ins_x + 6, stat_y, f"HP : +{st.max_hp}", COLOR_WHITE);
+                stat_y += 8
         elif isinstance(inspected_item, ConsumableItem):
             if inspected_item.heal_amount > 0:
-                renderer.draw_text(ins_x + 6, stat_y, f"Heals {inspected_item.heal_amount} HP", COLOR_LIME); stat_y += 8
+                renderer.draw_text(ins_x + 6, stat_y, f"Heals {inspected_item.heal_amount} HP", COLOR_LIME);
+                stat_y += 8
             if isinstance(inspected_item, StatPotion):
                 b = inspected_item.stat_bonus
-                if b.attack > 0: renderer.draw_text(ins_x + 6, stat_y, f"+{b.attack} ATK (Perm)", COLOR_LIME); stat_y += 8
-                elif b.defense > 0: renderer.draw_text(ins_x + 6, stat_y, f"+{b.defense} DEF (Perm)", COLOR_LIME); stat_y += 8
-                elif b.speed > 0: renderer.draw_text(ins_x + 6, stat_y, f"+{b.speed} SPD (Perm)", COLOR_LIME); stat_y += 8
-                elif b.max_hp > 0: renderer.draw_text(ins_x + 6, stat_y, f"+{b.max_hp} HP (Perm)", COLOR_LIME); stat_y += 8
+                if b.attack > 0:
+                    renderer.draw_text(ins_x + 6, stat_y, f"+{b.attack} ATK (Perm)", COLOR_LIME); stat_y += 8
+                elif b.defense > 0:
+                    renderer.draw_text(ins_x + 6, stat_y, f"+{b.defense} DEF (Perm)", COLOR_LIME); stat_y += 8
+                elif b.speed > 0:
+                    renderer.draw_text(ins_x + 6, stat_y, f"+{b.speed} SPD (Perm)", COLOR_LIME); stat_y += 8
+                elif b.max_hp > 0:
+                    renderer.draw_text(ins_x + 6, stat_y, f"+{b.max_hp} HP (Perm)", COLOR_LIME); stat_y += 8
 
         # Bottom Price line
         if inspected_item:

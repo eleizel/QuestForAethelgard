@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+
 import pyxel
 
 from src.config import BG_COLOR, FPS, RESOURCE_PATH, SCREEN_HEIGHT, SCREEN_WIDTH, WINDOW_TITLE

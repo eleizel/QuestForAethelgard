@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from enum import Enum
-from typing import Final
-
-from src.entities.actor import Actor, Stats
-from src.systems.abilities import PlayerAbilities, CROSS_CUT, PW_KILL
 import src.systems.inventory
 from src.data.classes import CLASS_REGISTRY
+from src.entities.actor import Actor, Stats
+from src.systems.abilities import PlayerAbilities
 
 
 class Player(Actor):
@@ -27,11 +24,11 @@ class Player(Actor):
         self.stat_points: int = 0
         self.inventory: 'src.systems.inventory.Inventory' = src.systems.inventory.Inventory()
         self.exp_multiplier: float = class_def.exp_multiplier
-        self.pending_ability_choices: list[str] = [] # "STANDARD" or "EPIC"
+        self.pending_ability_choices: list[str] = []  # "STANDARD" or "EPIC"
         self.combat_def_buff: int = 0
         self.abilities = PlayerAbilities()
 
-        from src.systems.abilities import get_ability_by_id
+        from src.data.abilities import get_ability_by_id
         for ab_id in class_def.starting_abilities:
             ability = get_ability_by_id(ab_id)
             if ability:

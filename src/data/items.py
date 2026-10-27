@@ -130,7 +130,8 @@ ITEM_CATALOG: Final[dict[str, Item]] = {
         stats_bonus=Stats(max_hp=0, attack=2, defense=0, speed=1, crit_chance=0.06),
     ),
     "rusty_parrying_dirk": EquipmentItem(
-        id="rusty_parrying_dirk", name="Parrying Dirk", description="A notched off-hand dagger meant to deflect thrusts and riposte.",
+        id="rusty_parrying_dirk", name="Parrying Dirk",
+        description="A notched off-hand dagger meant to deflect thrusts and riposte.",
         slot=EquipSlot.OFF_HAND, weapon_type=WeaponType.ONE_HANDED, required_class="rogue",
         stats_bonus=Stats(max_hp=0, attack=1, defense=1, speed=1, crit_chance=0.04),
     ),
@@ -140,17 +141,20 @@ ITEM_CATALOG: Final[dict[str, Item]] = {
         stats_bonus=Stats(max_hp=1, attack=0, defense=1, speed=1, crit_chance=0.03),
     ),
     "padded_leather_vest": EquipmentItem(
-        id="padded_leather_vest", name="Padded Leather Vest", description="Light cuirass made of boiled leather with quiet stitching.",
+        id="padded_leather_vest", name="Padded Leather Vest",
+        description="Light cuirass made of boiled leather with quiet stitching.",
         slot=EquipSlot.CHEST, required_class="rogue",
         stats_bonus=Stats(max_hp=2, attack=0, defense=1, speed=1, crit_chance=0.02),
     ),
     "cutpurse_gloves": EquipmentItem(
-        id="cutpurse_gloves", name="Cutpurse Gloves", description="Fingerless suede gloves granting nimble finger dexterity.",
+        id="cutpurse_gloves", name="Cutpurse Gloves",
+        description="Fingerless suede gloves granting nimble finger dexterity.",
         slot=EquipSlot.HANDS, required_class="rogue",
         stats_bonus=Stats(max_hp=0, attack=1, defense=0, speed=1, crit_chance=0.05),
     ),
     "rogue_breeches": EquipmentItem(
-        id="rogue_breeches", name="Stalker Breeches", description="Flexible trousers allowing for silent and low movement.",
+        id="rogue_breeches", name="Stalker Breeches",
+        description="Flexible trousers allowing for silent and low movement.",
         slot=EquipSlot.LEGS, required_class="rogue",
         stats_bonus=Stats(max_hp=0, attack=0, defense=0, speed=2, crit_chance=0.03),
     ),
@@ -159,32 +163,38 @@ ITEM_CATALOG: Final[dict[str, Item]] = {
     # 3. MAGE STARTER KIT
     # =========================================================================
     "gnarled_wand": EquipmentItem(
-        id="gnarled_wand", name="Gnarled Wand", description="A simple yew branch vibrating faintly with ambient arcane hum.",
+        id="gnarled_wand", name="Gnarled Wand",
+        description="A simple yew branch vibrating faintly with ambient arcane hum.",
         slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.ONE_HANDED, required_class="mage",
         stats_bonus=Stats(max_hp=0, attack=3, defense=0, speed=1, crit_chance=0.02),
     ),
     "tattered_grimoire": EquipmentItem(
-        id="tattered_grimoire", name="Tattered Grimoire", description="A battered parchment notebook filled with handwritten basic cantrips.",
+        id="tattered_grimoire", name="Tattered Grimoire",
+        description="A battered parchment notebook filled with handwritten basic cantrips.",
         slot=EquipSlot.OFF_HAND, weapon_type=WeaponType.FOCUS, required_class="mage",
         stats_bonus=Stats(max_hp=1, attack=1, defense=1, speed=0, crit_chance=0.03),
     ),
     "apprentice_cowl": EquipmentItem(
-        id="apprentice_cowl", name="Novice Cowl", description="A soft felt hood steeped in the scent of candle wax and brimstone.",
+        id="apprentice_cowl", name="Novice Cowl",
+        description="A soft felt hood steeped in the scent of candle wax and brimstone.",
         slot=EquipSlot.HEAD, required_class="mage",
         stats_bonus=Stats(max_hp=2, attack=1, defense=0, speed=0, crit_chance=0.03),
     ),
     "apprentice_robes": EquipmentItem(
-        id="apprentice_robes", name="Apprentice Robes", description="Simple indigo academy vestments hemmed with protective silver thread.",
+        id="apprentice_robes", name="Apprentice Robes",
+        description="Simple indigo academy vestments hemmed with protective silver thread.",
         slot=EquipSlot.CHEST, required_class="mage",
         stats_bonus=Stats(max_hp=3, attack=1, defense=1, speed=0, crit_chance=0.0),
     ),
     "cloth_handwraps": EquipmentItem(
-        id="cloth_handwraps", name="Mana Wraps", description="Linen bandages inscribed with runic seals to prevent magical backlash.",
+        id="cloth_handwraps", name="Mana Wraps",
+        description="Linen bandages inscribed with runic seals to prevent magical backlash.",
         slot=EquipSlot.HANDS, required_class="mage",
         stats_bonus=Stats(max_hp=0, attack=1, defense=0, speed=1, crit_chance=0.02),
     ),
     "woven_pantaloons": EquipmentItem(
-        id="woven_pantaloons", name="Woven Pantaloons", description="Comfortable scholar breeches designed for long hours of dungeon study.",
+        id="woven_pantaloons", name="Woven Pantaloons",
+        description="Comfortable scholar breeches designed for long hours of dungeon study.",
         slot=EquipSlot.LEGS, required_class="mage",
         stats_bonus=Stats(max_hp=1, attack=0, defense=1, speed=1, crit_chance=0.0),
     ),
@@ -296,17 +306,20 @@ ITEM_CATALOG: Final[dict[str, Item]] = {
 
     # Rare / Epic
     "dwarven_warhammer": EquipmentItem(
-        id="dwarven_warhammer", name="Dwarven Warhammer", description="Heavy anvil-headed mallet built to shatter bone.",
+        id="dwarven_warhammer", name="Dwarven Warhammer",
+        description="Heavy anvil-headed mallet built to shatter bone.",
         slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.TWO_HANDED, required_class="warrior",
         stats_bonus=Stats(max_hp=0, attack=18, defense=3, speed=-2, crit_chance=0.08),
     ),
     "knights_bastion": EquipmentItem(
-        id="knights_bastion", name="Knight's Bastion", description="Polished steel kite shield emblazoned with a griffon.",
+        id="knights_bastion", name="Knight's Bastion",
+        description="Polished steel kite shield emblazoned with a griffon.",
         slot=EquipSlot.OFF_HAND, weapon_type=WeaponType.SHIELD, required_class="warrior",
         stats_bonus=Stats(max_hp=25, attack=1, defense=10, speed=0, crit_chance=0.02),
     ),
     "spiked_steel_pauldrons": EquipmentItem(
-        id="spiked_steel_pauldrons", name="Spiked Pauldrons", description="Fierce shoulder plates equipped with counter-spikes.",
+        id="spiked_steel_pauldrons", name="Spiked Pauldrons",
+        description="Fierce shoulder plates equipped with counter-spikes.",
         slot=EquipSlot.SHOULDERS, required_class="warrior",
         stats_bonus=Stats(max_hp=15, attack=3, defense=6, speed=0, crit_chance=0.03),
     ),
@@ -345,7 +358,8 @@ ITEM_CATALOG: Final[dict[str, Item]] = {
         stats_bonus=Stats(max_hp=0, attack=4, defense=0, speed=5, crit_chance=0.10),
     ),
     "serrated_parrying_dagger": EquipmentItem(
-        id="serrated_parrying_dagger", name="Parrying Stiletto", description="Designed to catch enemy blades and riposte.",
+        id="serrated_parrying_dagger", name="Parrying Stiletto",
+        description="Designed to catch enemy blades and riposte.",
         slot=EquipSlot.OFF_HAND, weapon_type=WeaponType.ONE_HANDED, required_class="rogue",
         stats_bonus=Stats(max_hp=0, attack=3, defense=3, speed=4, crit_chance=0.08),
     ),
@@ -426,7 +440,8 @@ ITEM_CATALOG: Final[dict[str, Item]] = {
         stats_bonus=Stats(max_hp=0, attack=4, defense=1, speed=1, crit_chance=0.04),
     ),
     "spellweaver_robe": EquipmentItem(
-        id="spellweaver_robe", name="Spellweaver Robe", description="Silken vestments embroidered with protective runes.",
+        id="spellweaver_robe", name="Spellweaver Robe",
+        description="Silken vestments embroidered with protective runes.",
         slot=EquipSlot.CHEST, required_class="mage",
         stats_bonus=Stats(max_hp=10, attack=5, defense=3, speed=2, crit_chance=0.03),
     ),
@@ -438,7 +453,8 @@ ITEM_CATALOG: Final[dict[str, Item]] = {
         stats_bonus=Stats(max_hp=5, attack=16, defense=0, speed=3, crit_chance=0.10),
     ),
     "skull_of_the_heretic": EquipmentItem(
-        id="skull_of_the_heretic", name="Heretic's Scrying Skull", description="Whispers forbidden incantations from the void.",
+        id="skull_of_the_heretic", name="Heretic's Scrying Skull",
+        description="Whispers forbidden incantations from the void.",
         slot=EquipSlot.OFF_HAND, weapon_type=WeaponType.FOCUS, required_class="mage",
         stats_bonus=Stats(max_hp=0, attack=10, defense=2, speed=2, crit_chance=0.12),
     ),
@@ -448,7 +464,8 @@ ITEM_CATALOG: Final[dict[str, Item]] = {
         stats_bonus=Stats(max_hp=15, attack=26, defense=2, speed=3, crit_chance=0.08),
     ),
     "voidstrider_robes": EquipmentItem(
-        id="voidstrider_robes", name="Voidstrider Vestments", description="Draped in shadows that siphon ambient kinetic force.",
+        id="voidstrider_robes", name="Voidstrider Vestments",
+        description="Draped in shadows that siphon ambient kinetic force.",
         slot=EquipSlot.CHEST, required_class="mage",
         stats_bonus=Stats(max_hp=25, attack=14, defense=6, speed=4, crit_chance=0.07),
     ),
@@ -476,7 +493,8 @@ ITEM_CATALOG: Final[dict[str, Item]] = {
         slot=EquipSlot.SHOULDERS, stats_bonus=Stats(max_hp=5, attack=0, defense=1, speed=1, crit_chance=0.0),
     ),
     "fur_lined_capelet": EquipmentItem(
-        id="fur_lined_capelet", name="Wolf-Fur Capelet", description="Warm animal pelt that shields against dungeon drafts.",
+        id="fur_lined_capelet", name="Wolf-Fur Capelet",
+        description="Warm animal pelt that shields against dungeon drafts.",
         slot=EquipSlot.SHOULDERS, stats_bonus=Stats(max_hp=12, attack=1, defense=2, speed=1, crit_chance=0.02),
     ),
     "iron_scaled_epaulets": EquipmentItem(
@@ -508,7 +526,8 @@ ITEM_CATALOG: Final[dict[str, Item]] = {
         slot=EquipSlot.HANDS, stats_bonus=Stats(max_hp=10, attack=1, defense=4, speed=-1, crit_chance=0.0),
     ),
     "assassins_gloves": EquipmentItem(
-        id="assassins_gloves", name="Grip of the Executioner", description="Supple leather gloves with steel knuckle-studs.",
+        id="assassins_gloves", name="Grip of the Executioner",
+        description="Supple leather gloves with steel knuckle-studs.",
         slot=EquipSlot.HANDS, stats_bonus=Stats(max_hp=5, attack=4, defense=2, speed=3, crit_chance=0.08),
     ),
 
@@ -518,7 +537,8 @@ ITEM_CATALOG: Final[dict[str, Item]] = {
         slot=EquipSlot.LEGS, stats_bonus=Stats(max_hp=10, attack=1, defense=3, speed=1, crit_chance=0.0),
     ),
     "quicksilver_greaves": EquipmentItem(
-        id="quicksilver_greaves", name="Quicksilver Sabatons", description="Imbued with mercury enchantments for rapid steps.",
+        id="quicksilver_greaves", name="Quicksilver Sabatons",
+        description="Imbued with mercury enchantments for rapid steps.",
         slot=EquipSlot.LEGS, stats_bonus=Stats(max_hp=10, attack=2, defense=4, speed=6, crit_chance=0.04),
     ),
 
@@ -528,7 +548,8 @@ ITEM_CATALOG: Final[dict[str, Item]] = {
         slot=EquipSlot.HEAD, stats_bonus=Stats(max_hp=10, attack=0, defense=4, speed=0, crit_chance=0.02),
     ),
     "circlet_of_clarity": EquipmentItem(
-        id="circlet_of_clarity", name="Circlet of Clarity", description="A silver circlet that sharpens focus and reflexes.",
+        id="circlet_of_clarity", name="Circlet of Clarity",
+        description="A silver circlet that sharpens focus and reflexes.",
         slot=EquipSlot.HEAD, stats_bonus=Stats(max_hp=15, attack=3, defense=2, speed=3, crit_chance=0.05),
     ),
 

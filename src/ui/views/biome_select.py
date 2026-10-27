@@ -1,11 +1,7 @@
 """View switching architecture including CombatView, MapView, and InventoryView."""
 
 from __future__ import annotations
-from src.ui.views.base import View, CombatPopup, ENEMY_SPRITE_COORDS, SPEED_INTERVALS, SPEED_LABELS
 
-import math
-import random
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pyxel
@@ -30,18 +26,14 @@ from src.config import (
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
 )
-from src.core.game_state import GameMode
 from src.core.i18n import i18n, t
-from src.entities import Enemy
-from src.systems.abilities import Ability, AbilityRarity, AbilityType, get_random_abilities
-from src.systems.combat import ACTION_THRESHOLD
-from src.systems.inventory import MAX_BELT_SLOTS, MAX_POUCH_SLOTS, EquipSlot
-from src.systems.map_gen import NodeType
-from src.ui import renderer
+from src.data.abilities import get_random_abilities
 from src.ui.renderer import Renderer
+from src.ui.views.base import View
 
 if TYPE_CHECKING:
     from src.core.game_state import GameState
+
 
 # =============================================================================
 # BIOME ENEMY SPRITE COORDINATE MAP (Bank 0)
@@ -224,7 +216,8 @@ class BiomeSelectView(View):
             pyxel.line(rw_x - 7, rw_y, rw_x + 7, rw_y, COLOR_DARK_BLUE)
             pyxel.line(rw_x, rw_y - 7, rw_x, rw_y + 7, COLOR_DARK_BLUE)
             pyxel.pset(rw_x, rw_y, COLOR_YELLOW)
-            for px_val, py_val in [(rw_x - 3, rw_y - 3), (rw_x + 3, rw_y - 3), (rw_x - 3, rw_y + 3), (rw_x + 3, rw_y + 3)]:
+            for px_val, py_val in [(rw_x - 3, rw_y - 3), (rw_x + 3, rw_y - 3), (rw_x - 3, rw_y + 3),
+                                   (rw_x + 3, rw_y + 3)]:
                 pyxel.pset(px_val, py_val, COLOR_PINK)
 
             # Flanking lancet stained glass windows
@@ -362,7 +355,8 @@ class BiomeSelectView(View):
             renderer.draw_box(card_x, card_y, card_w, card_h, bg_col=fill_col, border_col=border_col)
 
             if is_sel:
-                pyxel.rectb(card_x + 1, card_y + 1, card_w - 2, card_h - 2, COLOR_YELLOW if pulse == 0 else COLOR_ORANGE)
+                pyxel.rectb(card_x + 1, card_y + 1, card_w - 2, card_h - 2,
+                            COLOR_YELLOW if pulse == 0 else COLOR_ORANGE)
                 pyxel.pset(card_x + 2, card_y + 2, COLOR_WHITE)
                 pyxel.pset(card_x + card_w - 3, card_y + 2, COLOR_WHITE)
                 pyxel.pset(card_x + 2, card_y + card_h - 3, COLOR_WHITE)

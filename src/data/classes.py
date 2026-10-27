@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Final
+
 from src.entities.actor import Stats
+
 
 @dataclass
 class ClassDefinition:
@@ -23,6 +25,7 @@ class ClassDefinition:
     def localized_description(self) -> str:
         from src.core.i18n import t
         return t(f"class_{self.id}_desc")
+
 
 CLASS_REGISTRY: Final[dict[str, ClassDefinition]] = {
     "warrior": ClassDefinition(

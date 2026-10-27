@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Final
 
 import pyxel
 
-
 if TYPE_CHECKING:
     from src.entities.enemy import Enemy
     from src.entities.player import Player
@@ -20,6 +19,7 @@ ACTION_THRESHOLD: Final[int] = 100
 def _t(key: str, **kwargs) -> str:
     from src.core.i18n import t
     return t(key, **kwargs)
+
 
 class CombatResult(Enum):
     """Possible outcomes of an encounter."""
@@ -33,10 +33,10 @@ class CombatSystem:
     """Simulates tick-based deterministic combat between player and enemy."""
 
     def __init__(
-        self,
-        player: Player,
-        enemy: Enemy,
-        seed: int | None = None,
+            self,
+            player: Player,
+            enemy: Enemy,
+            seed: int | None = None,
     ) -> None:
         self.player: Player = player
         self.enemy: Enemy = enemy
@@ -144,7 +144,7 @@ class CombatSystem:
             log_str, dmg_dealt, is_crit = self.queued_ability.execute(self)
             crit_str = " (CRITICAL HIT!)" if is_crit else ""
             self.combat_logs.append(f"[Tick {self.current_tick}] {log_str}")
-            pyxel.play(0, 1 if is_crit else 0) # Base sound
+            pyxel.play(0, 1 if is_crit else 0)  # Base sound
             self.queued_ability = None
         else:
             if self.player.has_status("blind") and self.rng.random() < 0.50:
@@ -157,19 +157,24 @@ class CombatSystem:
                     raw_dmg = int(raw_dmg * 1.30)
                 dmg_dealt = self.enemy.take_damage(raw_dmg)
                 if is_crit:
-                    self.combat_logs.append(_t("combat_crit", actor=self.player.name, target=self.enemy.name, damage=dmg_dealt))
+                    self.combat_logs.append(
+                        _t("combat_crit", actor=self.player.name, target=self.enemy.name, damage=dmg_dealt))
                 else:
-                    self.combat_logs.append(_t("combat_hit", actor=self.player.name, target=self.enemy.name, damage=dmg_dealt))
+                    self.combat_logs.append(
+                        _t("combat_hit", actor=self.player.name, target=self.enemy.name, damage=dmg_dealt))
                 pyxel.play(0, 1 if is_crit else 0)
 
                 # Check on_hit_status for player weapons
                 weapon = self.player.inventory.get_equipment_in_slot("Main Hand")
-                if weapon and getattr(weapon, "on_hit_status", None) and self.rng.random() < getattr(weapon, "on_hit_chance", 0.0):
+                if weapon and getattr(weapon, "on_hit_status", None) and self.rng.random() < getattr(weapon,
+                                                                                                     "on_hit_chance",
+                                                                                                     0.0):
                     from src.systems.status import get_status_by_id
                     effect = get_status_by_id(weapon.on_hit_status)
                     if effect:
                         self.enemy.apply_status(effect)
-                        self.combat_logs.append(_t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name))
+                        self.combat_logs.append(
+                            _t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name))
 
         # Triggers passive hooks for attack dealt
         if dmg_dealt > 0 or getattr(self, "queued_ability", None):
@@ -208,7 +213,8 @@ class CombatSystem:
             effect = get_status_by_id(self.enemy.on_hit_status)
             if effect:
                 self.player.apply_status(effect)
-                self.combat_logs.append(_t("combat_status_applied", target=self.player.name, effect=effect.localized_name))
+                self.combat_logs.append(
+                    _t("combat_status_applied", target=self.player.name, effect=effect.localized_name))
 
         if dmg_dealt > 0:
             chest = self.player.inventory.get_equipment_in_slot("Chest")
@@ -217,7 +223,8 @@ class CombatSystem:
                 effect = get_status_by_id("bleed")
                 if effect:
                     self.enemy.apply_status(effect)
-                    self.combat_logs.append(_t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name))
+                    self.combat_logs.append(
+                        _t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name))
 
     def _distribute_rewards(self) -> None:
         """Grant spoils of victory to the player."""

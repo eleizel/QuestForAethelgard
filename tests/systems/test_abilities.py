@@ -1,7 +1,7 @@
-import pytest
-import sys
 import os
-import random
+import sys
+
+import pytest
 
 # Ensure the src directory is in the path
 sys.path.insert(
@@ -19,15 +19,7 @@ from src.systems.abilities import (
     ARCANE_BOLT,
 )
 
-from src.data.abilities import (
-    execute_cross_cut,
-    execute_shadow_strike,
-    execute_arcane_bolt,
-    modify_iron_skin,
-    hook_iron_skin,
-    hook_bloodlust,
-)
-from src.entities.actor import Stats, Actor
+from src.entities.actor import Stats
 from src.entities.player import Player
 from src.entities.enemy import Enemy
 from src.systems.combat import CombatSystem

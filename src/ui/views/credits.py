@@ -1,47 +1,29 @@
 """View switching architecture including CombatView, MapView, and InventoryView."""
 
 from __future__ import annotations
-from src.ui.views.base import View, CombatPopup, ENEMY_SPRITE_COORDS, SPEED_INTERVALS, SPEED_LABELS
 
-import math
-import random
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pyxel
 
 from src.config import (
     COLOR_BLACK,
-    COLOR_BROWN,
-    COLOR_CYAN,
-    COLOR_DARK_BLUE,
-    COLOR_GRAY,
-    COLOR_GREEN,
-    COLOR_LIGHT_BLUE,
     COLOR_LIME,
     COLOR_NAVY,
-    COLOR_ORANGE,
-    COLOR_PEACH,
-    COLOR_PINK,
-    COLOR_PURPLE,
-    COLOR_RED,
     COLOR_WHITE,
     COLOR_YELLOW,
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
 )
 from src.core.game_state import GameMode
-from src.core.i18n import i18n, t
-from src.entities import Enemy
-from src.systems.abilities import Ability, AbilityRarity, AbilityType, get_random_abilities
-from src.systems.combat import ACTION_THRESHOLD
-from src.systems.inventory import MAX_BELT_SLOTS, MAX_POUCH_SLOTS, EquipSlot
-from src.systems.map_gen import NodeType
-from src.ui import renderer
+from src.core.i18n import t
+from src.data.abilities import get_random_abilities
 from src.ui.renderer import Renderer
+from src.ui.views.base import View
 
 if TYPE_CHECKING:
     from src.core.game_state import GameState
+
 
 # =============================================================================
 # BIOME ENEMY SPRITE COORDINATE MAP (Bank 0)
@@ -50,7 +32,8 @@ class CreditsView(View):
     """Renders the game's credits screen."""
 
     def update(self, game_state: GameState) -> None:
-        if pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_ESCAPE) or Renderer.is_clicked(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT):
+        if pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_ESCAPE) or Renderer.is_clicked(0, 0, SCREEN_WIDTH,
+                                                                                               SCREEN_HEIGHT):
             game_state.switch_mode(GameMode.WELCOME)
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:

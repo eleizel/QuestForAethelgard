@@ -4,16 +4,17 @@ from __future__ import annotations
 
 import random
 from enum import Enum, auto
-from src.entities import Stats
+from typing import TYPE_CHECKING
+
 from src.entities.enemy import EnemyTier, generate_enemy
 from src.entities.player import Player
 from src.systems.combat import CombatResult, CombatSystem
-from src.systems.inventory import ConsumableItem, EquipSlot, EquipmentItem, Item
+from src.systems.inventory import Item
 from src.systems.map_gen import MapGraph, MapNode, NodeType, generate_spire_map
 
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from src.data.events import GameEvent
+
 
 class GameMode(Enum):
     """Core operational modes of the game engine."""
@@ -43,7 +44,7 @@ class GameState:
         self.previous_mode: GameMode = GameMode.WELCOME
 
         self.combat: CombatSystem | None = None
-        self.current_event: 'GameEvent' | None = None
+        self.current_event: GameEvent | None = None
         self.current_event_text: str = ""
         self.floor: int = 1
         self.act: int = 1
@@ -56,7 +57,7 @@ class GameState:
         self.last_exp_earned: int = 0
 
     def start_new_game(
-        self, class_id: str = "warrior", route_mode: str = "FATE"
+            self, class_id: str = "warrior", route_mode: str = "FATE"
     ) -> None:
         """Initialize a new journey with the specified character class."""
         self.player = Player(name="Sir Aethelgard", class_id=class_id)

@@ -1,11 +1,7 @@
 """View switching architecture including CombatView, MapView, and InventoryView."""
 
 from __future__ import annotations
-from src.ui.views.base import View, CombatPopup, ENEMY_SPRITE_COORDS, SPEED_INTERVALS, SPEED_LABELS
 
-import math
-import random
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pyxel
@@ -15,10 +11,7 @@ from src.config import (
     COLOR_BROWN,
     COLOR_CYAN,
     COLOR_DARK_BLUE,
-    COLOR_GRAY,
-    COLOR_GREEN,
     COLOR_LIGHT_BLUE,
-    COLOR_LIME,
     COLOR_NAVY,
     COLOR_ORANGE,
     COLOR_PEACH,
@@ -27,21 +20,15 @@ from src.config import (
     COLOR_RED,
     COLOR_WHITE,
     COLOR_YELLOW,
-    SCREEN_HEIGHT,
     SCREEN_WIDTH,
 )
-from src.core.game_state import GameMode
 from src.core.i18n import i18n, t
-from src.entities import Enemy
-from src.systems.abilities import Ability, AbilityRarity, AbilityType, get_random_abilities
-from src.systems.combat import ACTION_THRESHOLD
-from src.systems.inventory import MAX_BELT_SLOTS, MAX_POUCH_SLOTS, EquipSlot
-from src.systems.map_gen import NodeType
-from src.ui import renderer
 from src.ui.renderer import Renderer
+from src.ui.views.base import View
 
 if TYPE_CHECKING:
     from src.core.game_state import GameState
+
 
 # =============================================================================
 # BIOME ENEMY SPRITE COORDINATE MAP (Bank 0)
@@ -57,7 +44,8 @@ class EndGameView(View):
         btn_w, btn_h = 104, 18
         btn_x = (SCREEN_WIDTH - btn_w) // 2
         btn_y = 196
-        if pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_SPACE) or Renderer.is_clicked(btn_x, btn_y, btn_w, btn_h):
+        if pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_SPACE) or Renderer.is_clicked(btn_x, btn_y, btn_w,
+                                                                                              btn_h):
             pyxel.play(0, 3)
             game_state.__init__()
 
@@ -301,7 +289,8 @@ class EndGameView(View):
             pyxel.line(btn_x + btn_w + 1, btn_y + btn_h + 1, btn_x + btn_w + 1, btn_y + btn_h - 4, COLOR_RED)
 
             btn_label = "[ RESTART ]" if i18n.locale == "en" else "[ REINICIAR ]"
-            renderer.draw_text(btn_x + (btn_w - renderer.get_text_width(btn_label)) // 2, btn_y + 6, btn_label, COLOR_WHITE)
+            renderer.draw_text(btn_x + (btn_w - renderer.get_text_width(btn_label)) // 2, btn_y + 6, btn_label,
+                               COLOR_WHITE)
 
         else:
             # =================================================================
@@ -352,4 +341,5 @@ class EndGameView(View):
             btn_w, btn_h = 104, 18
             btn_x = (SCREEN_WIDTH - btn_w) // 2
             btn_y = 196
-            renderer.draw_button(btn_x, btn_y, btn_w, btn_h, t("btn_restart"), bg_col=COLOR_BLACK, border_col=COLOR_YELLOW, text_col=COLOR_YELLOW)
+            renderer.draw_button(btn_x, btn_y, btn_w, btn_h, t("btn_restart"), bg_col=COLOR_BLACK,
+                                 border_col=COLOR_YELLOW, text_col=COLOR_YELLOW)

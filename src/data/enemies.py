@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Final
 
+
 @dataclass(frozen=True)
 class EnemyArchetype:
     id: str
@@ -52,7 +53,8 @@ ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
     "mandragora_matron": EnemyArchetype(
         id="mandragora_matron", name="Mandragora Matron",
         base_hp=85, base_atk=14, base_def=5, base_spd=8, base_crit=0.05,
-        description="Screeching bulb that stuns action gauges and shields itself.", on_hit_status="stun", status_chance=0.25,
+        description="Screeching bulb that stuns action gauges and shields itself.", on_hit_status="stun",
+        status_chance=0.25,
     ),
     "corpse_treant": EnemyArchetype(
         id="corpse_treant", name="Corpse-Root Treant",
@@ -91,12 +93,14 @@ ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
     "penitent_zealot": EnemyArchetype(
         id="penitent_zealot", name="Penitent Zealot",
         base_hp=32, base_atk=12, base_def=1, base_spd=11, base_crit=0.14,
-        description="Maddened cultist with reckless, bleeding flail strikes.", on_hit_status="bleed", status_chance=0.35,
+        description="Maddened cultist with reckless, bleeding flail strikes.", on_hit_status="bleed",
+        status_chance=0.35,
     ),
     "belltower_gargoyle": EnemyArchetype(
         id="belltower_gargoyle", name="Belltower Gargoyle",
         base_hp=95, base_atk=15, base_def=9, base_spd=7, base_crit=0.06,
-        description="Hardened granite guardian diving from cathedral rafters.", on_hit_status="stun", status_chance=0.30,
+        description="Hardened granite guardian diving from cathedral rafters.", on_hit_status="stun",
+        status_chance=0.30,
     ),
     "inquisitor_automaton": EnemyArchetype(
         id="inquisitor_automaton", name="Inquisitor Automaton",
@@ -120,7 +124,8 @@ ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
     "mire_ghoul": EnemyArchetype(
         id="mire_ghoul", name="Mire Ghoul",
         base_hp=52, base_atk=13, base_def=3, base_spd=8, base_crit=0.04,
-        description="Waterlogged corpse inflicting necrotic wounds that hinder heals.", on_hit_status="weaken", status_chance=0.40,
+        description="Waterlogged corpse inflicting necrotic wounds that hinder heals.", on_hit_status="weaken",
+        status_chance=0.40,
     ),
     "drowned_skulls": EnemyArchetype(
         id="drowned_skulls", name="Drowned Skull-Cluster",
@@ -140,7 +145,8 @@ ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
     "tide_gravekeeper": EnemyArchetype(
         id="tide_gravekeeper", name="Tide-Risen Gravekeeper",
         base_hp=140, base_atk=22, base_def=8, base_spd=7, base_crit=0.08,
-        description="Brine-crusted giant swinging a ship anchor that wipes action meters.", on_hit_status="stun", status_chance=0.35,
+        description="Brine-crusted giant swinging a ship anchor that wipes action meters.", on_hit_status="stun",
+        status_chance=0.35,
     ),
     "carrion_behemoth": EnemyArchetype(
         id="carrion_behemoth", name="Carrion Behemoth",
@@ -164,7 +170,8 @@ ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
     "slag_homunculus": EnemyArchetype(
         id="slag_homunculus", name="Slagforged Homunculus",
         base_hp=56, base_atk=14, base_def=5, base_spd=7, base_crit=0.02,
-        description="Walking molten brick that inflicts lingering burn damage.", on_hit_status="burn", status_chance=0.50,
+        description="Walking molten brick that inflicts lingering burn damage.", on_hit_status="burn",
+        status_chance=0.50,
     ),
     "cinder_sprite": EnemyArchetype(
         id="cinder_sprite", name="Cinder Sprite",
@@ -208,7 +215,8 @@ ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
     "void_mirror": EnemyArchetype(
         id="void_mirror", name="Void Mirror",
         base_hp=70, base_atk=20, base_def=6, base_spd=9, base_crit=0.05,
-        description="Floating quartz prism reflecting back a portion of skill damage.", on_hit_status="vulnerable", status_chance=0.40,
+        description="Floating quartz prism reflecting back a portion of skill damage.", on_hit_status="vulnerable",
+        status_chance=0.40,
     ),
     "stareater_wisp": EnemyArchetype(
         id="stareater_wisp", name="Star-Eater Wisp",
@@ -233,12 +241,14 @@ ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
     "null_singularity": EnemyArchetype(
         id="null_singularity", name="The Null Singularity",
         base_hp=190, base_atk=35, base_def=10, base_spd=8, base_crit=0.10,
-        description="Concentrated gravitational sphere that compresses enemy stats.", on_hit_status="weaken", status_chance=0.50,
+        description="Concentrated gravitational sphere that compresses enemy stats.", on_hit_status="weaken",
+        status_chance=0.50,
     ),
     "chronomancer_praetor": EnemyArchetype(
         id="chronomancer_praetor", name="Chronomancer Praetor",
         base_hp=440, base_atk=42, base_def=12, base_spd=13, base_crit=0.20,
-        description="Time lord capable of rewinding mortality and stalling cooldowns.", on_hit_status="stun", status_chance=0.30,
+        description="Time lord capable of rewinding mortality and stalling cooldowns.", on_hit_status="stun",
+        status_chance=0.30,
     ),
     "devouring_constellation": EnemyArchetype(
         id="devouring_constellation", name="The Devouring Constellation",
@@ -252,7 +262,8 @@ ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
     "sanguine_thrall": EnemyArchetype(
         id="sanguine_thrall", name="Sanguine Thrall",
         base_hp=75, base_atk=24, base_def=3, base_spd=14, base_crit=0.12,
-        description="Frenzied cannibal striking twice per turn and ramping attack.", on_hit_status="bleed", status_chance=0.45,
+        description="Frenzied cannibal striking twice per turn and ramping attack.", on_hit_status="bleed",
+        status_chance=0.45,
     ),
     "crimson_gargoyle": EnemyArchetype(
         id="crimson_gargoyle", name="Crimson Gargoyle",
@@ -262,12 +273,14 @@ ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
     "hemomancer_acolyte": EnemyArchetype(
         id="hemomancer_acolyte", name="Hemomancer Acolyte",
         base_hp=65, base_atk=30, base_def=2, base_spd=11, base_crit=0.18,
-        description="Blood cultist sacrificing health to fire raw unmitigated blasts.", on_hit_status="vulnerable", status_chance=0.40,
+        description="Blood cultist sacrificing health to fire raw unmitigated blasts.", on_hit_status="vulnerable",
+        status_chance=0.40,
     ),
     "flayed_duelist": EnemyArchetype(
         id="flayed_duelist", name="Flayed Duelist",
         base_hp=70, base_atk=26, base_def=4, base_spd=18, base_crit=0.32,
-        description="Cursed fencing master boasting devastating critical ripostes.", on_hit_status="bleed", status_chance=0.50,
+        description="Cursed fencing master boasting devastating critical ripostes.", on_hit_status="bleed",
+        status_chance=0.50,
     ),
     "baroness_vespera": EnemyArchetype(
         id="baroness_vespera", name="Baroness Vespera",
@@ -282,7 +295,8 @@ ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
     "high_lord_carmilla": EnemyArchetype(
         id="high_lord_carmilla", name="High Lord Carmilla",
         base_hp=460, base_atk=46, base_def=12, base_spd=14, base_crit=0.25,
-        description="Ancient vampire queen possessing mist form and lethal executes.", on_hit_status="vulnerable", status_chance=0.50,
+        description="Ancient vampire queen possessing mist form and lethal executes.", on_hit_status="vulnerable",
+        status_chance=0.50,
     ),
     "blood_god_avatar": EnemyArchetype(
         id="blood_god_avatar", name="The Blood-God Avatar",

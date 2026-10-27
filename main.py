@@ -1,6 +1,7 @@
 """Entry point for Quest for Aethelgard."""
 
 import sys
+
 from src.core.engine import Engine
 
 

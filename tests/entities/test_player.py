@@ -1,13 +1,16 @@
 import pytest
-from src.entities.player import Player
-from src.entities.actor import Stats
+
 from src.data.classes import CLASS_REGISTRY
+from src.entities.actor import Stats
+from src.entities.player import Player
 from src.systems.abilities import Ability, AbilityType, AbilityRarity
+
 
 def test_available_promotions_underleveled():
     player = Player(class_id="warrior")
     assert player.level == 1
     assert player.available_promotions() == []
+
 
 def test_available_promotions_leveled():
     player = Player(class_id="warrior")
@@ -17,10 +20,12 @@ def test_available_promotions_leveled():
     assert "berserker" in promotions
     assert len(promotions) == 2
 
+
 def test_available_promotions_max_tier():
     player = Player(class_id="paladin")
     player.level = 20
     assert player.available_promotions() == []
+
 
 def test_promote_ineligible_class():
     player = Player(class_id="warrior")
@@ -29,12 +34,14 @@ def test_promote_ineligible_class():
     assert not player.promote("assassin")
     assert player.class_id == "warrior"
 
+
 def test_promote_underleveled():
     player = Player(class_id="warrior")
     player.level = 14
     # Warrior under level 15 cannot promote
     assert not player.promote("paladin")
     assert player.class_id == "warrior"
+
 
 def test_promote_success():
     player = Player(class_id="warrior")
@@ -69,6 +76,7 @@ def test_promote_success():
     # HP is restored to max
     assert player.current_hp == player.max_hp
 
+
 def test_effective_stats_base():
     player = Player(class_id="warrior")
     stats = player.effective_stats
@@ -77,6 +85,7 @@ def test_effective_stats_base():
     assert stats.defense == player.base_stats.defense
     assert stats.speed == player.base_stats.speed
     assert stats.crit_chance == pytest.approx(player.base_stats.crit_chance)
+
 
 def test_effective_stats_with_equipment(monkeypatch):
     player = Player(class_id="warrior")
@@ -92,6 +101,7 @@ def test_effective_stats_with_equipment(monkeypatch):
     assert stats.defense == player.base_stats.defense + 5
     assert stats.speed == player.base_stats.speed + 2
     assert stats.crit_chance == pytest.approx(player.base_stats.crit_chance + 0.05)
+
 
 def test_effective_stats_with_passive():
     player = Player(class_id="warrior")
@@ -116,6 +126,7 @@ def test_effective_stats_with_passive():
     assert stats.defense == player.base_stats.defense + 4
     assert stats.speed == player.base_stats.speed + 3
     assert stats.crit_chance == pytest.approx(player.base_stats.crit_chance + 0.10)
+
 
 def test_gain_experience_single_level_up():
     player = Player(class_id="warrior")
@@ -150,6 +161,7 @@ def test_gain_experience_single_level_up():
     # Check stat points
     assert player.stat_points == initial_stat_points + 2
 
+
 def test_gain_experience_negative_or_zero():
     player = Player(class_id="warrior")
     assert player.experience == 0
@@ -159,6 +171,7 @@ def test_gain_experience_negative_or_zero():
 
     assert not player.gain_experience(-10)
     assert player.experience == 0
+
 
 def test_gain_experience_no_level_up():
     player = Player(class_id="warrior")
@@ -171,6 +184,7 @@ def test_gain_experience_no_level_up():
     assert player.experience == 40
     assert player.level == 1
 
+
 def test_gain_experience_multiplier():
     player = Player(class_id="warrior")
     # Change multiplier for test
@@ -179,6 +193,7 @@ def test_gain_experience_multiplier():
     assert not player.gain_experience(10)
     # 10 * 1.5 = 15
     assert player.experience == 15
+
 
 def test_gain_experience_multiple_level_ups():
     player = Player(class_id="warrior")
@@ -192,7 +207,8 @@ def test_gain_experience_multiple_level_ups():
 
     assert player.gain_experience(150)
     assert player.level == 3
-    assert player.experience == 150 - 133 # 17
+    assert player.experience == 150 - 133  # 17
+
 
 def test_gain_experience_max_level_cap():
     player = Player(class_id="warrior")
@@ -211,6 +227,7 @@ def test_gain_experience_max_level_cap():
     assert player.level == 20
     # Experience should be capped at exp_to_next_level when max level is reached
     assert player.experience == player.exp_to_next_level
+
 
 def test_gain_experience_ability_milestones():
     player = Player(class_id="warrior")

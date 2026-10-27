@@ -7,8 +7,8 @@ from src.systems.inventory import (
     EquipmentItem,
     Inventory,
     Item,
-    ItemType,
 )
+from src.entities.item import ItemType
 from src.systems.map_gen import MapGraph, MapNode, NodeType, generate_spire_map
 
 __all__ = [

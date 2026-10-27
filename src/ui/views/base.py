@@ -1,10 +1,8 @@
 from __future__ import annotations
-import math
-import random
+
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
-import pyxel
-from src.core.i18n import t
+
 if TYPE_CHECKING:
     from src.core.game_state import GameState
     from src.ui.renderer import Renderer
@@ -74,7 +72,6 @@ SPEED_INTERVALS = [15, 7, 2]
 SPEED_LABELS = ["1x", "2x", "3x"]
 
 
-
 @dataclass
 class CombatPopup:
     x: int
@@ -83,9 +80,12 @@ class CombatPopup:
     color: int
     lifetime: int = 18
 
+
 class View:
     """Base abstract interface for game screens."""
+
     def update(self, game_state: GameState) -> None:
         pass
+
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
         pass

@@ -1,47 +1,32 @@
 """View switching architecture including CombatView, MapView, and InventoryView."""
 
 from __future__ import annotations
-from src.ui.views.base import View, CombatPopup, ENEMY_SPRITE_COORDS, SPEED_INTERVALS, SPEED_LABELS
 
-import math
-import random
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pyxel
 
 from src.config import (
     COLOR_BLACK,
-    COLOR_BROWN,
     COLOR_CYAN,
     COLOR_DARK_BLUE,
     COLOR_GRAY,
-    COLOR_GREEN,
     COLOR_LIGHT_BLUE,
     COLOR_LIME,
     COLOR_NAVY,
-    COLOR_ORANGE,
     COLOR_PEACH,
-    COLOR_PINK,
-    COLOR_PURPLE,
     COLOR_RED,
     COLOR_WHITE,
     COLOR_YELLOW,
-    SCREEN_HEIGHT,
-    SCREEN_WIDTH,
 )
-from src.core.game_state import GameMode
 from src.core.i18n import i18n, t
-from src.entities import Enemy
-from src.systems.abilities import Ability, AbilityRarity, AbilityType, get_random_abilities
-from src.systems.combat import ACTION_THRESHOLD
 from src.systems.inventory import MAX_BELT_SLOTS, MAX_POUCH_SLOTS, EquipSlot
-from src.systems.map_gen import NodeType
-from src.ui import renderer
 from src.ui.renderer import Renderer
+from src.ui.views.base import View
 
 if TYPE_CHECKING:
     from src.core.game_state import GameState
+
 
 # =============================================================================
 # BIOME ENEMY SPRITE COORDINATE MAP (Bank 0)
@@ -417,7 +402,8 @@ class InventoryView(View):
         else:
             pyxel.line(fx + 4, fy + 4, fx + 17, fy + 17, COLOR_NAVY)
             pyxel.line(fx + 17, fy + 4, fx + 4, fy + 17, COLOR_NAVY)
-            renderer.draw_text(ins_x + 32, ins_y + 7, "Empty Slot" if i18n.locale == "en" else "Ranura Vacía", COLOR_GRAY)
+            renderer.draw_text(ins_x + 32, ins_y + 7, "Empty Slot" if i18n.locale == "en" else "Ranura Vacía",
+                               COLOR_GRAY)
             renderer.draw_text(ins_x + 32, ins_y + 16, curr_type[:12], COLOR_DARK_BLUE)
 
         # Stat Divider
@@ -471,7 +457,9 @@ class InventoryView(View):
                 renderer.draw_text(ins_x + 8, desc_y, d_line, COLOR_WHITE)
                 desc_y += 8
         else:
-            renderer.draw_text(ins_x + 8, desc_y, "Select an item to view details." if i18n.locale == "en" else "Selecciona un objeto para ver detalles.", COLOR_GRAY)
+            renderer.draw_text(ins_x + 8, desc_y,
+                               "Select an item to view details." if i18n.locale == "en" else "Selecciona un objeto para ver detalles.",
+                               COLOR_GRAY)
 
         # =====================================================================
         # 3. LOWER LEFT: 3-SLOT BELT PANEL (x=4, y=143, w=110, h=83)
@@ -501,7 +489,7 @@ class InventoryView(View):
             if is_sel and pulse == 0:
                 pyxel.rectb(bx - 1, by - 1, bw + 2, bh + 2, COLOR_YELLOW)
 
-            renderer.draw_text(bx + 4, by + 3, f"[{b_idx+1}]", COLOR_YELLOW if is_sel else COLOR_WHITE)
+            renderer.draw_text(bx + 4, by + 3, f"[{b_idx + 1}]", COLOR_YELLOW if is_sel else COLOR_WHITE)
 
             ix = bx + 6
             iy = by + 12
@@ -563,14 +551,20 @@ class InventoryView(View):
             renderer.draw_text(10, 222, self.feedback_message, msg_col)
 
         e_label = "⚔ [ EQUIP / USE ]" if i18n.locale == "en" else "⚔ [ EQUIP / USAR ]"
-        renderer.draw_button(4, 230, 90, 18, e_label, bg_col=COLOR_BLACK, border_col=COLOR_YELLOW, text_col=COLOR_YELLOW)
+        renderer.draw_button(4, 230, 90, 18, e_label, bg_col=COLOR_BLACK, border_col=COLOR_YELLOW,
+                             text_col=COLOR_YELLOW)
 
-        renderer.draw_button(98, 230, 18, 18, "B1", bg_col=COLOR_BLACK, border_col=COLOR_LIGHT_BLUE, text_col=COLOR_WHITE)
-        renderer.draw_button(119, 230, 18, 18, "B2", bg_col=COLOR_BLACK, border_col=COLOR_LIGHT_BLUE, text_col=COLOR_WHITE)
-        renderer.draw_button(140, 230, 18, 18, "B3", bg_col=COLOR_BLACK, border_col=COLOR_LIGHT_BLUE, text_col=COLOR_WHITE)
+        renderer.draw_button(98, 230, 18, 18, "B1", bg_col=COLOR_BLACK, border_col=COLOR_LIGHT_BLUE,
+                             text_col=COLOR_WHITE)
+        renderer.draw_button(119, 230, 18, 18, "B2", bg_col=COLOR_BLACK, border_col=COLOR_LIGHT_BLUE,
+                             text_col=COLOR_WHITE)
+        renderer.draw_button(140, 230, 18, 18, "B3", bg_col=COLOR_BLACK, border_col=COLOR_LIGHT_BLUE,
+                             text_col=COLOR_WHITE)
 
         d_label = "↓ [ DROP ]" if i18n.locale == "en" else "↓ [ TIRAR ]"
-        renderer.draw_button(162, 230, 44, 18, d_label, bg_col=COLOR_BLACK, border_col=COLOR_LIGHT_BLUE, text_col=COLOR_PEACH)
+        renderer.draw_button(162, 230, 44, 18, d_label, bg_col=COLOR_BLACK, border_col=COLOR_LIGHT_BLUE,
+                             text_col=COLOR_PEACH)
 
         c_label = "✕ [ CLOSE ]" if i18n.locale == "en" else "✕ [ CERRAR ]"
-        renderer.draw_button(210, 230, 42, 18, c_label, bg_col=COLOR_BLACK, border_col=COLOR_LIGHT_BLUE, text_col=COLOR_WHITE)
+        renderer.draw_button(210, 230, 42, 18, c_label, bg_col=COLOR_BLACK, border_col=COLOR_LIGHT_BLUE,
+                             text_col=COLOR_WHITE)

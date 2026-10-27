@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass
 from enum import Enum
-from typing import Final
 
 from src.entities.actor import Actor, Stats
 
@@ -16,10 +14,8 @@ class EnemyTier(Enum):
     ELITE = 3
     BOSS = 4
 
-from src.data.enemies import EnemyArchetype, ENEMY_CATALOG
 
-
-
+from src.data.enemies import ENEMY_CATALOG
 
 
 # Complete Archetype Registry: 24 Commons/Uncommons + 12 Elites + 12 Bosses = 48 Total
@@ -29,14 +25,14 @@ class Enemy(Actor):
     """An adversary encountered in combat."""
 
     def __init__(
-        self,
-        name: str,
-        stats: Stats,
-        tier: EnemyTier,
-        floor_level: int,
-        exp_reward: int,
-        gold_reward: int,
-        archetype_id: str = "skeleton_warrior",
+            self,
+            name: str,
+            stats: Stats,
+            tier: EnemyTier,
+            floor_level: int,
+            exp_reward: int,
+            gold_reward: int,
+            archetype_id: str = "skeleton_warrior",
     ) -> None:
         super().__init__(name=name, base_stats=stats)
         self.tier: EnemyTier = tier
@@ -71,10 +67,10 @@ class Enemy(Actor):
 
 
 def generate_enemy(
-    tier: EnemyTier = EnemyTier.COMMON,
-    floor: int = 1,
-    biome_id: str = "arboretum",
-    rng: random.Random | None = None,
+        tier: EnemyTier = EnemyTier.COMMON,
+        floor: int = 1,
+        biome_id: str = "arboretum",
+        rng: random.Random | None = None,
 ) -> Enemy:
     """Generate a tier-scaled enemy tailored to the current biome and floor."""
     from src.data.biomes import BIOME_REGISTRY

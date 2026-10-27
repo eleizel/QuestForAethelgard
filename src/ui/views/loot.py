@@ -1,11 +1,7 @@
 """View switching architecture including CombatView, MapView, and InventoryView."""
 
 from __future__ import annotations
-from src.ui.views.base import View, CombatPopup, ENEMY_SPRITE_COORDS, SPEED_INTERVALS, SPEED_LABELS
 
-import math
-import random
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pyxel
@@ -16,14 +12,11 @@ from src.config import (
     COLOR_CYAN,
     COLOR_DARK_BLUE,
     COLOR_GRAY,
-    COLOR_GREEN,
     COLOR_LIGHT_BLUE,
     COLOR_LIME,
     COLOR_NAVY,
     COLOR_ORANGE,
     COLOR_PEACH,
-    COLOR_PINK,
-    COLOR_PURPLE,
     COLOR_RED,
     COLOR_WHITE,
     COLOR_YELLOW,
@@ -32,16 +25,13 @@ from src.config import (
 )
 from src.core.game_state import GameMode
 from src.core.i18n import i18n, t
-from src.entities import Enemy
-from src.systems.abilities import Ability, AbilityRarity, AbilityType, get_random_abilities
-from src.systems.combat import ACTION_THRESHOLD
-from src.systems.inventory import MAX_BELT_SLOTS, MAX_POUCH_SLOTS, EquipSlot
 from src.systems.map_gen import NodeType
-from src.ui import renderer
 from src.ui.renderer import Renderer
+from src.ui.views.base import View
 
 if TYPE_CHECKING:
     from src.core.game_state import GameState
+
 
 # =============================================================================
 # BIOME ENEMY SPRITE COORDINATE MAP (Bank 0)
@@ -214,9 +204,9 @@ class LootView(View):
         # Glowing Gold & Gems overflowing
         pyxel.rect(cx + 4, cy + 1, 32, 5, COLOR_YELLOW)
         pyxel.pset(cx + 8, cy + 2, COLOR_WHITE)
-        pyxel.pset(cx + 14, cy + 3, COLOR_RED)    # Ruby
-        pyxel.pset(cx + 21, cy + 2, COLOR_CYAN)   # Sapphire
-        pyxel.pset(cx + 27, cy + 3, COLOR_LIME)   # Emerald
+        pyxel.pset(cx + 14, cy + 3, COLOR_RED)  # Ruby
+        pyxel.pset(cx + 21, cy + 2, COLOR_CYAN)  # Sapphire
+        pyxel.pset(cx + 27, cy + 3, COLOR_LIME)  # Emerald
 
         # Embedded sword blade in gold pile
         pyxel.line(cx + 28, cy - 2, cx + 34, cy - 9, COLOR_WHITE)
@@ -288,7 +278,8 @@ class LootView(View):
         renderer.draw_text(c1_x + 8, sum_y + 4, "EXP Gained:" if i18n.locale == "en" else "EXP Ganada:", COLOR_WHITE)
         renderer.draw_text(c1_x + 8, sum_y + 13, str(game_state.last_exp_earned), COLOR_WHITE)
         # Mini EXP progress bar
-        renderer.draw_bar(c1_x + 8, sum_y + 21, 60, 3, game_state.player.experience, max(1, game_state.player.exp_to_next_level), fill_col=COLOR_CYAN, bg_col=COLOR_BLACK)
+        renderer.draw_bar(c1_x + 8, sum_y + 21, 60, 3, game_state.player.experience,
+                          max(1, game_state.player.exp_to_next_level), fill_col=COLOR_CYAN, bg_col=COLOR_BLACK)
 
         # Column 2: Gold
         pyxel.blt(c2_x, sum_y + 5, 0, 40, 24, 8, 8, 0)
@@ -316,7 +307,8 @@ class LootView(View):
             card_box_w = SCREEN_WIDTH - 16
             is_active = (i == 0)
 
-            renderer.draw_box(8, iy, card_box_w, 24, bg_col=COLOR_DARK_BLUE, border_col=COLOR_YELLOW if is_active else COLOR_LIGHT_BLUE)
+            renderer.draw_box(8, iy, card_box_w, 24, bg_col=COLOR_DARK_BLUE,
+                              border_col=COLOR_YELLOW if is_active else COLOR_LIGHT_BLUE)
             if is_active:
                 pyxel.rectb(9, iy + 1, card_box_w - 2, 22, COLOR_NAVY)
                 # Active selection arrow
@@ -331,7 +323,8 @@ class LootView(View):
 
             # Main Item Details
             content_x = icon_x + 22
-            renderer.draw_text(content_x, iy + 5, f"[{i+1}] {item.localized_name}", COLOR_WHITE if not is_active else COLOR_YELLOW)
+            renderer.draw_text(content_x, iy + 5, f"[{i + 1}] {item.localized_name}",
+                               COLOR_WHITE if not is_active else COLOR_YELLOW)
 
             from src.systems.inventory import ConsumableItem, EquipmentItem
             from src.data.items import StatPotion
@@ -379,7 +372,9 @@ class LootView(View):
                         b_str = f"HP +{item.stat_bonus.max_hp}"
                     renderer.draw_text(vdiv_x + 8, iy + 9, b_str, COLOR_LIME)
                 else:
-                    renderer.draw_text(vdiv_x + 8, iy + 9, f"Heals {item.heal_amount} HP" if i18n.locale == "en" else f"Cura {item.heal_amount} PV", COLOR_LIME)
+                    renderer.draw_text(vdiv_x + 8, iy + 9,
+                                       f"Heals {item.heal_amount} HP" if i18n.locale == "en" else f"Cura {item.heal_amount} PV",
+                                       COLOR_LIME)
 
         if not game_state.pending_loot:
             renderer.draw_text(SCREEN_WIDTH // 2 - 40, start_loot_y + 12, t("spoils_no_items"), COLOR_GRAY)
@@ -393,8 +388,10 @@ class LootView(View):
         take_all_label = "[ TAKE ALL ]" if i18n.locale == "en" else "[ TOMAR TODO ]"
         cont_label = "[ CONTINUE ]" if i18n.locale == "en" else "[ CONTINUAR ]"
 
-        renderer.draw_button(110, 228, 66, 18, take_all_label, bg_col=COLOR_BLACK, border_col=COLOR_LIGHT_BLUE, text_col=COLOR_YELLOW)
-        renderer.draw_button(180, 228, 68, 18, cont_label, bg_col=COLOR_BLACK, border_col=COLOR_LIGHT_BLUE, text_col=COLOR_WHITE)
+        renderer.draw_button(110, 228, 66, 18, take_all_label, bg_col=COLOR_BLACK, border_col=COLOR_LIGHT_BLUE,
+                             text_col=COLOR_YELLOW)
+        renderer.draw_button(180, 228, 68, 18, cont_label, bg_col=COLOR_BLACK, border_col=COLOR_LIGHT_BLUE,
+                             text_col=COLOR_WHITE)
 
         # Outer Gothic Room Border
         pyxel.rectb(box_x, box_y, box_w, box_h, COLOR_DARK_BLUE)

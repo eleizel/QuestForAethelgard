@@ -1,8 +1,10 @@
 import random
+
+from src.data.items import get_catalog
 from src.entities.enemy import EnemyTier
 from src.entities.player import Player
 from src.systems.inventory import ConsumableItem, EquipmentItem, Item
-from src.data.items import get_catalog
+
 
 def generate_combat_loot(enemy_tier: EnemyTier, floor: int, player: Player) -> list[Item]:
     catalog = get_catalog()
@@ -66,8 +68,10 @@ def generate_merchant_stock(floor: int, player: Player) -> list[tuple[Item, int]
     for _ in range(num_consumables):
         item_id = random.choice([
             "health_potion", "major_health_flask",
-            "elixir_vitality_minor", "elixir_strength_minor", "elixir_iron_minor", "elixir_celerity_minor", "elixir_precision_minor",
-            "elixir_vitality_greater", "elixir_strength_greater", "elixir_iron_greater", "elixir_celerity_greater", "elixir_precision_greater",
+            "elixir_vitality_minor", "elixir_strength_minor", "elixir_iron_minor", "elixir_celerity_minor",
+            "elixir_precision_minor",
+            "elixir_vitality_greater", "elixir_strength_greater", "elixir_iron_greater", "elixir_celerity_greater",
+            "elixir_precision_greater",
             "elixir_of_quickness"
         ])
         if item_id in catalog:

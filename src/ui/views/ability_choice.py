@@ -1,11 +1,7 @@
 """View switching architecture including CombatView, MapView, and InventoryView."""
 
 from __future__ import annotations
-from src.ui.views.base import View, CombatPopup, ENEMY_SPRITE_COORDS, SPEED_INTERVALS, SPEED_LABELS
 
-import math
-import random
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pyxel
@@ -15,8 +11,6 @@ from src.config import (
     COLOR_BROWN,
     COLOR_CYAN,
     COLOR_DARK_BLUE,
-    COLOR_GRAY,
-    COLOR_GREEN,
     COLOR_LIGHT_BLUE,
     COLOR_LIME,
     COLOR_NAVY,
@@ -32,16 +26,15 @@ from src.config import (
 )
 from src.core.game_state import GameMode
 from src.core.i18n import i18n, t
-from src.entities import Enemy
-from src.systems.abilities import Ability, AbilityRarity, AbilityType, get_random_abilities
-from src.systems.combat import ACTION_THRESHOLD
-from src.systems.inventory import MAX_BELT_SLOTS, MAX_POUCH_SLOTS, EquipSlot
+from src.systems.abilities import Ability, AbilityRarity, AbilityType
 from src.systems.map_gen import NodeType
-from src.ui import renderer
+from src.data.abilities import get_random_abilities
 from src.ui.renderer import Renderer
+from src.ui.views.base import View
 
 if TYPE_CHECKING:
     from src.core.game_state import GameState
+
 
 # =============================================================================
 # BIOME ENEMY SPRITE COORDINATE MAP (Bank 0)
@@ -80,10 +73,12 @@ class AbilityChoiceView(View):
         skip_x, skip_y, skip_w, skip_h = SCREEN_WIDTH - 76, 226, 66, 18
 
         if self.replace_mode and self.selected_ability:
-            if pyxel.btnp(pyxel.KEY_1) or pyxel.btnp(pyxel.KEY_KP_1) or Renderer.is_clicked(card_x, card1_y, card_w, card_h):
+            if pyxel.btnp(pyxel.KEY_1) or pyxel.btnp(pyxel.KEY_KP_1) or Renderer.is_clicked(card_x, card1_y, card_w,
+                                                                                            card_h):
                 game_state.player.abilities.replace_ability(self.selected_ability, 0)
                 self._finish_choice(game_state)
-            elif pyxel.btnp(pyxel.KEY_2) or pyxel.btnp(pyxel.KEY_KP_2) or Renderer.is_clicked(card_x, card2_y, card_w, card_h):
+            elif pyxel.btnp(pyxel.KEY_2) or pyxel.btnp(pyxel.KEY_KP_2) or Renderer.is_clicked(card_x, card2_y, card_w,
+                                                                                              card_h):
                 game_state.player.abilities.replace_ability(self.selected_ability, 1)
                 self._finish_choice(game_state)
             elif pyxel.btnp(pyxel.KEY_ESCAPE) or Renderer.is_clicked(skip_x, skip_y, skip_w, skip_h):
@@ -95,9 +90,13 @@ class AbilityChoiceView(View):
             self._finish_choice(game_state)
             return
 
-        if (pyxel.btnp(pyxel.KEY_1) or pyxel.btnp(pyxel.KEY_KP_1) or Renderer.is_clicked(card_x, card1_y, card_w, card_h)) and len(self.choices) > 0:
+        if (pyxel.btnp(pyxel.KEY_1) or pyxel.btnp(pyxel.KEY_KP_1) or Renderer.is_clicked(card_x, card1_y, card_w,
+                                                                                         card_h)) and len(
+                self.choices) > 0:
             self._handle_selection(game_state, self.choices[0])
-        elif (pyxel.btnp(pyxel.KEY_2) or pyxel.btnp(pyxel.KEY_KP_2) or Renderer.is_clicked(card_x, card2_y, card_w, card_h)) and len(self.choices) > 1:
+        elif (pyxel.btnp(pyxel.KEY_2) or pyxel.btnp(pyxel.KEY_KP_2) or Renderer.is_clicked(card_x, card2_y, card_w,
+                                                                                           card_h)) and len(
+                self.choices) > 1:
             self._handle_selection(game_state, self.choices[1])
 
     def _handle_selection(self, game_state: GameState, chosen: Ability) -> None:
@@ -275,10 +274,10 @@ class AbilityChoiceView(View):
 
         # Four Animated Wall Torches (2 Left, 2 Right)
         torch_positions = [
-            (12, 48),                      # Upper Left
-            (12, 172),                     # Lower Left
-            (SCREEN_WIDTH - 16, 48),       # Upper Right
-            (SCREEN_WIDTH - 16, 172),      # Lower Right
+            (12, 48),  # Upper Left
+            (12, 172),  # Lower Left
+            (SCREEN_WIDTH - 16, 48),  # Upper Right
+            (SCREEN_WIDTH - 16, 172),  # Lower Right
         ]
         for t_idx, (tx, ty) in enumerate(torch_positions):
             pyxel.rect(tx - 1, ty + 6, 4, 3, COLOR_BROWN)
@@ -345,7 +344,8 @@ class AbilityChoiceView(View):
             v_title = "REPLACE ABILITY" if i18n.locale == "en" else "REEMPLAZAR"
             sub_title = f"New: {self.selected_ability.localized_name}" if i18n.locale == "en" else f"Nueva: {self.selected_ability.localized_name}"
             renderer.draw_text(SCREEN_WIDTH // 2 - renderer.get_text_width(v_title) // 2, by + 5, v_title, COLOR_YELLOW)
-            renderer.draw_text(SCREEN_WIDTH // 2 - renderer.get_text_width(sub_title) // 2, by + 15, sub_title, COLOR_LIME)
+            renderer.draw_text(SCREEN_WIDTH // 2 - renderer.get_text_width(sub_title) // 2, by + 15, sub_title,
+                               COLOR_LIME)
         else:
             v_title = "LEVEL UP!" if i18n.locale == "en" else "¡SUBIDA DE NIVEL!"
             rarity_label = "STANDARD ABILITY CHOICE" if self.pending_rarity == "STANDARD" else "EPIC ABILITY CHOICE"
@@ -353,7 +353,8 @@ class AbilityChoiceView(View):
                 rarity_label = "ELECCIÓN ESTÁNDAR" if self.pending_rarity == "STANDARD" else "ELECCIÓN ÉPICA"
 
             renderer.draw_text(SCREEN_WIDTH // 2 - renderer.get_text_width(v_title) // 2, by + 5, v_title, COLOR_YELLOW)
-            renderer.draw_text(SCREEN_WIDTH // 2 - renderer.get_text_width(rarity_label) // 2, by + 15, rarity_label, COLOR_WHITE)
+            renderer.draw_text(SCREEN_WIDTH // 2 - renderer.get_text_width(rarity_label) // 2, by + 15, rarity_label,
+                               COLOR_WHITE)
 
         # =====================================================================
         # 3. ABILITY SELECTION CARDS
@@ -425,4 +426,5 @@ class AbilityChoiceView(View):
             skip_label = t("btn_skip")
 
         renderer.draw_text(16, 234, instr_text, COLOR_WHITE)
-        renderer.draw_button(SCREEN_WIDTH - 76, 226, 66, 18, skip_label, bg_col=COLOR_BLACK, border_col=COLOR_LIGHT_BLUE, text_col=COLOR_PEACH)
+        renderer.draw_button(SCREEN_WIDTH - 76, 226, 66, 18, skip_label, bg_col=COLOR_BLACK,
+                             border_col=COLOR_LIGHT_BLUE, text_col=COLOR_PEACH)

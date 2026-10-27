@@ -1,13 +1,15 @@
+import copy
+import random
 from dataclasses import dataclass, field
 from typing import Callable
-import random
-import copy
-from src.core.i18n import i18n, t
+
+from src.core.i18n import i18n
 from src.data.items import ITEM_CATALOG
 from src.systems.status import create_bleed, create_poison, create_weaken, create_burn
 
-if False: # TYPE_CHECKING
-    from src.core.game_state import GameState
+if False:  # TYPE_CHECKING
+    pass
+
 
 @dataclass
 class EventChoice:
@@ -19,6 +21,7 @@ class EventChoice:
     @property
     def label(self) -> str:
         return self.label_es if i18n.locale == "es" else self.label_en
+
 
 @dataclass
 class GameEvent:
@@ -38,6 +41,7 @@ class GameEvent:
     @property
     def description(self) -> str:
         return self.description_es if i18n.locale == "es" else self.description_en
+
 
 # Universal Events
 UNIVERSAL_EVENTS = [
@@ -72,7 +76,8 @@ UNIVERSAL_EVENTS = [
             EventChoice(
                 label_en="Decline and move on",
                 label_es="Declinar y avanzar",
-                action_hook=lambda state: "You nod respectfully and continue on your way." if i18n.locale == "en" else "Asientes con respeto y continúas tu camino."
+                action_hook=lambda
+                    state: "You nod respectfully and continue on your way." if i18n.locale == "en" else "Asientes con respeto y continúas tu camino."
             )
         ]
     ),
@@ -89,7 +94,7 @@ UNIVERSAL_EVENTS = [
                 label_es="Abrirlo por la fuerza (-20% HP, Elixir Mayor)",
                 action_hook=lambda state: (
                     state.player.take_damage(int(state.player.max_hp * 0.2)),
-                    state.player.inventory.add_to_pouch(ITEM_CATALOG["elixir_strength_greater"]), # Example
+                    state.player.inventory.add_to_pouch(ITEM_CATALOG["elixir_strength_greater"]),  # Example
                     "Dark energy lashes out as you open it, but you find a powerful elixir inside." if i18n.locale == "en" else "La energía oscura te azota al abrirlo, pero encuentras un poderoso elixir dentro."
                 )[-1]
             ),
@@ -135,7 +140,8 @@ BIOME_EVENTS = {
                 EventChoice(
                     label_en="Leave undisturbed",
                     label_es="No perturbar",
-                    action_hook=lambda state: "You decide the risk isn't worth it." if i18n.locale == "en" else "Decides que el riesgo no vale la pena."
+                    action_hook=lambda
+                        state: "You decide the risk isn't worth it." if i18n.locale == "en" else "Decides que el riesgo no vale la pena."
                 )
             ]
         ),
@@ -464,6 +470,7 @@ BIOME_EVENTS = {
         )
     ]
 }
+
 
 def get_random_event(biome_id: str, rng: random.Random | None = None) -> GameEvent:
     if rng is None:

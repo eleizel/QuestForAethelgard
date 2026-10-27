@@ -84,15 +84,16 @@ class MapGraph:
                 next_node.available = True
 
         # Update available nodes cache
-        self._available_nodes = [self.nodes_by_id[nxt_id] for nxt_id in target.outgoing_ids if self.nodes_by_id[nxt_id].available]
+        self._available_nodes = [self.nodes_by_id[nxt_id] for nxt_id in target.outgoing_ids if
+                                 self.nodes_by_id[nxt_id].available]
 
         return True
 
 
 def generate_spire_map(
-    num_floors: int = 10,
-    width_lanes: int = 4,
-    seed: int | None = None,
+        num_floors: int = 10,
+        width_lanes: int = 4,
+        seed: int | None = None,
 ) -> MapGraph:
     """Generate a convergent reverse-tree node graph resembling Slay the Spire."""
     rand = random.Random(seed)
