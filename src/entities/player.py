@@ -49,6 +49,7 @@ class Player(Actor):
         stats = self.base_stats.add(equip_bonuses).add(self.stat_modifiers)
         for passive in self.abilities.passive:
             stats = passive.modify_stats(stats)
+            stats = passive.modify_actor_stats(self, stats)
 
         # Colossus stance check
         has_colossus = any(a.id == "colossus_stance" for a in self.abilities.passive)
@@ -71,6 +72,8 @@ class Player(Actor):
     def take_damage(self, raw_damage: int, defense_penetration: float = 0.0) -> int:
         """Apply damage mitigated by defense and passive abilities."""
         from src.core.math_utils import calculate_damage
+        if getattr(self, "_reckless_assault_vulnerable", False):
+            raw_damage = int(raw_damage * 1.10)
         for passive in self.abilities.passive:
             raw_damage = passive.on_damage_taken(self, raw_damage)
 
