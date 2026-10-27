@@ -3,4 +3,4 @@ def calculate_damage(raw_attack: int, defense: int) -> int:
 
 
 def calculate_exp_threshold(level: int) -> int:
-    return int(50 + 25 * (level - 1) + 8 * (level - 1) ** 2)
+    return int(50 + 20 * (level - 1) + 7 * (level - 1) ** 2)
