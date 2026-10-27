@@ -141,7 +141,8 @@ def modify_iron_skin(stats: Stats) -> Stats:
 
 
 def hook_iron_skin(actor: Actor, raw_damage: int) -> int:
-    return max(1, raw_damage * 0.90)
+    """Reduce incoming damage by 10%, retaining a minimum of 1 damage."""
+    return max(1, int(raw_damage * 0.90))
 
 
 def modify_veterans_instincts(stats: Stats) -> Stats:
@@ -191,8 +192,14 @@ def modify_blood_frenzy(actor: Actor, stats: Stats) -> Stats:
 
 def execute_poison_shiv(combat: CombatSystem) -> tuple[str, int, bool]:
     from src.core.i18n import t
-    dmg = int(combat.player.effective_stats.attack * 1.05)
+    from src.systems.status import get_status_by_id
+    attack = combat.player.effective_stats.attack
+    dmg = int(attack * 1.05)
     actual_dmg = combat.damage_enemy(dmg)
+    if combat.enemy.current_hp > 0:
+        poison = get_status_by_id("poison", duration=5, potency=max(1, int(attack * 0.10)))
+        if poison:
+            combat.enemy.apply_status(poison)
     combat.enemy_gauge = max(0, combat.enemy_gauge - 30)
     return t("log_poison_shiv", player=combat.player.name, dmg=actual_dmg), actual_dmg, False
 
@@ -227,11 +234,13 @@ def modify_nimble_reflexes(stats: Stats) -> Stats:
 
 
 def hook_exposed_weakness(actor: Actor, target: Actor, damage: int, is_crit: bool) -> None:
-    if is_crit and hasattr(actor, "base_stats"):
+    """A critical hit empowers the player's next damaging strike by 25%."""
+    if is_crit and damage > 0 and hasattr(actor, "base_stats"):
         setattr(actor, "_next_strike_bonus", True)
 
 
 def hook_shadow_step_gauge(actor: Actor, raw_damage: int) -> int:
+    """Gain 15 action gauge when an incoming hit reaches the damage hooks."""
     if raw_damage > 0:
         combat = getattr(actor, "combat_ref", None)
         if combat:
@@ -284,7 +293,8 @@ def hook_mana_barrier(actor: Actor, raw_damage: int) -> int:
 
 
 def hook_pyromania(actor: Actor, target: Actor, damage: int, is_crit: bool) -> None:
-    if damage > 0 and random.random() < 0.30:
+    combat = getattr(actor, "combat_ref", None)
+    if damage > 0 and combat and target.current_hp > 0 and combat.rng.random() < 0.30:
         burn = max(2, int(actor.effective_stats.attack * 0.40))  # type: ignore
         target.take_damage(burn)
 
@@ -448,7 +458,7 @@ STANDARD_ABILITIES: list[Ability] = [
             affinities=("berserker",)),
 
     # Rogue Standard
-    Ability(id="poison_shiv", name="Poison Shiv", description="Deals 105% ATK and drains 30 enemy gauge.",
+    Ability(id="poison_shiv", name="Poison Shiv", description="Deals 105% ATK, applies 5 ticks of poison, and drains 30 enemy gauge.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
             execute_hook=execute_poison_shiv,cooldown=3,),
     Ability(id="smoke_bomb", name="Smoke Bomb", description="Stalls enemy by 50 gauge; grants +25 player gauge.",
@@ -461,7 +471,7 @@ STANDARD_ABILITIES: list[Ability] = [
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
             modify_stats_hook=modify_nimble_reflexes,),
     Ability(id="exposed_weakness", name="Exposed Weakness",
-            description="Crits expose enemy vitals for devastating follow-ups.", ability_type=AbilityType.PASSIVE,
+            description="Critical hits empower your next damaging strike by 25%.", ability_type=AbilityType.PASSIVE,
             rarity=AbilityRarity.STANDARD, required_class="rogue", on_attack_dealt_hook=hook_exposed_weakness,),
     Ability(id="shadow_step", name="Shadow Step", description="Taking damage accelerates player gauge by +15.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
