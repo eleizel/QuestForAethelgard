@@ -213,7 +213,7 @@ TRANSLATIONS_ES = {
     "status_haste_name": "Celeridad",
     "status_weaken_name": "Debilidad",
     "status_vulnerable_name": "Vulnerable",
-    "status_tick_burn": "{target} se quema por {dmg} dano fuego.",
+    "status_tick_burn": "{target} recibe {dmg} de daño por quemadura (ignora defensa).",
     "status_tick_poison": "{target} sufre {dmg} dano veneno.",
     "status_tick_bleed": "{target} sangra por {dmg} dano fisico.",
     "combat_status_applied": "¡{target} sufre {effect}!",
