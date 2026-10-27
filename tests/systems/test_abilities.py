@@ -327,3 +327,45 @@ def test_berserker_standard_abilities(monkeypatch):
     player.abilities.add_ability(cull)
     enemy.current_hp = 30
     assert combat.damage_enemy(100) == 130
+
+
+def test_paladin_standard_abilities(monkeypatch):
+    from src.data.abilities import get_ability_by_id
+    from src.entities.enemy import EnemyTier
+
+    player = Player(name="PaladinTest", class_id="warrior")
+    player.base_stats = Stats(max_hp=100, attack=100, defense=30, speed=10, crit_chance=0.0)
+    player.current_hp = 100
+    enemy = Enemy(name="Target", stats=Stats(100, 10, 10, 10, 0.0), tier=EnemyTier.COMMON,
+                  floor_level=1, exp_reward=1, gold_reward=1)
+    enemy.base_stats = Stats(max_hp=100, attack=10, defense=10, speed=10, crit_chance=0.0)
+    enemy.current_hp = 100
+    combat = CombatSystem(player, enemy)
+
+    def exact_damage(self, raw_damage, defense_penetration=0.0):
+        self.last_penetration = defense_penetration
+        return raw_damage
+    monkeypatch.setattr(Enemy, "take_damage", exact_damage)
+
+    strike = get_ability_by_id("shieldbreaker_strike")
+    assert strike is not None and strike.affinities == ("paladin",)
+    _, damage, crit = strike.execute(combat)
+    assert damage == 115 and not crit
+
+    defensive = get_ability_by_id("defensive_superiority")
+    guard = get_ability_by_id("paladin_guard")
+    assert defensive is not None and defensive.affinities == ("paladin",)
+    assert guard is not None and guard.affinities == ("paladin",)
+
+    player.abilities.add_ability(defensive)
+    # Player DEF 30 vs enemy DEF 10 -> capped at 75% penetration.
+    combat.damage_enemy(100)
+    assert enemy.last_penetration == pytest.approx(0.75)
+
+    player.abilities.add_ability(guard)
+    player._last_ability_affinities = ("paladin",)
+    reduced = player.take_damage(100)
+    assert reduced == 90
+    player._last_ability_affinities = ("berserker",)
+    unchanged = player.take_damage(100)
+    assert unchanged == 100
