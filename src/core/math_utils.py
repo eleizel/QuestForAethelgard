@@ -1,5 +1,21 @@
-def calculate_damage(raw_attack: int, defense: int) -> int:
-    return max(1, raw_attack - (defense // 2))
+def calculate_damage(
+    raw_dmg: int,
+    defense: int,
+    defense_penetration: float = 0.0,
+) -> int:
+    effective_defense = int(
+        defense * (1 - defense_penetration)
+    )
+
+    flat_reduction = effective_defense // 5
+    remaining_damage = max(0, raw_dmg - flat_reduction)
+
+    mitigation = min(
+        0.60,
+        effective_defense / (effective_defense + 100)
+    )
+
+    return max(1, int(remaining_damage * (1 - mitigation)))
 
 
 def calculate_exp_threshold(level: int) -> int:

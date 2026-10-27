@@ -48,6 +48,7 @@ class Ability:
             ability_type: AbilityType,
             rarity: AbilityRarity,
             required_class: str | None = None,  # None = Universal, or 'warrior', 'rogue', 'mage'
+            cooldown: int = 0,
             execute_hook: Callable[[CombatSystem], tuple[str, int, bool]] | None = None,
             modify_stats_hook: Callable[[Stats], Stats] | None = None,
             on_damage_taken_hook: Callable[[Actor, int], int] | None = None,
@@ -59,7 +60,7 @@ class Ability:
         self.ability_type: AbilityType = ability_type
         self.rarity: AbilityRarity = rarity
         self.required_class: str | None = required_class
-
+        self.cooldown: int = cooldown
         self.execute_hook = execute_hook
         self.modify_stats_hook = modify_stats_hook
         self.on_damage_taken_hook = on_damage_taken_hook

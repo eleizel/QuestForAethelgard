@@ -133,16 +133,13 @@ class CombatView(View):
             ay = 164 + idx * 16
             if (pyxel.btnp(key) or Renderer.is_clicked(130, ay, 118, 14)) and idx < len(
                     game_state.player.abilities.active):
-                if game_state.combat.ability_cooldown <= 0:
-                    game_state.combat.queued_ability = game_state.player.abilities.active[idx]
-                    game_state.combat.ability_cooldown = 3
-                    game_state.combat.combat_logs.append(
-                        t("combat_queued", ability=game_state.player.abilities.active[idx].name)
-                    )
+                ab = game_state.player.abilities.active[idx]
+                rem_cd = game_state.combat.get_cooldown(ab)
+                if rem_cd <= 0:
+                    game_state.combat.queued_ability = ab
+                    game_state.combat.combat_logs.append(t("combat_queued", ability=ab.name))
                 else:
-                    game_state.combat.combat_logs.append(
-                        t("combat_cooldown", cooldown=game_state.combat.ability_cooldown)
-                    )
+                    game_state.combat.combat_logs.append(t("combat_cooldown", cooldown=rem_cd))
 
     def _get_enemy_sprite(self, enemy: Enemy) -> tuple[int, int]:
         arch_id = getattr(enemy, "archetype_id", None)
@@ -417,8 +414,17 @@ class CombatView(View):
                 ab_name = f"{a_idx + 4}. {ab.localized_name[:12]}"
                 renderer.draw_text(div_x + 12, sy, ab_name, COLOR_YELLOW if is_queued else COLOR_WHITE)
 
-                tag = "WAIT" if is_queued else "CAST"
-                tag_col = COLOR_YELLOW if is_queued else COLOR_LIGHT_BLUE
+                rem_cd = combat.get_cooldown(ab)
+                if is_queued:
+                    tag = "WAIT"
+                    tag_col = COLOR_YELLOW
+                elif rem_cd > 0:
+                    tag = f"CD:{rem_cd}"
+                    tag_col = COLOR_GRAY
+                else:
+                    tag = "CAST"
+                    tag_col = COLOR_LIGHT_BLUE
+
                 renderer.draw_text(cmd_x + cmd_w - 28, sy, tag, tag_col)
             else:
                 renderer.draw_text(div_x + 12, sy, f"{a_idx + 4}. (Empty)", COLOR_GRAY)

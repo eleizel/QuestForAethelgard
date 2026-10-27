@@ -14,6 +14,19 @@ class EnemyTier(Enum):
     ELITE = 3
     BOSS = 4
 
+TIER_HP_MULT: dict[EnemyTier, float] = {
+    EnemyTier.COMMON:   1.00,
+    EnemyTier.UNCOMMON: 1.15,
+    EnemyTier.ELITE:    1.80,
+    EnemyTier.BOSS:     3.00,
+}
+
+TIER_ATK_MULT: dict[EnemyTier, float] = {
+    EnemyTier.COMMON:   1.00,
+    EnemyTier.UNCOMMON: 1.10,
+    EnemyTier.ELITE:    1.25,
+    EnemyTier.BOSS:     1.50,
+}
 
 from src.data.enemies import ENEMY_CATALOG
 
@@ -86,16 +99,21 @@ def generate_enemy(
         multiplier = 1.0 + (floor * 0.04)
     else:  # COMMON or UNCOMMON
         arch_id = rand.choice(biome.basic_enemies)
-        tier_mult = 1.0 if tier == EnemyTier.COMMON else 1.25
-        multiplier = tier_mult * (1.0 + (floor - 1) * 0.035)
+        tier_mult = 1.0 if tier == EnemyTier.COMMON else 1.1
+        multiplier = tier_mult * (1.0 + (floor - 1) * 0.04)
 
     template = ENEMY_CATALOG.get(arch_id, ENEMY_CATALOG["thornvein_creeper"])
 
+    floor_offset = max(0, floor - 1)
+
+    hp_mult = TIER_HP_MULT[tier]
+    atk_mult = TIER_ATK_MULT[tier]
+
     scaled_stats = Stats(
-        max_hp=int(template.base_hp * multiplier),
-        attack=int(template.base_atk * multiplier),
-        defense=int(template.base_def * multiplier),
-        speed=max(1, int(template.base_spd * (1.0 + floor * 0.015))),
+        max_hp=max(1, int(template.base_hp * (1 + floor_offset * 0.045) * hp_mult)),
+        attack=max(1, int(template.base_atk * (1 + floor_offset * 0.030) * atk_mult)),
+        defense=max(0, int(template.base_def * (1 + floor_offset * 0.025))),
+        speed=min(25, template.base_spd + floor_offset // 5),
         crit_chance=template.base_crit,
     )
 

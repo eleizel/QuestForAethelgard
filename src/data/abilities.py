@@ -3,6 +3,7 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING
 
+from src.core.math_utils import calculate_damage
 from src.entities.actor import Actor, Stats
 from src.systems.abilities import Ability, AbilityType, AbilityRarity
 
@@ -19,8 +20,8 @@ def execute_cross_cut(combat: CombatSystem) -> tuple[str, int, bool]:
     from src.core.i18n import t
     raw_dmg1, crit1 = combat.player.calculate_attack(combat.rng)
     raw_dmg2, crit2 = combat.player.calculate_attack(combat.rng)
-    dmg1 = int(raw_dmg1 * 0.90)
-    dmg2 = int(raw_dmg2 * 0.90)
+    dmg1 = int(raw_dmg1 * 0.60)
+    dmg2 = int(raw_dmg2 * 0.60)
     total_dmg = combat.enemy.take_damage(dmg1) + combat.enemy.take_damage(dmg2)
     any_crit = crit1 or crit2
     return t("log_cross_cut", player=combat.player.name, dmg=total_dmg), total_dmg, any_crit
@@ -29,11 +30,12 @@ def execute_cross_cut(combat: CombatSystem) -> tuple[str, int, bool]:
 CROSS_CUT = Ability(
     id="cross_cut",
     name="Cross Cut",
-    description="Strikes 2 times at 90% ATK each.",
+    description="Strikes 2 times at 60% ATK each.",
     ability_type=AbilityType.ACTIVE,
     rarity=AbilityRarity.STANDARD,
     required_class="warrior",
     execute_hook=execute_cross_cut,
+    cooldown=1,
 )
 
 
@@ -41,12 +43,12 @@ CROSS_CUT = Ability(
 def execute_shadow_strike(combat: CombatSystem) -> tuple[str, int, bool]:
     from src.core.i18n import i18n, t
     rng = combat.rng
-    crit_chance = combat.player.effective_stats.crit_chance + 0.25
+    crit_chance = combat.player.effective_stats.crit_chance + 0.15
     is_crit = rng.random() < crit_chance
-    dmg = int(combat.player.effective_stats.attack * 1.35)
+    dmg = int(combat.player.effective_stats.attack * 1.15)
     if is_crit:
         dmg = int(dmg * 1.5)
-        combat.player_gauge = min(100, combat.player_gauge + 25)
+        combat.player_gauge = min(100, combat.player_gauge + 15)
     actual_dmg = combat.enemy.take_damage(dmg)
     crit_msg = (" (¡EMBOSCADA CRÍTICA!)" if i18n.locale == "es" else " (CRITICAL AMBUSH!)") if is_crit else ""
     return t("log_shadow_strike", player=combat.player.name, dmg=actual_dmg, crit=crit_msg), actual_dmg, is_crit
@@ -55,11 +57,12 @@ def execute_shadow_strike(combat: CombatSystem) -> tuple[str, int, bool]:
 SHADOW_STRIKE = Ability(
     id="shadow_strike",
     name="Shadow Strike",
-    description="Deals 135% ATK (+25% Crit). Crits refund 25 gauge.",
+    description="Deals 110% ATK (+15% Crit). Crits refund 15 gauge.",
     ability_type=AbilityType.ACTIVE,
     rarity=AbilityRarity.STANDARD,
     required_class="rogue",
     execute_hook=execute_shadow_strike,
+    cooldown=1,
 )
 
 
@@ -68,10 +71,10 @@ def execute_arcane_bolt(combat: CombatSystem) -> tuple[str, int, bool]:
     from src.core.i18n import i18n, t
     rng = combat.rng
     is_crit = rng.random() < combat.player.effective_stats.crit_chance
-    raw_dmg = int(combat.player.effective_stats.attack * 1.50)
+    raw_dmg = int(combat.player.effective_stats.attack * 1.10)
     if is_crit:
         raw_dmg = int(raw_dmg * 1.5)
-    mitigated_dmg = max(1, raw_dmg - (combat.enemy.base_stats.defense // 4))
+    mitigated_dmg = calculate_damage(raw_dmg, combat.enemy.base_stats.defense, 0.20)
     actual_dmg = combat.enemy.take_damage(mitigated_dmg)
     crit_msg = (" (¡ARCANA DESATADA!)" if i18n.locale == "es" else " (SURGING ARCANA!)") if is_crit else ""
     return t("log_arcane_bolt", player=combat.player.name, dmg=actual_dmg, crit=crit_msg), actual_dmg, is_crit
@@ -80,11 +83,12 @@ def execute_arcane_bolt(combat: CombatSystem) -> tuple[str, int, bool]:
 ARCANE_BOLT = Ability(
     id="arcane_bolt",
     name="Arcane Bolt",
-    description="Piercing bolt dealing 150% ATK (ignores 50% DEF).",
+    description="Piercing bolt dealing 110% ATK (ignores 20% DEF).",
     ability_type=AbilityType.ACTIVE,
     rarity=AbilityRarity.STANDARD,
     required_class="mage",
     execute_hook=execute_arcane_bolt,
+    cooldown=1,
 )
 
 
@@ -102,6 +106,7 @@ PW_KILL = Ability(
     ability_type=AbilityType.ACTIVE,
     rarity=AbilityRarity.STANDARD,
     execute_hook=execute_pw_kill,
+    cooldown=0,
 )
 
 
@@ -138,7 +143,7 @@ def modify_iron_skin(stats: Stats) -> Stats:
 
 
 def hook_iron_skin(actor: Actor, raw_damage: int) -> int:
-    return max(1, raw_damage - 2)
+    return max(1, raw_damage * 0.90)
 
 
 def modify_veterans_instincts(stats: Stats) -> Stats:
@@ -186,7 +191,9 @@ def execute_flurry_of_daggers(combat: CombatSystem) -> tuple[str, int, bool]:
 
 
 def modify_nimble_reflexes(stats: Stats) -> Stats:
-    return stats.add(type(stats)(max_hp=0, attack=0, defense=1, speed=3, crit_chance=0.06))
+    added_defense = stats.defense * 0.05
+    added_speed = stats.speed * 0.10
+    return stats.add(type(stats)(max_hp=0, attack=0, defense=added_defense, speed=added_speed, crit_chance=0.05))
 
 
 def hook_exposed_weakness(actor: Actor, target: Actor, damage: int, is_crit: bool) -> None:
@@ -235,11 +242,15 @@ def execute_chain_lightning(combat: CombatSystem) -> tuple[str, int, bool]:
 
 
 def modify_arcane_ward(stats: Stats) -> Stats:
-    return stats.add(type(stats)(max_hp=20, attack=2, defense=3, speed=0, crit_chance=0.02))
+    return stats.add(type(stats)(max_hp=stats.max_hp*0.20,
+                                 attack=stats.attack*0.15,
+                                 defense=stats.defense*0.10,
+                                 speed=0,
+                                 crit_chance=0.10))
 
 
 def hook_mana_barrier(actor: Actor, raw_damage: int) -> int:
-    return max(1, raw_damage - 3)
+    return max(1, raw_damage * 0.80)
 
 
 def hook_pyromania(actor: Actor, target: Actor, damage: int, is_crit: bool) -> None:
@@ -341,7 +352,7 @@ def execute_time_stop(combat: CombatSystem) -> tuple[str, int, bool]:
 
 
 def modify_time_dilation(stats: Stats) -> Stats:
-    return stats.add(type(stats)(max_hp=0, attack=8, defense=0, speed=6, crit_chance=0.10))
+    return stats.add(type(stats)(max_hp=0, attack=stats.attack*0.25, defense=0, speed=stats.speed*0.30, crit_chance=0.25))
 
 
 def hook_phoenix_rebirth(actor: Actor, raw_damage: int) -> int:
@@ -365,102 +376,102 @@ STANDARD_ABILITIES: list[Ability] = [
     # Warrior Standard
     Ability(id="shield_bash", name="Shield Bash", description="Deals 85% ATK, delays enemy gauge by 35.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
-            execute_hook=execute_shield_bash),
+            execute_hook=execute_shield_bash,cooldown=3,),
     Ability(id="rallying_cry", name="Rallying Cry", description="Restores 15% Max HP, +4 DEF for battle.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
-            execute_hook=execute_rallying_cry),
+            execute_hook=execute_rallying_cry,cooldown=2,),
     Ability(id="cleave", name="Cleave", description="Heavy cleave dealing 160% ATK damage.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
-            execute_hook=execute_cleave),
-    Ability(id="iron_skin", name="Iron Skin", description="+15% DEF, flat -2 damage taken.",
+            execute_hook=execute_cleave,cooldown=3,),
+    Ability(id="iron_skin", name="Iron Skin", description="+15% DEF, -10% damage taken.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
-            modify_stats_hook=modify_iron_skin, on_damage_taken_hook=hook_iron_skin),
+            modify_stats_hook=modify_iron_skin, on_damage_taken_hook=hook_iron_skin,),
     Ability(id="veterans_instincts", name="Veteran's Instincts", description="+5% CRIT; crits refund +20 Action Gauge.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
-            modify_stats_hook=modify_veterans_instincts),
+            modify_stats_hook=modify_veterans_instincts,),
     Ability(id="bloodlust", name="Bloodlust", description="Heal for 20% of physical damage dealt.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
-            on_attack_dealt_hook=hook_bloodlust),
+            on_attack_dealt_hook=hook_bloodlust,),
 
     # Rogue Standard
     Ability(id="poison_shiv", name="Poison Shiv", description="Deals 105% ATK and drains 30 enemy gauge.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
-            execute_hook=execute_poison_shiv),
+            execute_hook=execute_poison_shiv,cooldown=3,),
     Ability(id="smoke_bomb", name="Smoke Bomb", description="Stalls enemy by 50 gauge; grants +25 player gauge.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
-            execute_hook=execute_smoke_bomb),
+            execute_hook=execute_smoke_bomb,cooldown=4,),
     Ability(id="flurry_of_daggers", name="Flurry of Daggers",
             description="3 strikes at 55% ATK (+15% Crit chance each).", ability_type=AbilityType.ACTIVE,
-            rarity=AbilityRarity.STANDARD, required_class="rogue", execute_hook=execute_flurry_of_daggers),
-    Ability(id="nimble_reflexes", name="Nimble Reflexes", description="+3 Speed, +6% Crit Chance, +1 Defense.",
+            rarity=AbilityRarity.STANDARD, required_class="rogue", execute_hook=execute_flurry_of_daggers,cooldown=3,),
+    Ability(id="nimble_reflexes", name="Nimble Reflexes", description="+10% Speed, +5% Crit Chance, +5% Defense.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
-            modify_stats_hook=modify_nimble_reflexes),
+            modify_stats_hook=modify_nimble_reflexes,),
     Ability(id="exposed_weakness", name="Exposed Weakness",
             description="Crits expose enemy vitals for devastating follow-ups.", ability_type=AbilityType.PASSIVE,
-            rarity=AbilityRarity.STANDARD, required_class="rogue", on_attack_dealt_hook=hook_exposed_weakness),
+            rarity=AbilityRarity.STANDARD, required_class="rogue", on_attack_dealt_hook=hook_exposed_weakness,),
     Ability(id="shadow_step", name="Shadow Step", description="Taking damage accelerates player gauge by +15.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
-            on_damage_taken_hook=hook_shadow_step_gauge),
+            on_damage_taken_hook=hook_shadow_step_gauge,),
 
     # Mage Standard
     Ability(id="fireball", name="Fireball", description="High-impact blast dealing 185% ATK fire damage.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
-            execute_hook=execute_fireball),
+            execute_hook=execute_fireball,cooldown=2,),
     Ability(id="frost_nova", name="Frost Nova", description="Deals 95% ATK and freezes 45 enemy action gauge.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
-            execute_hook=execute_frost_nova),
+            execute_hook=execute_frost_nova,cooldown=4,),
     Ability(id="chain_lightning", name="Chain Lightning", description="Deals 130% ATK. Crits refund 40 player gauge.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
-            execute_hook=execute_chain_lightning),
-    Ability(id="arcane_ward", name="Arcane Ward", description="+20 Max HP, +2 ATK, +3 DEF.",
+            execute_hook=execute_chain_lightning,cooldown=3,),
+    Ability(id="arcane_ward", name="Arcane Ward", description="+20% Max HP, +15% ATK, +10% DEF, +10% Crit.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
-            modify_stats_hook=modify_arcane_ward),
-    Ability(id="mana_barrier", name="Mana Barrier", description="Kinetic barrier absorbs 3 damage from all attacks.",
+            modify_stats_hook=modify_arcane_ward,),
+    Ability(id="mana_barrier", name="Mana Barrier", description="Kinetic barrier absorbs 20% damage from all attacks.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
-            on_damage_taken_hook=hook_mana_barrier),
+            on_damage_taken_hook=hook_mana_barrier,),
     Ability(id="pyromania", name="Pyromania", description="Attacks have a 30% chance to ignite foe for 40% ATK.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
-            on_attack_dealt_hook=hook_pyromania),
+            on_attack_dealt_hook=hook_pyromania,),
 ]
 
 EPIC_ABILITIES: list[Ability] = [
     # Warrior Epic
     Ability(id="colossus_stance", name="Colossus Stance",
             description="When HP < 35%, incoming damage halved & +30% ATK.", ability_type=AbilityType.PASSIVE,
-            rarity=AbilityRarity.EPIC, required_class="warrior", on_damage_taken_hook=hook_colossus_stance_dmg),
+            rarity=AbilityRarity.EPIC, required_class="warrior", on_damage_taken_hook=hook_colossus_stance_dmg,),
     Ability(id="blade_storm", name="Blade Storm", description="4 rapid slashes at 60% ATK with +20% bonus Crit.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.EPIC, required_class="warrior",
-            execute_hook=execute_blade_storm),
+            execute_hook=execute_blade_storm,cooldown=4,),
     Ability(id="undying_will", name="Undying Will", description="Survive lethal blow once per combat at 40% HP.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.EPIC, required_class="warrior",
-            on_damage_taken_hook=hook_undying_will),
+            on_damage_taken_hook=hook_undying_will,),
     Ability(id="executioners_might", name="Executioner's Might",
             description="250% ATK damage; doubles if enemy < 40% HP.", ability_type=AbilityType.ACTIVE,
-            rarity=AbilityRarity.EPIC, required_class="warrior", execute_hook=execute_executioners_might),
+            rarity=AbilityRarity.EPIC, required_class="warrior", execute_hook=execute_executioners_might,cooldown=6,),
 
     # Rogue Epic
     Ability(id="assassinate", name="Assassinate", description="200% ATK strike (+35% Crit). Crits deal 380% ATK.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.EPIC, required_class="rogue",
-            execute_hook=execute_assassinate),
+            execute_hook=execute_assassinate,cooldown=5,),
     Ability(id="fan_of_knives", name="Fan of Knives", description="5 blades deal 50% ATK each with turn-stall chances.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.EPIC, required_class="rogue",
-            execute_hook=execute_fan_of_knives),
+            execute_hook=execute_fan_of_knives,cooldown=4,),
     Ability(id="shadow_dance", name="Shadow Dance",
             description="Grants a permanent 30% chance to completely evade any hit.", ability_type=AbilityType.PASSIVE,
-            rarity=AbilityRarity.EPIC, required_class="rogue", on_damage_taken_hook=hook_shadow_dance_defense),
+            rarity=AbilityRarity.EPIC, required_class="rogue", on_damage_taken_hook=hook_shadow_dance_defense,),
     Ability(id="death_dealer", name="Death Dealer", description="+15% Crit Chance, +5 ATK, +4 SPD.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.EPIC, required_class="rogue",
-            modify_stats_hook=modify_death_dealer),
+            modify_stats_hook=modify_death_dealer,),
 
     # Mage Epic
     Ability(id="meteor", name="Meteor", description="Calls down a meteor for 320% ATK; resets enemy turn to 0.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.EPIC, required_class="mage",
-            execute_hook=execute_meteor),
+            execute_hook=execute_meteor,cooldown=6,),
     Ability(id="time_stop", name="Time Stop",
             description="Freezes time: resets enemy to 0 gauge and grants instant turn.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.EPIC, required_class="mage",
-            execute_hook=execute_time_stop),
-    Ability(id="time_dilation", name="Time Dilation", description="+8 ATK, +6 Speed, +10% Crit Chance.",
+            execute_hook=execute_time_stop,cooldown=6,),
+    Ability(id="time_dilation", name="Time Dilation", description="+25% ATK, +30% Speed, +25% Crit Chance.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.EPIC, required_class="mage",
             modify_stats_hook=modify_time_dilation),
     Ability(id="phoenix_rebirth", name="Phoenix Rebirth", description="Once per combat, lethal blow heals to 50% HP.",

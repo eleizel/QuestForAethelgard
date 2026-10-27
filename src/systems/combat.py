@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Final
 
 import pyxel
 
+from src.systems.abilities import Ability
+
 if TYPE_CHECKING:
     from src.entities.enemy import Enemy
     from src.entities.player import Player
@@ -46,7 +48,7 @@ class CombatSystem:
         self.player_gauge: int = 0
         self.enemy_gauge: int = 0
         self.queued_ability = None
-        self.ability_cooldown = 0
+        self.cooldowns: dict[str, int] = {}
 
         self.current_tick: int = 0
         self.result: CombatResult = CombatResult.IN_PROGRESS
@@ -136,15 +138,22 @@ class CombatSystem:
         if not self._can_actor_act(self.player):
             return
 
-        if self.ability_cooldown > 0:
-            self.ability_cooldown -= 1
+        # Decrement all independent cooldowns by 1 on player action
+        for ab_id in list(self.cooldowns.keys()):
+            if self.cooldowns[ab_id] > 0:
+                self.cooldowns[ab_id] -= 1
+                if self.cooldowns[ab_id] <= 0:
+                    del self.cooldowns[ab_id]
 
         if self.queued_ability:
-            # Execute queued active ability
+            # Set this specific ability's cooldown
+            if self.queued_ability.cooldown > 0:
+                self.cooldowns[self.queued_ability.id] = self.queued_ability.cooldown
+
+            # Execute active ability
             log_str, dmg_dealt, is_crit = self.queued_ability.execute(self)
-            crit_str = " (CRITICAL HIT!)" if is_crit else ""
             self.combat_logs.append(f"[Tick {self.current_tick}] {log_str}")
-            pyxel.play(0, 1 if is_crit else 0)  # Base sound
+            pyxel.play(0, 1 if is_crit else 0)
             self.queued_ability = None
         else:
             if self.player.has_status("blind") and self.rng.random() < 0.50:
@@ -246,3 +255,11 @@ class CombatSystem:
         while self.is_active() and self.current_tick < max_ticks:
             self.step()
         return self.result
+
+    def get_cooldown(self, ability: Ability) -> int:
+        """Return remaining cooldown turns for a given ability."""
+        return self.cooldowns.get(ability.id, 0)
+
+    def is_ability_ready(self, ability: Ability) -> bool:
+        """Check if an ability can be queued."""
+        return self.get_cooldown(ability) <= 0
