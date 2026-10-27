@@ -32,8 +32,10 @@ class StatusEffect:
     status_type: StatusType
     trigger: StatusTrigger
     duration: int  # Remaining combat ticks
-    potency: int = 0  # Numeric scale (flat damage, stat delta, % chance)
+    potency: int = 0  # Numeric scale; Burn uses percentage of max HP per stack
     on_tick_hook: Callable[[CombatSystem, Actor, StatusEffect], tuple[str, int]] | None = None
+    stacks: int = 1
+    max_stacks: int = 1
 
     @property
     def localized_name(self) -> str:
@@ -51,14 +53,20 @@ class StatusEffect:
             duration=duration_override if duration_override is not None else self.duration,
             potency=self.potency,
             on_tick_hook=self.on_tick_hook,
+            stacks=self.stacks,
+            max_stacks=self.max_stacks,
         )
 
 
 # --- ON-TICK HOOKS ---
 
 def _hook_burn(combat: CombatSystem, target: Actor, status: StatusEffect) -> tuple[str, int]:
+    """Deal max-HP percentage damage per stack, bypassing defense."""
     from src.core.i18n import t
-    dmg = target.take_damage(status.potency)
+    damage_per_stack = target.max_hp * status.potency // 100
+    raw_damage = max(1, damage_per_stack * status.stacks)
+    dmg = min(target.current_hp, raw_damage)
+    target.current_hp -= dmg
     return t("status_tick_burn", target=target.name, dmg=dmg), dmg
 
 
@@ -76,11 +84,13 @@ def _hook_bleed(combat: CombatSystem, target: Actor, status: StatusEffect) -> tu
 
 # --- FACTORY CONSTRUCTORS ---
 
-def create_burn(duration: int = 8, potency: int = 2) -> StatusEffect:
+def create_burn(duration: int = 8, potency: int = 1) -> StatusEffect:
+    """Create Burn: potency is max-HP percentage damage per stack and tick."""
     return StatusEffect(
         id="burn", name="Burn", badge="BRN", color=9,  # COLOR_ORANGE
         status_type=StatusType.DEBUFF, trigger=StatusTrigger.ON_TICK,
         duration=duration, potency=potency, on_tick_hook=_hook_burn,
+        stacks=1, max_stacks=3,
     )
 
 
