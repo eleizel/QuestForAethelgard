@@ -306,8 +306,11 @@ def test_rogue_standard_effects(monkeypatch):
     assert shadow_step is not None
     player.abilities.add_ability(shadow_step)
     combat.player_gauge = 10
-    shadow_step.on_damage_taken(player, 10)
+    player.take_damage(10)
     assert combat.player_gauge == 25
+    combat.player_gauge = 10
+    player.take_damage(0)
+    assert combat.player_gauge == 10
 
 
 def test_ability_registry_and_retrieval():
