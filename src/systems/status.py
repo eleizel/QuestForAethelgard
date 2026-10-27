@@ -63,8 +63,8 @@ class StatusEffect:
 def _hook_burn(combat: CombatSystem, target: Actor, status: StatusEffect) -> tuple[str, int]:
     """Deal max-HP percentage damage per stack, bypassing defense."""
     from src.core.i18n import t
-    damage_per_stack = target.max_hp * status.potency // 100
-    raw_damage = max(1, damage_per_stack * status.stacks)
+    damage_per_stack = max(1, target.max_hp * status.potency // 100)
+    raw_damage = damage_per_stack * status.stacks
     dmg = min(target.current_hp, raw_damage)
     target.current_hp -= dmg
     return t("status_tick_burn", target=target.name, dmg=dmg), dmg
