@@ -374,6 +374,9 @@ def test_berserker_standard_abilities(monkeypatch):
 
     blood_frenzy = get_ability_by_id("blood_frenzy")
     assert blood_frenzy is not None
+    # Blood Frenzy is an acquired passive, so grant it before testing its scaling.
+    assert all(ability.id != "blood_frenzy" for ability in player.abilities.passive)
+    player.abilities.add_ability(blood_frenzy)
     assert player.effective_stats.attack == 100
     player.current_hp = 50
     assert player.effective_stats.attack == 125
@@ -468,7 +471,7 @@ def test_burn_stacks_scale_with_max_hp_and_ignore_defense():
     assert enemy.current_hp == 970
 
 
-def test_pyromania_triggers_on_basic_attacks_but_not_abilities():
+def test_pyromania_triggers_on_basic_attacks_but_not_abilities(monkeypatch):
     from src.data.abilities import get_ability_by_id
     from src.entities.enemy import EnemyTier
 
@@ -485,6 +488,7 @@ def test_pyromania_triggers_on_basic_attacks_but_not_abilities():
     )
     enemy.current_hp = 1000
     combat = CombatSystem(player, enemy)
+    monkeypatch.setattr("src.systems.combat.pyxel.play", lambda *args: None)
 
     class ProcRNG:
         def random(self):
