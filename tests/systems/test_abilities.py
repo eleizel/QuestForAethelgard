@@ -364,8 +364,6 @@ def test_paladin_standard_abilities(monkeypatch):
 
     player.abilities.add_ability(guard)
     player._last_ability_affinities = ("paladin",)
-    reduced = player.take_damage(100)
-    assert reduced == 90
+    assert guard.on_damage_taken(player, 100) == 90
     player._last_ability_affinities = ("berserker",)
-    unchanged = player.take_damage(100)
-    assert unchanged == 100
+    assert guard.on_damage_taken(player, 100) == 100
