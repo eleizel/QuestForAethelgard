@@ -431,10 +431,12 @@ def test_paladin_standard_abilities(monkeypatch):
 def test_burn_stacks_scale_with_max_hp_and_ignore_defense():
     from src.systems.status import get_status_by_id
 
+    from src.entities.enemy import EnemyTier
+
     enemy = Enemy(
         name="BurnTarget",
         stats=Stats(max_hp=1000, attack=10, defense=999, speed=10, crit_chance=0.0),
-        tier=__import__("src.entities.enemy", fromlist=["EnemyTier"]).EnemyTier.COMMON,
+        tier=EnemyTier.COMMON,
         floor_level=1,
         exp_reward=1,
         gold_reward=1,
