@@ -369,7 +369,7 @@ TRANSLATIONS_EN = {
     "ability_mana_barrier_name": "Mana Barrier",
     "ability_mana_barrier_desc": "Kinetic barrier absorbs 20% damage from all attacks.",
     "ability_pyromania_name": "Pyromania",
-    "ability_pyromania_desc": "Attacks have a 30% chance to ignite foe for 40% ATK.",
+    "ability_pyromania_desc": "Basic attacks have a 30% chance to add 1 Burn stack (1% max HP per stack, up to 3).",
     "ability_colossus_stance_name": "Colossus Stance",
     "ability_colossus_stance_desc": "When HP < 35%, incoming damage halved & +30% ATK.",
     "ability_blade_storm_name": "Blade Storm",
