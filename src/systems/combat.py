@@ -227,7 +227,7 @@ class CombatSystem:
 
         # Trigger passive hooks for attack dealt. Pyromania is deliberately
         # restricted to basic attacks; other passives may still react to abilities.
-        if dmg_dealt > 0 or not is_basic_attack:
+        if dmg_dealt > 0:
             for passive in self.player.abilities.passive:
                 if passive.id == "pyromania" and not is_basic_attack:
                     continue
