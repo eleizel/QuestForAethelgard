@@ -35,7 +35,7 @@ class AudioManager:
     """Manages audio playback, mute toggles, and track transitions."""
 
     def __init__(self) -> None:
-        self.music_enabled: bool = True
+        self.music_enabled: bool = False
         self.sfx_enabled: bool = True
         self.current_track: int | None = None
 

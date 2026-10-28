@@ -2,7 +2,7 @@ name: Build and Deploy Pyxel Web
 
 on:
   push:
-    branches: [ master ]  # O 'master' segun tu rama
+    branches: [ master ]
   workflow_dispatch:
 
 permissions:
