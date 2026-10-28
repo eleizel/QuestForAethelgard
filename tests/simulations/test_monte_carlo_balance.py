@@ -15,6 +15,7 @@ per cooldown cycle; permanent stat elixirs are consumed as soon as they are foun
 The developer-only `pw_kill` ability is excluded from balance runs.
 Events choose the option with the strongest estimated player-state value; shops
 buy/equip useful upgrades, stat elixirs, and healing supplies when affordable.
+Opt-in runs print route/trial progress; set AETHELGARD_MC_VERBOSE=1 for each fight.
 FATE and PATHFINDER receive the same trial seed for each class. Biome selection
 uses a separate seeded stream so FATE's random biome draw does not shift the
 shared economy/event random stream before the first encounter.
@@ -570,14 +571,40 @@ def _expected_ability_damage(combat: Any, ability: Any, samples: int = 5) -> flo
         enemy = deepcopy(combat.enemy)
         # Combat instrumentation wraps this method per encounter; restore the
         # class implementation on the copy so a forecast cannot affect metrics.
-        enemy.take_damage = type(enemy).take_damage.__get__(enemy, type(enemy))
-        scratch = SimpleNamespace(
-            player=player,
-            enemy=enemy,
-            rng=random.Random(seed_base + sample * 104729),
-            player_gauge=getattr(combat, "player_gauge", 0),
-            enemy_gauge=getattr(combat, "enemy_gauge", 0),
-        )
+        take_damage_impl = getattr(type(enemy), "take_damage", None)
+        if take_damage_impl is not None:
+            enemy.take_damage = take_damage_impl.__get__(enemy, type(enemy))
+        affinities = tuple(getattr(ability, "affinities", ()))
+        if hasattr(player, "_active_stances") and hasattr(player, "abilities"):
+            from src.systems.combat import CombatSystem
+
+            # Real entities use full combat rules, isolated from the live run.
+            scratch = CombatSystem(
+                player=player,
+                enemy=enemy,
+                seed=seed_base + sample * 104729,
+            )
+            scratch._current_action_affinities = affinities
+            scratch._current_player_action_is_basic = False
+            scratch._pact_of_pain_active = (
+                "warlock" in affinities
+                and any(passive.id == "pact_of_pain" for passive in player.abilities.passive)
+            )
+        else:
+            # Lightweight policy tests use small stand-ins rather than entities.
+            scratch = SimpleNamespace(
+                player=player,
+                enemy=enemy,
+                rng=random.Random(seed_base + sample * 104729),
+            )
+            scratch.damage_enemy = lambda raw_damage, defense_penetration=0.0: enemy.take_damage(
+                raw_damage, defense_penetration=defense_penetration
+            )
+
+        scratch.player_gauge = getattr(combat, "player_gauge", 0)
+        scratch.enemy_gauge = getattr(combat, "enemy_gauge", 0)
+        if hasattr(player, "_last_ability_affinities"):
+            player._last_ability_affinities = affinities
         _log, damage, _crit = ability.execute(scratch)
         damage_samples.append(max(0, int(damage)))
     return statistics.mean(damage_samples)
@@ -921,6 +948,21 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
 
                         if state.current_mode == GameMode.GAME_OVER:
                             break
+
+                    if os.getenv("AETHELGARD_MC_VERBOSE") == "1":
+                        outcome = (
+                            "game_over"
+                            if state.current_mode == GameMode.GAME_OVER
+                            else "timeout"
+                            if state.combat.is_active()
+                            else state.combat.result.name.lower()
+                        )
+                        print(
+                            f"[MC]   fight={metrics['fights']} act={state.act} floor={state.floor} "
+                            f"enemy={enemy.name} result={outcome} ticks={encounter['ticks']} "
+                            f"player_hp={state.player.current_hp}/{state.player.max_hp}",
+                            flush=True,
+                        )
 
                     if state.current_mode == GameMode.GAME_OVER:
                         encounter["won"] = False
@@ -1517,6 +1559,14 @@ def test_monte_carlo_balance_by_class_and_route(monkeypatch: Any) -> None:
     master_seed = int(os.getenv("AETHELGARD_MC_SEED", "20261027"))
     summaries: list[tuple[str, str, list[dict[str, Any]], dict[str, Any]]] = []
     paired_rows: dict[str, list[tuple[dict[str, Any], dict[str, Any]]]] = {}
+    total_runs = trials * len(PLAYABLE_CLASSES) * len(ROUTE_MODES)
+    completed_runs = 0
+    print(
+        f"[MC] Starting {total_runs} runs "
+        f"({trials} trials x {len(PLAYABLE_CLASSES)} classes x {len(ROUTE_MODES)} routes); "
+        f"master seed={master_seed}. Set AETHELGARD_MC_VERBOSE=1 for fight-by-fight logs.",
+        flush=True,
+    )
 
     for class_index, class_id in enumerate(PLAYABLE_CLASSES):
         route_rows = {route_mode: [] for route_mode in ROUTE_MODES}
@@ -1526,11 +1576,26 @@ def test_monte_carlo_balance_by_class_and_route(monkeypatch: Any) -> None:
             seed = master_seed + class_index * 100_000 + trial
             current_pair: dict[str, dict[str, Any]] = {}
             for route_mode in ROUTE_MODES:
+                run_number = completed_runs + 1
+                print(
+                    f"[MC] [{run_number}/{total_runs}] START "
+                    f"class={class_id} route={route_mode} trial={trial + 1}/{trials} seed={seed}",
+                    flush=True,
+                )
                 row = _simulate_trial(
                     class_id=class_id,
                     route_mode=route_mode,
                     seed=seed,
                     monkeypatch=monkeypatch,
+                )
+                completed_runs += 1
+                outcome = "victory" if row["victory"] else "death" if row["death"] else "timeout" if row["timeout"] else "stalled"
+                print(
+                    f"[MC] [{completed_runs}/{total_runs}] DONE "
+                    f"class={class_id} route={route_mode} trial={trial + 1}/{trials} "
+                    f"result={outcome} acts={row['acts_cleared']} fights={row['fights']} "
+                    f"ticks={row['combat_ticks']} floor={row['final_floor']}",
+                    flush=True,
                 )
                 route_rows[route_mode].append(row)
                 current_pair[route_mode] = row
@@ -1546,3 +1611,27 @@ def test_monte_carlo_balance_by_class_and_route(monkeypatch: Any) -> None:
     assert len(summaries) == len(PLAYABLE_CLASSES) * len(ROUTE_MODES)
     assert all(0.0 <= summary["victory_rate"] <= 1.0 for _, _, _, summary in summaries)
     assert all(summary["mean_fights"] > 0 for _, _, _, summary in summaries)
+
+
+def test_expected_ability_damage_uses_real_combat_damage_hooks() -> None:
+    from src.data.abilities import get_ability_by_id
+    from src.entities.actor import Stats
+    from src.entities.enemy import Enemy, EnemyTier
+    from src.entities.player import Player
+    from src.systems.combat import CombatSystem
+
+    player = Player(name="ForecastTester", class_id="warrior")
+    player.base_stats = Stats(100, 40, 10, 10, 0.0)
+    enemy = Enemy(
+        name="ForecastTarget",
+        stats=Stats(500, 10, 5, 10, 0.0),
+        tier=EnemyTier.COMMON,
+        floor_level=1,
+        exp_reward=0,
+        gold_reward=0,
+    )
+    combat = CombatSystem(player, enemy, seed=7)
+    ability = get_ability_by_id("cross_cut")
+
+    assert ability is not None
+    assert _expected_ability_damage(combat, ability, samples=2) > 0
