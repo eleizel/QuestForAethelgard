@@ -685,7 +685,9 @@ def test_archmage_arcane_missiles_and_reservoir(monkeypatch):
             return 1.0
 
     combat.rng = NoCritRNG()
-    for ability_id in ("arcane_missiles", "arcane_reservoir", "spell_echo"):
+    # Mage characters start with two active abilities, so replace one active slot.
+    player.abilities.replace_ability(get_ability_by_id("arcane_missiles"), 0)
+    for ability_id in ("arcane_reservoir", "spell_echo"):
         assert player.abilities.add_ability(get_ability_by_id(ability_id))
 
     missiles = get_ability_by_id("arcane_missiles")
