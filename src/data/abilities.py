@@ -351,6 +351,128 @@ def hook_ice_shards(actor: Actor, raw_damage: int) -> int:
     return max(1, int(raw_damage * 0.90))
 
 
+def modify_arcane_reservoir(actor: Actor, stats: Stats) -> Stats:
+    combat = getattr(actor, "combat_ref", None)
+    charges = min(3, getattr(combat, "arcane_reservoir_charges", 0))
+    if charges <= 0:
+        return stats
+    return stats.add(type(stats)(
+        max_hp=0, attack=stats.attack * 0.05 * charges, defense=0, speed=0, crit_chance=0.0
+    ))
+
+
+def hook_arcane_reservoir(actor: Actor, target: Actor, damage: int, is_crit: bool) -> None:
+    """Build one charge per damaging Archmage cast, then discharge at three."""
+    combat = getattr(actor, "combat_ref", None)
+    if (
+        damage <= 0
+        or combat is None
+        or getattr(combat, "_current_player_action_is_basic", True)
+        or "archmage" not in getattr(actor, "_last_ability_affinities", ())
+    ):
+        return
+
+    if not target.is_alive:
+        combat.arcane_reservoir_charges = 0
+        return
+
+    combat.arcane_reservoir_charges = min(3, combat.arcane_reservoir_charges + 1)
+    if combat.arcane_reservoir_charges < 3:
+        from src.core.i18n import t
+        combat.log_attack_proc(
+            t("combat_arcane_reservoir_charge", actor=actor.name,
+              charges=combat.arcane_reservoir_charges,
+              attack_bonus=combat.arcane_reservoir_charges * 5)
+        )
+        return
+
+    # Capture ATK with all three +5% charges before consuming them.
+    attack = actor.effective_stats.attack
+    raw_damage = int(attack * 1.10)
+    critical = combat.rng.random() < actor.effective_stats.crit_chance
+    if critical:
+        raw_damage = int(raw_damage * 1.5)
+    combat.arcane_reservoir_charges = 0
+
+    actual_damage = combat.damage_enemy(raw_damage)
+    from src.core.i18n import t
+    log_key = "combat_arcane_reservoir_crit" if critical else "combat_arcane_reservoir_hit"
+    combat.log_attack_proc(
+        t(log_key, actor=actor.name, target=target.name, damage=actual_damage)
+    )
+    if actual_damage > 0:
+        combat.trigger_player_attack_passives(
+            actual_damage,
+            critical,
+            is_basic_attack=False,
+            skip_ids={"arcane_reservoir", "spell_echo"},
+        )
+
+
+def hook_spell_echo(actor: Actor, target: Actor, damage: int, is_crit: bool) -> None:
+    """Each damaging Archmage hit has a 20% chance to echo 35% of its raw damage."""
+    combat = getattr(actor, "combat_ref", None)
+    if (
+        damage <= 0
+        or not target.is_alive
+        or combat is None
+        or getattr(combat, "_current_player_action_is_basic", True)
+        or "archmage" not in getattr(actor, "_last_ability_affinities", ())
+        or combat.rng.random() >= 0.20
+    ):
+        return
+
+    raw_damage = int(getattr(combat, "_last_player_hit_raw_damage", damage) * 0.35)
+    if raw_damage <= 0:
+        return
+    echoed_damage = combat.damage_enemy(raw_damage)
+    if echoed_damage > 0:
+        from src.core.i18n import t
+        combat.log_attack_proc(
+            t("combat_spell_echo", actor=actor.name, target=target.name, damage=echoed_damage)
+        )
+
+
+def execute_arcane_missiles(combat: CombatSystem) -> tuple[str, int, bool]:
+    from src.core.i18n import t
+
+    total_damage = 0
+    landed = 0
+    any_crit = False
+    combat._passives_handled_per_hit = True
+    for _ in range(3):
+        if not combat.enemy.is_alive:
+            break
+        attack = combat.player.effective_stats.attack
+        critical = combat.rng.random() < combat.player.effective_stats.crit_chance
+        raw_damage = int(attack * 0.70)
+        if critical:
+            raw_damage = int(raw_damage * 1.5)
+        actual_damage = combat.damage_enemy(raw_damage)
+        if actual_damage <= 0:
+            continue
+
+        landed += 1
+        total_damage += actual_damage
+        any_crit = any_crit or critical
+        combat.trigger_player_attack_passives(
+            actual_damage,
+            critical,
+            is_basic_attack=False,
+            skip_ids={"arcane_reservoir"},
+        )
+
+    if total_damage > 0:
+        # Reservoir advances once for the spell cast, not once per missile.
+        combat.trigger_player_attack_passives(
+            total_damage,
+            any_crit,
+            is_basic_attack=False,
+            only_ids={"arcane_reservoir"},
+        )
+    return t("log_arcane_missiles", player=combat.player.name, hits=landed, dmg=total_damage), total_damage, any_crit
+
+
 # =============================================================================
 # 5. EPIC ABILITIES (2 Actives & 2 Passives Per Class)
 # =============================================================================
@@ -578,6 +700,19 @@ STANDARD_ABILITIES: list[Ability] = [
             description="Reduces incoming damage by 10% and reflects 10% of direct damage taken.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
             on_damage_taken_hook=hook_ice_shards, affinities=("archmage",)),
+    Ability(id="arcane_missiles", name="Arcane Missiles",
+            description="Fires 3 missiles at 70% ATK each; each can critically hit. 4-turn cooldown.",
+            ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
+            execute_hook=execute_arcane_missiles, cooldown=4, affinities=("archmage",)),
+    Ability(id="arcane_reservoir", name="Arcane Reservoir",
+            description="Damaging Archmage abilities grant 1 charge. Each charge adds 5% ATK; at 3, consume them to strike for 110% of boosted ATK, which can critically hit.",
+            ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
+            modify_actor_stats_hook=modify_arcane_reservoir,
+            on_attack_dealt_hook=hook_arcane_reservoir, affinities=("archmage",)),
+    Ability(id="spell_echo", name="Spell Echo",
+            description="Each damaging Archmage hit has a 20% chance to echo 35% of its damage. Echoes cannot critically hit or trigger passives.",
+            ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
+            on_attack_dealt_hook=hook_spell_echo, affinities=("archmage",)),
 ]
 
 EPIC_ABILITIES: list[Ability] = [

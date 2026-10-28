@@ -655,3 +655,84 @@ def test_whirlwind_stance_adds_critical_hit_to_next_basic_attack(monkeypatch):
     combat._execute_player_attack()
     assert enemy.current_hp == 663
     assert player.has_stance("whirlwind_defense")
+
+
+
+def test_archmage_arcane_missiles_and_reservoir(monkeypatch):
+    import pyxel
+    from src.entities.enemy import EnemyTier
+
+    monkeypatch.setattr(pyxel, "play", lambda *args, **kwargs: None)
+    player = Player(name="Archmage", class_id="mage")
+    player.base_stats = Stats(100, 100, 0, 100, 0.0)
+    player.current_hp = 100
+    enemy = Enemy(
+        name="Target",
+        stats=Stats(2000, 1, 0, 1, 0.0),
+        tier=EnemyTier.COMMON,
+        floor_level=1,
+        exp_reward=0,
+        gold_reward=0,
+    )
+    enemy.current_hp = 2000
+    combat = CombatSystem(player, enemy)
+
+    class NoCritRNG:
+        def random(self):
+            return 0.99
+
+        def uniform(self, a, b):
+            return 1.0
+
+    combat.rng = NoCritRNG()
+    for ability_id in ("arcane_missiles", "arcane_reservoir", "spell_echo"):
+        assert player.abilities.add_ability(get_ability_by_id(ability_id))
+
+    missiles = get_ability_by_id("arcane_missiles")
+    hp_before = enemy.current_hp
+    for expected_charge in (1, 2, 0):
+        combat.queued_ability = missiles
+        combat._execute_player_attack()
+        if expected_charge:
+            assert combat.arcane_reservoir_charges == expected_charge
+            assert enemy.current_hp == hp_before - (210 if expected_charge == 1 else 219)
+            hp_before = enemy.current_hp
+        else:
+            assert combat.arcane_reservoir_charges == 0
+            # The third cast fires three boosted missiles and the 110% Reservoir discharge.
+            assert enemy.current_hp == hp_before - 357
+
+
+def test_archmage_passives_do_not_trigger_on_basic_attacks(monkeypatch):
+    from src.entities.enemy import EnemyTier
+
+    player = Player(name="Archmage", class_id="mage")
+    player.base_stats = Stats(100, 100, 0, 100, 0.0)
+    enemy = Enemy(
+        name="Target",
+        stats=Stats(500, 1, 0, 1, 0.0),
+        tier=EnemyTier.COMMON,
+        floor_level=1,
+        exp_reward=0,
+        gold_reward=0,
+    )
+    combat = CombatSystem(player, enemy)
+
+    class CountingRNG:
+        calls = 0
+
+        def random(self):
+            self.calls += 1
+            return 0.0
+
+    rng = CountingRNG()
+    combat.rng = rng
+    for ability_id in ("arcane_reservoir", "spell_echo"):
+        assert player.abilities.add_ability(get_ability_by_id(ability_id))
+
+    player._last_ability_affinities = ("archmage",)
+    combat._current_player_action_is_basic = True
+    combat.trigger_player_attack_passives(100, False, is_basic_attack=True)
+
+    assert combat.arcane_reservoir_charges == 0
+    assert rng.calls == 0
