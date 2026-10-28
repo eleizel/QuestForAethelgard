@@ -47,9 +47,10 @@ jobs:
           mv QuestForAethelgard.html dist/index.html
           
           # 4. Copia los archivos del manifest e iconos a dist/
-          cp manifest.json dist/
-          cp icon-192.png dist/
-          cp icon-512.png dist/
+          cp dist/manifest.json dist/
+          cp dist/icon-192.png dist/
+          cp dist/icon-512.png dist/
+          cp dist/screenshots/* dist/
           
           # 5. Inyecta los tags con el script de parchado
           python src/tools/patch_html.py
