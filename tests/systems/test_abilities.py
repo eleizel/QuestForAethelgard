@@ -244,17 +244,14 @@ def test_passive_abilities(monkeypatch):
     bloodlust.on_attack_dealt(player, None, 20, False)
     assert player.current_hp == 54
 
-    # Test Arcane Ward and Mana Barrier percentages.
-    arcane_ward = get_ability_by_id("arcane_ward")
-    ward_stats = arcane_ward.modify_stats(base_stats)
-    assert ward_stats.max_hp == pytest.approx(12)
-    assert ward_stats.attack == pytest.approx(11.5)
-    assert ward_stats.defense == pytest.approx(11)
-    assert ward_stats.crit_chance == pytest.approx(0.2)
+    # Test the Warlock and Archmage damage-reduction passives.
+    bone_barrier = get_ability_by_id("bone_barrier")
+    assert bone_barrier.on_damage_taken(None, 100) == 80
+    assert bone_barrier.on_damage_taken(None, 1) == 1
 
-    mana_barrier = get_ability_by_id("mana_barrier")
-    assert mana_barrier.on_damage_taken(None, 100) == 80
-    assert mana_barrier.on_damage_taken(None, 1) == 1
+    ice_shards = get_ability_by_id("ice_shards")
+    assert ice_shards.on_damage_taken(None, 100) == 90
+    assert ice_shards.on_damage_taken(None, 1) == 1
 
     # Test nimble_reflexes
     nimble_reflexes = get_ability_by_id("nimble_reflexes")
@@ -471,15 +468,15 @@ def test_burn_stacks_scale_with_max_hp_and_ignore_defense():
     assert enemy.current_hp == 970
 
 
-def test_pyromania_triggers_on_basic_attacks_but_not_abilities(monkeypatch):
+def test_soulfire_triggers_on_basic_attacks_but_not_abilities(monkeypatch):
     from src.data.abilities import get_ability_by_id
     from src.entities.enemy import EnemyTier
 
-    player = Player(name="PyromaniaTest", class_id="mage")
+    player = Player(name="SoulfireTest", class_id="mage")
     player.base_stats = Stats(max_hp=100, attack=10, defense=0, speed=10, crit_chance=0.0)
     player.current_hp = 100
     enemy = Enemy(
-        name="PyromaniaTarget",
+        name="SoulfireTarget",
         stats=Stats(max_hp=1000, attack=10, defense=0, speed=10, crit_chance=0.0),
         tier=EnemyTier.COMMON,
         floor_level=1,
@@ -498,9 +495,9 @@ def test_pyromania_triggers_on_basic_attacks_but_not_abilities(monkeypatch):
             return 1.0
 
     combat.rng = ProcRNG()
-    pyromania = get_ability_by_id("pyromania")
-    assert pyromania is not None
-    player.abilities.add_ability(pyromania)
+    soulfire = get_ability_by_id("soulfire")
+    assert soulfire is not None
+    player.abilities.add_ability(soulfire)
 
     combat.player_gauge = 100
     combat._execute_player_attack()
@@ -508,7 +505,7 @@ def test_pyromania_triggers_on_basic_attacks_but_not_abilities(monkeypatch):
     assert burn is not None
     assert burn.stacks == 1
 
-    # An active spell must not trigger Pyromania, even when its damage lands.
+    # An active spell must not trigger Soulfire, even when its damage lands.
     enemy.statuses.clear()
     enemy.current_hp = 1000
     combat.player_gauge = 100
