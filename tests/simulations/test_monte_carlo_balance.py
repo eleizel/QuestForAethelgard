@@ -571,12 +571,24 @@ def _expected_ability_damage(combat: Any, ability: Any, samples: int = 5) -> flo
         # Combat instrumentation wraps this method per encounter; restore the
         # class implementation on the copy so a forecast cannot affect metrics.
         enemy.take_damage = type(enemy).take_damage.__get__(enemy, type(enemy))
-        scratch = SimpleNamespace(
+        from src.systems.combat import CombatSystem
+
+        scratch = CombatSystem(
             player=player,
             enemy=enemy,
-            rng=random.Random(seed_base + sample * 104729),
-            player_gauge=getattr(combat, "player_gauge", 0),
-            enemy_gauge=getattr(combat, "enemy_gauge", 0),
+            seed=seed_base + sample * 104729,
+        )
+        scratch.player_gauge = getattr(combat, "player_gauge", 0)
+        scratch.enemy_gauge = getattr(combat, "enemy_gauge", 0)
+        # Forecast through the same damage and passive-hook implementation as
+        # combat, while keeping every mutation on these isolated copies.
+        affinities = tuple(getattr(ability, "affinities", ()))
+        player._last_ability_affinities = affinities
+        scratch._current_action_affinities = affinities
+        scratch._current_player_action_is_basic = False
+        scratch._pact_of_pain_active = (
+            "warlock" in affinities
+            and any(passive.id == "pact_of_pain" for passive in player.abilities.passive)
         )
         _log, damage, _crit = ability.execute(scratch)
         damage_samples.append(max(0, int(damage)))
@@ -1546,3 +1558,27 @@ def test_monte_carlo_balance_by_class_and_route(monkeypatch: Any) -> None:
     assert len(summaries) == len(PLAYABLE_CLASSES) * len(ROUTE_MODES)
     assert all(0.0 <= summary["victory_rate"] <= 1.0 for _, _, _, summary in summaries)
     assert all(summary["mean_fights"] > 0 for _, _, _, summary in summaries)
+
+
+def test_expected_ability_damage_uses_real_combat_damage_hooks() -> None:
+    from src.data.abilities import get_ability_by_id
+    from src.entities.actor import Stats
+    from src.entities.enemy import Enemy, EnemyTier
+    from src.entities.player import Player
+    from src.systems.combat import CombatSystem
+
+    player = Player(name="ForecastTester", class_id="warrior")
+    player.base_stats = Stats(100, 40, 10, 10, 0.0)
+    enemy = Enemy(
+        name="ForecastTarget",
+        stats=Stats(500, 10, 5, 10, 0.0),
+        tier=EnemyTier.COMMON,
+        floor_level=1,
+        exp_reward=0,
+        gold_reward=0,
+    )
+    combat = CombatSystem(player, enemy, seed=7)
+    ability = get_ability_by_id("cross_cut")
+
+    assert ability is not None
+    assert _expected_ability_damage(combat, ability, samples=2) > 0
