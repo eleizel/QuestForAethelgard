@@ -230,7 +230,7 @@ def execute_dirty_tricks(combat: CombatSystem) -> tuple[str, int, bool]:
     actual = combat.damage_enemy(int(combat.player.effective_stats.attack * 0.70))
     blinded = False
     if combat.enemy.is_alive:
-        vulnerable = get_status_by_id("vulnerable", duration=2)
+        vulnerable = get_status_by_id("vulnerable", duration=10)
         if vulnerable:
             combat.enemy.apply_status(vulnerable)
         if combat.rng.random() < 0.40:
@@ -325,7 +325,7 @@ def execute_creeping_hands(combat: CombatSystem) -> tuple[str, int, bool]:
     attack = combat.player.effective_stats.attack
     actual_damage = combat.damage_enemy(int(attack * 0.70))
     if combat.enemy.is_alive:
-        vulnerable = get_status_by_id("vulnerable", duration=5, potency=15)
+        vulnerable = get_status_by_id("vulnerable", duration=10, potency=15)
         if vulnerable:
             combat.enemy.apply_status(vulnerable)
     return t("log_creeping_hands", player=combat.player.name, dmg=actual_damage), actual_damage, False
@@ -514,7 +514,7 @@ STANDARD_ABILITIES: list[Ability] = [
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
             execute_hook=execute_poison_shiv, cooldown=3, affinities=("venomancer",)),
     Ability(id="dirty_tricks", name="Dirty Tricks",
-            description="Deals 70% ATK, applies Vulnerable for 2 ticks, and has a 40% chance to Blind for 1 tick.",
+            description="Deals 70% ATK, applies Vulnerable for 10 ticks, and has a 40% chance to Blind for 1 tick.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
             execute_hook=execute_dirty_tricks, cooldown=4),
     Ability(id="flurry_of_daggers", name="Flurry of Daggers",
@@ -565,7 +565,7 @@ STANDARD_ABILITIES: list[Ability] = [
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
             execute_hook=execute_chain_lightning, cooldown=3, affinities=("archmage",)),
     Ability(id="creeping_hands", name="Creeping Hands",
-            description="Deals 70% ATK and makes the enemy take 15% more damage for 5 ticks. 4-turn cooldown.",
+            description="Deals 70% ATK and makes the enemy take 15% more damage for 10 ticks. 4-turn cooldown.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
             execute_hook=execute_creeping_hands, cooldown=4, affinities=("warlock",)),
     Ability(id="soulfire", name="Soulfire", description="Basic attacks have a 30% chance to add a Burn stack.",
