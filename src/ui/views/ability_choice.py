@@ -16,8 +16,6 @@ from src.config import (
     COLOR_NAVY,
     COLOR_ORANGE,
     COLOR_PEACH,
-    COLOR_PINK,
-    COLOR_PURPLE,
     COLOR_RED,
     COLOR_WHITE,
     COLOR_YELLOW,
@@ -26,9 +24,10 @@ from src.config import (
 )
 from src.core.game_state import GameMode
 from src.core.i18n import i18n, t
+from src.data.abilities import get_random_abilities
 from src.systems.abilities import Ability, AbilityRarity, AbilityType
 from src.systems.map_gen import NodeType
-from src.data.abilities import get_random_abilities
+from src.tools.generate_assets import get_ability_icon
 from src.ui.renderer import Renderer
 from src.ui.views.base import View
 
@@ -36,9 +35,6 @@ if TYPE_CHECKING:
     from src.core.game_state import GameState
 
 
-# =============================================================================
-# BIOME ENEMY SPRITE COORDINATE MAP (Bank 0)
-# =============================================================================
 class AbilityChoiceView(View):
     """Renders the ability selection screen featuring gothic chamber scenery, custom ability icons, and gold card frames."""
 
@@ -130,117 +126,6 @@ class AbilityChoiceView(View):
             else:
                 game_state.switch_mode(GameMode.MAP)
 
-    def _draw_ability_icon(self, x: int, y: int, ability_id: str) -> None:
-        """Render distinct thematic pixel art inside the ability card thumbnail frame."""
-        fc = pyxel.frame_count
-        cx, cy = x + 16, y + 16
-        aid = ability_id.lower()
-
-        if "flurry" in aid or "fan" in aid:
-            # Throwing blade with cyan speed slashes and particle sparkles
-            pyxel.line(cx - 6, cy + 8, cx + 7, cy - 5, COLOR_WHITE)
-            pyxel.line(cx - 5, cy + 9, cx + 8, cy - 4, COLOR_LIGHT_BLUE)
-            pyxel.pset(cx + 8, cy - 5, COLOR_WHITE)
-            # 3 Motion swoosh trails
-            pyxel.line(cx - 10, cy - 3, cx - 2, cy - 3, COLOR_CYAN)
-            pyxel.line(cx - 11, cy + 2, cx - 4, cy + 2, COLOR_CYAN)
-            pyxel.line(cx - 7, cy + 7, cx + 1, cy + 7, COLOR_CYAN)
-            if (fc // 6) % 2 == 0:
-                pyxel.pset(cx + 10, cy - 8, COLOR_CYAN)
-                pyxel.pset(cx + 4, cy + 8, COLOR_WHITE)
-
-        elif "poison" in aid:
-            # Stylized skull with glowing cyan/green eyes and bubbling poison motes
-            pyxel.rect(cx - 6, cy - 6, 12, 10, COLOR_WHITE)
-            pyxel.rect(cx - 4, cy + 4, 8, 4, COLOR_WHITE)
-            # Eyes and nose cavity
-            pyxel.rect(cx - 4, cy - 2, 3, 4, COLOR_LIME)
-            pyxel.rect(cx + 2, cy - 2, 3, 4, COLOR_LIME)
-            pyxel.pset(cx - 3, cy - 1, COLOR_BLACK)
-            pyxel.pset(cx + 3, cy - 1, COLOR_BLACK)
-            pyxel.pset(cx, cy + 2, COLOR_BLACK)
-            # Teeth vertical lines
-            pyxel.line(cx - 2, cy + 5, cx - 2, cy + 7, COLOR_BLACK)
-            pyxel.line(cx, cy + 5, cx, cy + 7, COLOR_BLACK)
-            pyxel.line(cx + 2, cy + 5, cx + 2, cy + 7, COLOR_BLACK)
-            # Bubbling poison spores
-            motes = [(cx - 9, cy - 7), (cx + 8, cy - 8), (cx - 10, cy + 3), (cx + 9, cy + 4)]
-            for mi, (mx, my) in enumerate(motes):
-                if (fc + mi * 5) % 16 < 10:
-                    pyxel.pset(mx, my, COLOR_LIME if mi % 2 == 0 else COLOR_CYAN)
-
-        elif any(k in aid for k in ("cross_cut", "cleave", "blade_storm")):
-            # Dual crossed blades with brilliant white impact slashes
-            pyxel.line(cx - 8, cy - 8, cx + 8, cy + 8, COLOR_WHITE)
-            pyxel.line(cx + 8, cy - 8, cx - 8, cy + 8, COLOR_WHITE)
-            pyxel.line(cx - 7, cy - 8, cx + 8, cy + 7, COLOR_CYAN)
-            pyxel.line(cx + 7, cy - 8, cx - 8, cy + 7, COLOR_CYAN)
-            pyxel.pset(cx, cy, COLOR_WHITE)
-            pyxel.circb(cx, cy, 6, COLOR_LIGHT_BLUE)
-
-        elif any(k in aid for k in ("shadow", "assassinate", "smoke")):
-            # Dark violet dagger surrounded by swirling shadow vapor
-            pyxel.circ(cx, cy, 7, COLOR_NAVY)
-            pyxel.circb(cx, cy, 7, COLOR_PURPLE)
-            pyxel.line(cx - 5, cy + 7, cx + 7, cy - 5, COLOR_WHITE)
-            pyxel.pset(cx + 8, cy - 6, COLOR_PINK)
-            if fc % 4 < 2:
-                pyxel.pset(cx - 8, cy - 4, COLOR_PURPLE)
-                pyxel.pset(cx + 8, cy + 5, COLOR_PURPLE)
-
-        elif any(k in aid for k in ("fireball", "pyromania", "meteor")):
-            # Blazing fireball with swirling flame trails
-            pyxel.circ(cx, cy, 6, COLOR_RED)
-            pyxel.circ(cx, cy, 4, COLOR_ORANGE)
-            pyxel.circ(cx, cy, 2, COLOR_YELLOW)
-            pyxel.pset(cx, cy, COLOR_WHITE)
-            pyxel.pset(cx - 7, cy - 4, COLOR_YELLOW)
-            pyxel.pset(cx + 7, cy + 4, COLOR_ORANGE)
-
-        elif "frost" in aid:
-            # Crystalline cyan snowflake with radiating arms
-            pyxel.line(cx - 7, cy, cx + 7, cy, COLOR_CYAN)
-            pyxel.line(cx, cy - 7, cx, cy + 7, COLOR_CYAN)
-            pyxel.line(cx - 5, cy - 5, cx + 5, cy + 5, COLOR_LIGHT_BLUE)
-            pyxel.line(cx + 5, cy - 5, cx - 5, cy + 5, COLOR_LIGHT_BLUE)
-            pyxel.pset(cx, cy, COLOR_WHITE)
-
-        elif "lightning" in aid:
-            # Yellow zig-zag electric arc
-            pyxel.line(cx + 2, cy - 8, cx - 3, cy, COLOR_YELLOW)
-            pyxel.line(cx - 3, cy, cx + 4, cy, COLOR_YELLOW)
-            pyxel.line(cx + 4, cy, cx - 2, cy + 8, COLOR_YELLOW)
-            pyxel.line(cx + 3, cy - 7, cx - 2, cy + 1, COLOR_WHITE)
-            pyxel.pset(cx + 6, cy - 2, COLOR_CYAN)
-            pyxel.pset(cx - 6, cy + 3, COLOR_CYAN)
-
-        elif any(k in aid for k in ("shield", "iron_skin", "barrier", "ward", "colossus", "undying")):
-            # Steel kite shield with kinetic deflection barrier
-            pyxel.rect(cx - 5, cy - 6, 11, 7, COLOR_CYAN)
-            pyxel.tri(cx - 5, cy + 1, cx, cy + 8, cx + 5, cy + 1, COLOR_CYAN)
-            pyxel.rect(cx - 3, cy - 4, 7, 5, COLOR_LIGHT_BLUE)
-            pyxel.pset(cx, cy - 1, COLOR_WHITE)
-            pyxel.line(cx - 8, cy - 2, cx - 8, cy + 3, COLOR_WHITE)
-            pyxel.line(cx + 8, cy - 2, cx + 8, cy + 3, COLOR_WHITE)
-
-        elif any(k in aid for k in ("time", "stop", "dilation")):
-            # Mystic hourglass with glowing sand
-            pyxel.line(cx - 5, cy - 7, cx + 5, cy - 7, COLOR_YELLOW)
-            pyxel.line(cx - 5, cy + 7, cx + 5, cy + 7, COLOR_YELLOW)
-            pyxel.tri(cx - 4, cy - 6, cx + 4, cy - 6, cx, cy - 1, COLOR_CYAN)
-            pyxel.tri(cx - 4, cy + 6, cx + 4, cy + 6, cx, cy + 1, COLOR_CYAN)
-            pyxel.pset(cx, cy, COLOR_WHITE)
-
-        else:
-            # Radiant magic gem / star burst
-            pyxel.circ(cx, cy, 5, COLOR_NAVY)
-            pyxel.circb(cx, cy, 5, COLOR_CYAN)
-            pyxel.pset(cx, cy, COLOR_WHITE)
-            pyxel.pset(cx - 3, cy, COLOR_LIGHT_BLUE)
-            pyxel.pset(cx + 3, cy, COLOR_LIGHT_BLUE)
-            pyxel.pset(cx, cy - 3, COLOR_LIGHT_BLUE)
-            pyxel.pset(cx, cy + 3, COLOR_LIGHT_BLUE)
-
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
         renderer.draw_hud(game_state.player, game_state.floor)
 
@@ -272,12 +157,10 @@ class AbilityChoiceView(View):
             pyxel.line(gx, ground_y + 3, gx + 6, ground_y + 3, COLOR_NAVY)
             pyxel.line(gx + 6, ground_y + 8, gx + 11, ground_y + 8, COLOR_NAVY)
 
-        # Four Animated Wall Torches (2 Left, 2 Right)
+        # Four Animated Wall Torches
         torch_positions = [
-            (12, 48),  # Upper Left
-            (12, 172),  # Lower Left
-            (SCREEN_WIDTH - 16, 48),  # Upper Right
-            (SCREEN_WIDTH - 16, 172),  # Lower Right
+            (12, 48), (12, 172),
+            (SCREEN_WIDTH - 16, 48), (SCREEN_WIDTH - 16, 172),
         ]
         for t_idx, (tx, ty) in enumerate(torch_positions):
             pyxel.rect(tx - 1, ty + 6, 4, 3, COLOR_BROWN)
@@ -299,7 +182,6 @@ class AbilityChoiceView(View):
         pyxel.rectb(box_x, box_y, box_w, box_h, COLOR_DARK_BLUE)
         pyxel.rectb(box_x + 2, box_y + 2, box_w - 4, box_h - 4, COLOR_NAVY)
 
-        # Decorative Corner Crosses
         for corner_x, corner_y in [
             (box_x + 1, box_y + 1),
             (box_x + box_w - 2, box_y + 1),
@@ -322,18 +204,14 @@ class AbilityChoiceView(View):
         renderer.draw_box(bx, by, bw, bh, bg_col=COLOR_BLACK, border_col=COLOR_LIGHT_BLUE)
         pyxel.rectb(bx + 1, by + 1, bw - 2, bh - 2, COLOR_NAVY)
 
-        # Corner Brackets on Plaque
+        # Corner Brackets
         pyxel.line(bx + 3, by + 3, bx + 7, by + 3, COLOR_LIGHT_BLUE)
         pyxel.line(bx + 3, by + 3, bx + 3, by + 7, COLOR_LIGHT_BLUE)
         pyxel.line(bx + bw - 4, by + 3, bx + bw - 8, by + 3, COLOR_LIGHT_BLUE)
         pyxel.line(bx + bw - 4, by + 3, bx + bw - 4, by + 7, COLOR_LIGHT_BLUE)
 
-        # Star Sparkles flanking the title
-        sparkles = [
-            (bx + 10, by + 8), (bx + 18, by + 14),
-            (bx + bw - 12, by + 8), (bx + bw - 20, by + 14)
-        ]
-        for sx, sy in sparkles:
+        # Star Sparkles
+        for sx, sy in [(bx + 10, by + 8), (bx + 18, by + 14), (bx + bw - 12, by + 8), (bx + bw - 20, by + 14)]:
             pyxel.pset(sx, sy, COLOR_WHITE)
             pyxel.pset(sx - 1, sy, COLOR_YELLOW)
             pyxel.pset(sx + 1, sy, COLOR_YELLOW)
@@ -364,7 +242,6 @@ class AbilityChoiceView(View):
         card1_y = 90
         card2_y = 146
 
-        # Determine cards to display based on mode
         if self.replace_mode and self.selected_ability:
             target_list = game_state.player.abilities.active if self.selected_ability.ability_type == AbilityType.ACTIVE else game_state.player.abilities.passive
             cards_to_draw = target_list[:2]
@@ -377,27 +254,29 @@ class AbilityChoiceView(View):
             cy = card1_y if i == 0 else card2_y
             is_active_card = (i == 0)
 
-            # Card Box Border (Gold double border with corner studs on Card 1, Cyan on Card 2)
             border_col = COLOR_YELLOW if is_active_card else COLOR_LIGHT_BLUE
             fill_col = COLOR_DARK_BLUE if is_active_card else COLOR_BLACK
             renderer.draw_box(card_x, cy, card_w, card_h, bg_col=fill_col, border_col=border_col)
 
             if is_active_card:
                 pyxel.rectb(card_x + 1, cy + 1, card_w - 2, card_h - 2, COLOR_YELLOW if pulse == 0 else COLOR_ORANGE)
-                # Corner Studs
                 pyxel.pset(card_x + 2, cy + 2, COLOR_WHITE)
                 pyxel.pset(card_x + card_w - 3, cy + 2, COLOR_WHITE)
                 pyxel.pset(card_x + 2, cy + card_h - 3, COLOR_WHITE)
                 pyxel.pset(card_x + card_w - 3, cy + card_h - 3, COLOR_WHITE)
-                # Active Selection Pointer Indicator (▶)
                 pyxel.tri(card_x - 7, cy + 20, card_x - 7, cy + 28, card_x - 3, cy + 24, COLOR_YELLOW)
 
-            # Left 32x32 Thumbnail Frame
+            # Left 32x38 Thumbnail Frame
             icon_x = card_x + 6
             icon_y = cy + 5
             pyxel.rect(icon_x, icon_y, 32, 38, COLOR_NAVY)
             pyxel.rectb(icon_x, icon_y, 32, 38, COLOR_LIGHT_BLUE if not is_active_card else COLOR_YELLOW)
-            self._draw_ability_icon(icon_x, icon_y, ab.id)
+
+            # Blit 16x16 icon from Bank 1 (centered inside the 32x38 frame)
+            bank, u, v = get_ability_icon(ab.id)
+            spr_x = icon_x + 8
+            spr_y = icon_y + 11
+            pyxel.blt(spr_x, spr_y, bank, u, v, 16, 16, 0)
 
             # Ability Name & Active/Passive Tag
             text_x = icon_x + 38
