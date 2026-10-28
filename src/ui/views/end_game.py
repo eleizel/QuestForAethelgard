@@ -23,6 +23,7 @@ from src.config import (
     COLOR_YELLOW,
     SCREEN_WIDTH,
 )
+from src.core.audio import audio
 from src.core.i18n import i18n
 from src.ui.renderer import Renderer
 from src.ui.views.base import View
@@ -43,7 +44,7 @@ class EndGameView(View):
         btn_y = 206 if self.is_victory else 196
         if pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_SPACE) or Renderer.is_clicked(btn_x, btn_y, btn_w,
                                                                                               btn_h):
-            pyxel.play(0, 3)
+            audio.play_sfx( 3)
             game_state.__init__()
 
     def _draw_bold_letter(self, x: int, y: int, char: str, col: int) -> int:

@@ -46,15 +46,33 @@ HUD_HEIGHT: Final[int] = 24
 STATUS_PANEL_WIDTH: Final[int] = 80
 LOG_PANEL_HEIGHT: Final[int] = 64
 
-# Sound Channels & Effects
-SND_CH_SFX: Final[int] = 0
-SND_CH_UI: Final[int] = 1
+# Sound Channels & Allocation
+SND_CH_MUS_LEAD: Final[int] = 0
+SND_CH_MUS_BASS: Final[int] = 1
+SND_CH_MUS_PERC: Final[int] = 2
+SND_CH_SFX: Final[int] = 3
+SND_CH_UI: Final[int] = 3
+
+# Sound Effect IDs
 SND_HIT: Final[int] = 0
 SND_CRIT: Final[int] = 1
 SND_HEAL: Final[int] = 2
 SND_CLICK: Final[int] = 3
 SND_VICTORY: Final[int] = 4
 SND_DEFEAT: Final[int] = 5
+SND_CHEST: Final[int] = 6
+SND_DOOR: Final[int] = 7
+
+# Music Track IDs
+MUS_TITLE: Final[int] = 0
+MUS_COMBAT: Final[int] = 1
+MUS_BOSS: Final[int] = 2
+MUS_MAP_ARBORETUM: Final[int] = 3
+MUS_MAP_CATHEDRAL: Final[int] = 4
+MUS_MAP_OSSUARY: Final[int] = 5
+MUS_MAP_FOUNDRY: Final[int] = 6
+MUS_MAP_OBSERVATORY: Final[int] = 7
+MUS_MAP_SANCTUM: Final[int] = 8
 
 # System Limits & Combat
 ACTION_THRESHOLD: Final[int] = 100

@@ -25,6 +25,7 @@ from src.config import (
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
 )
+from src.core.audio import audio
 from src.core.i18n import i18n
 from src.systems.map_gen import NodeType
 from src.ui.renderer import Renderer
@@ -60,14 +61,14 @@ class MapView(View):
         for node in available:
             nx, ny = self._get_node_pos(node, total_floors)
             if Renderer.is_clicked(nx - 8, ny - 8, 16, 26):
-                pyxel.play(0, 3)
+                audio.play_sfx( 3)
                 game_state.select_map_node(node.id)
                 return
 
         for idx, node in enumerate(available):
             key = getattr(pyxel, f"KEY_{idx + 1}", None)
             if key and pyxel.btnp(key):
-                pyxel.play(0, 3)
+                audio.play_sfx( 3)
                 game_state.select_map_node(node.id)
                 break
 

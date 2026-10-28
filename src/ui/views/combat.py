@@ -25,6 +25,7 @@ from src.config import (
     COLOR_YELLOW,
     SCREEN_WIDTH,
 )
+from src.core.audio import audio
 from src.core.i18n import t
 from src.entities import Enemy
 from src.data.abilities import get_random_abilities
@@ -97,7 +98,7 @@ class CombatView(View):
         # Speed toggle [Z] or click at bottom-right corner of dungeon arena (222, 79, 28, 11)
         if pyxel.btnp(pyxel.KEY_Z) or Renderer.is_clicked(222, 79, 28, 11):
             self.speed_index = (self.speed_index + 1) % len(SPEED_INTERVALS)
-            pyxel.play(0, 3)
+            audio.play_sfx( 3)
             return
 
         speed_frames = SPEED_INTERVALS[self.speed_index]

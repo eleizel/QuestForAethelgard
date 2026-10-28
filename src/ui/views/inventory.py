@@ -19,6 +19,7 @@ from src.config import (
     COLOR_WHITE,
     COLOR_YELLOW,
 )
+from src.core.audio import audio
 from src.core.i18n import i18n, t
 from src.systems.inventory import MAX_BELT_SLOTS, MAX_POUCH_SLOTS, EquipSlot
 from src.ui.renderer import Renderer
@@ -142,7 +143,7 @@ class InventoryView(View):
                 self.active_pane = "EQUIPMENT"
                 self.equip_cursor = i
                 self.feedback_message = ""
-                pyxel.play(0, 3)
+                audio.play_sfx( 3)
                 return
 
         # Belt Slots (matched to draw: belt_x=4, belt_y=143 -> bx = 10 + b_idx * 33, by = 159, bw = 30, bh = 60)
@@ -153,7 +154,7 @@ class InventoryView(View):
                 self.active_pane = "BELT"
                 self.belt_cursor = b_idx
                 self.feedback_message = ""
-                pyxel.play(0, 3)
+                audio.play_sfx( 3)
                 return
 
         # Pouch Slots (matched to draw: po_x=116, po_y=143 -> slot_x = 124 + col * 24, slot_y = 161 + row * 26)
@@ -166,7 +167,7 @@ class InventoryView(View):
                 self.active_pane = "POUCH"
                 self.pouch_cursor = p_idx
                 self.feedback_message = ""
-                pyxel.play(0, 3)
+                audio.play_sfx( 3)
                 return
 
         # 2. Cycle Active Panes with [TAB]
@@ -175,7 +176,7 @@ class InventoryView(View):
             curr_idx = order.index(self.active_pane) if self.active_pane in order else 0
             self.active_pane = order[(curr_idx + 1) % len(order)]
             self.feedback_message = ""
-            pyxel.play(0, 3)
+            audio.play_sfx( 3)
 
         # 3. Directional Keyboard Navigation
         up = pyxel.btnp(pyxel.KEY_UP) or pyxel.btnp(pyxel.KEY_W)
@@ -224,7 +225,7 @@ class InventoryView(View):
                         self.feedback_message = msg
                         self.feedback_success = success
                         if success:
-                            pyxel.play(0, 3)
+                            audio.play_sfx( 3)
                     elif isinstance(item, ConsumableItem):
                         target_belt = -1
                         for b in range(MAX_BELT_SLOTS):
@@ -237,7 +238,7 @@ class InventoryView(View):
                         self.feedback_message = msg
                         self.feedback_success = success
                         if success:
-                            pyxel.play(0, 3)
+                            audio.play_sfx( 3)
             elif self.active_pane == "EQUIPMENT":
                 slot = equip_order[self.equip_cursor]
                 if inv.equipment[slot] is not None:
@@ -245,7 +246,7 @@ class InventoryView(View):
                     self.feedback_message = msg
                     self.feedback_success = success
                     if success:
-                        pyxel.play(0, 3)
+                        audio.play_sfx( 3)
             elif self.active_pane == "BELT":
                 if inv.use_belt_item(self.belt_cursor, game_state.player):
                     pyxel.play(1, 2)
@@ -259,14 +260,14 @@ class InventoryView(View):
                     self.feedback_message = msg
                     self.feedback_success = success
                     if success:
-                        pyxel.play(0, 3)
+                        audio.play_sfx( 3)
             elif self.active_pane == "BELT":
                 if inv.belt[self.belt_cursor] is not None:
                     dropped_name = inv.belt[self.belt_cursor].localized_name
                     inv.belt[self.belt_cursor] = None
                     self.feedback_message = f"Discarded {dropped_name}." if i18n.locale == "en" else f"Descartaste {dropped_name}."
                     self.feedback_success = True
-                    pyxel.play(0, 3)
+                    audio.play_sfx( 3)
 
         # Belt quick assign buttons [B1], [B2], [B3]
         for idx, key in enumerate((pyxel.KEY_1, pyxel.KEY_2, pyxel.KEY_3)):
@@ -277,7 +278,7 @@ class InventoryView(View):
                     self.feedback_message = msg
                     self.feedback_success = success
                     if success:
-                        pyxel.play(0, 3)
+                        audio.play_sfx( 3)
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
         renderer.draw_hud(game_state.player, game_state.floor)

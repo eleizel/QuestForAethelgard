@@ -23,6 +23,7 @@ from src.config import (
     COLOR_YELLOW,
     SCREEN_WIDTH,
 )
+from src.core.audio import audio
 from src.core.game_state import GameMode
 from src.core.i18n import i18n, t
 from src.data.abilities import get_random_abilities
@@ -50,7 +51,7 @@ class ClassSelectView(View):
         # Toggle route mode
         if pyxel.btnp(pyxel.KEY_B) or pyxel.btnp(pyxel.KEY_T) or Renderer.is_clicked(70, 230, 96, 18):
             self.route_mode = "PATHFINDER" if self.route_mode == "FATE" else "FATE"
-            pyxel.play(0, SND_CLICK)
+            audio.play_sfx( SND_CLICK)
 
         card_w, card_h = 78, 80
         x_offsets = [6, 89, 172]
@@ -59,30 +60,30 @@ class ClassSelectView(View):
         for i, card_x in enumerate(x_offsets):
             if Renderer.is_clicked(card_x, card_y, card_w, card_h):
                 if self.selected_index == i:
-                    pyxel.play(0, SND_VICTORY)
+                    audio.play_sfx( SND_VICTORY)
                     game_state.start_new_game(self.classes[self.selected_index], route_mode=self.route_mode)
                     return
                 else:
                     self.selected_index = i
-                    pyxel.play(0, SND_CLICK)
+                    audio.play_sfx( SND_CLICK)
 
         if pyxel.btnp(pyxel.KEY_LEFT) or pyxel.btnp(pyxel.KEY_A):
             self.selected_index = (self.selected_index - 1) % len(self.classes)
-            pyxel.play(0, SND_CLICK)
+            audio.play_sfx( SND_CLICK)
         elif pyxel.btnp(pyxel.KEY_RIGHT) or pyxel.btnp(pyxel.KEY_D):
             self.selected_index = (self.selected_index + 1) % len(self.classes)
-            pyxel.play(0, SND_CLICK)
+            audio.play_sfx( SND_CLICK)
         elif pyxel.btnp(pyxel.KEY_1):
             self.selected_index = 0
-            pyxel.play(0, SND_CLICK)
+            audio.play_sfx( SND_CLICK)
         elif pyxel.btnp(pyxel.KEY_2):
             self.selected_index = 1
-            pyxel.play(0, SND_CLICK)
+            audio.play_sfx( SND_CLICK)
         elif pyxel.btnp(pyxel.KEY_3):
             self.selected_index = 2
-            pyxel.play(0, SND_CLICK)
+            audio.play_sfx( SND_CLICK)
         elif pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_SPACE) or Renderer.is_clicked(172, 230, 78, 18):
-            pyxel.play(0, SND_VICTORY)
+            audio.play_sfx( SND_VICTORY)
             game_state.start_new_game(self.classes[self.selected_index], route_mode=self.route_mode)
         elif pyxel.btnp(pyxel.KEY_ESCAPE) or Renderer.is_clicked(6, 230, 58, 18):
             game_state.switch_mode(GameMode.WELCOME)

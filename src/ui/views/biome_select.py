@@ -26,6 +26,7 @@ from src.config import (
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
 )
+from src.core.audio import audio
 from src.core.i18n import i18n, t
 from src.data.abilities import get_random_abilities
 from src.ui.renderer import Renderer
@@ -56,44 +57,44 @@ class BiomeSelectView(View):
         # Keyboard directional toggle
         if pyxel.btnp(pyxel.KEY_LEFT) or pyxel.btnp(pyxel.KEY_A):
             self.selected_index = 0
-            pyxel.play(0, SND_CLICK)
+            audio.play_sfx( SND_CLICK)
         elif pyxel.btnp(pyxel.KEY_RIGHT) or pyxel.btnp(pyxel.KEY_D):
             self.selected_index = 1
-            pyxel.play(0, SND_CLICK)
+            audio.play_sfx( SND_CLICK)
         elif pyxel.btnp(pyxel.KEY_1) or pyxel.btnp(pyxel.KEY_KP_1):
             if self.selected_index == 0:
-                pyxel.play(0, SND_VICTORY)
+                audio.play_sfx( SND_VICTORY)
                 game_state.advance_act(target_biome_id=biome_a_id)
             else:
                 self.selected_index = 0
-                pyxel.play(0, SND_CLICK)
+                audio.play_sfx( SND_CLICK)
         elif pyxel.btnp(pyxel.KEY_2) or pyxel.btnp(pyxel.KEY_KP_2):
             if self.selected_index == 1:
-                pyxel.play(0, SND_VICTORY)
+                audio.play_sfx( SND_VICTORY)
                 game_state.advance_act(target_biome_id=biome_b_id)
             else:
                 self.selected_index = 1
-                pyxel.play(0, SND_CLICK)
+                audio.play_sfx( SND_CLICK)
         elif pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_SPACE):
-            pyxel.play(0, SND_VICTORY)
+            audio.play_sfx( SND_VICTORY)
             game_state.advance_act(target_biome_id=target_id)
 
         # Mouse / Tap click on cards
         card_w, card_h = 119, 184
         if Renderer.is_clicked(7, 50, card_w, card_h):
             if self.selected_index == 0:
-                pyxel.play(0, SND_VICTORY)
+                audio.play_sfx( SND_VICTORY)
                 game_state.advance_act(target_biome_id=biome_a_id)
             else:
                 self.selected_index = 0
-                pyxel.play(0, SND_CLICK)
+                audio.play_sfx( SND_CLICK)
         elif Renderer.is_clicked(130, 50, card_w, card_h):
             if self.selected_index == 1:
-                pyxel.play(0, SND_VICTORY)
+                audio.play_sfx( SND_VICTORY)
                 game_state.advance_act(target_biome_id=biome_b_id)
             else:
                 self.selected_index = 1
-                pyxel.play(0, SND_CLICK)
+                audio.play_sfx( SND_CLICK)
 
     def _draw_threat_icon(self, x: int, y: int, icon_type: str) -> None:
         """Render distinct 6x6 pixel glyphs for biome threats."""

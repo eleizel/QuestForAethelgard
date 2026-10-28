@@ -1629,13 +1629,85 @@ def build_assets() -> None:
         "0aa7c000", "00aa0000", "040aa000", "4000a000"
     ])
 
-    # Sound Effects
-    pyxel.sounds[0].set("g2c2", "n", "74", "s", 6)
-    pyxel.sounds[1].set("c3g3c4", "t", "777", "n", 4)
-    pyxel.sounds[2].set("c3e3g3c4", "p", "5567", "f", 7)
-    pyxel.sounds[3].set("g3c4", "p", "45", "n", 3)
-    pyxel.sounds[4].set("c3e3g3c4e4g4", "t", "666777", "v", 12)
-    pyxel.sounds[5].set("f3e3d3c3", "s", "7654", "f", 16)
+    # =========================================================================
+    # SOUND EFFECTS (Channel 3, IDs 0-7)
+    # =========================================================================
+    pyxel.sounds[0].set("g2c2", "n", "74", "s", 6)  # 0: Hit
+    pyxel.sounds[1].set("c3g3c4", "t", "777", "n", 4)  # 1: Crit
+    pyxel.sounds[2].set("c3e3g3c4", "p", "5567", "f", 7)  # 2: Heal
+    pyxel.sounds[3].set("g3c4", "p", "45", "n", 3)  # 3: Click
+    pyxel.sounds[4].set("c3e3g3c4e4g4", "t", "666777", "v", 12)  # 4: Victory
+    pyxel.sounds[5].set("f3e3d3c3", "s", "7654", "f", 16)  # 5: Defeat
+    pyxel.sounds[6].set("c2e2g2b2d3", "s", "65543", "s", 5)  # 6: Chest open / latch
+    pyxel.sounds[7].set("g1d2g2c3", "t", "7654", "f", 9)  # 7: Shop door / chime
+
+    # =========================================================================
+    # COMPOSITION SOUND SECTIONS (Bank Sounds 10-40)
+    # =========================================================================
+    # Drums & Rhythm
+    pyxel.sounds[10].set("c2c2", "n", "72", "f", 8)  # Kick
+    pyxel.sounds[11].set("g2", "n", "6", "f", 8)  # Snare
+    pyxel.sounds[12].set("d3", "n", "3", "f", 4)  # Hi-hat
+
+    # Title Theme Phrases
+    pyxel.sounds[13].set("a2c3e3a3 g2b2d3g3", "p", "6666 5555", "v", 12)  # Title Lead A
+    pyxel.sounds[14].set("f2a2c3f3 e2g2b2e3", "p", "6666 5555", "v", 12)  # Title Lead B
+    pyxel.sounds[15].set("a1r a1r g1r g1r", "t", "70 70 70 70", "n", 12)  # Title Bass A
+    pyxel.sounds[16].set("f1r f1r e1r e1r", "t", "70 70 70 70", "n", 12)  # Title Bass B
+
+    # Combat Theme Phrases
+    pyxel.sounds[17].set("a2a2c3d3 e3d3c3a2", "s", "7777 6666", "n", 6)  # Combat Lead A
+    pyxel.sounds[18].set("g2g2b2c3 d3c3b2g2", "s", "7777 6666", "n", 6)  # Combat Lead B
+    pyxel.sounds[19].set("a1a1a1a1 a1a1a1a1", "t", "7655 7655", "n", 6)  # Combat Bass A
+    pyxel.sounds[20].set("g1g1g1g1 g1g1g1g1", "t", "7655 7655", "n", 6)  # Combat Bass B
+
+    # Boss Theme Phrases (High Tempo)
+    pyxel.sounds[21].set("d3d3f3g3 a3g3f3d3", "s", "7777 7777", "s", 4)  # Boss Lead A
+    pyxel.sounds[22].set("c3c3e3f3 g3f3e3c3", "s", "7777 7777", "s", 4)  # Boss Lead B
+    pyxel.sounds[23].set("d1d1d1d1 d1d1d1d1", "t", "7777 7777", "n", 4)  # Boss Bass A
+    pyxel.sounds[24].set("a0a0a0a0 a0a0a0a0", "t", "7777 7777", "n", 4)  # Boss Bass B
+
+    # Biome Exploration Phrases
+    # Arboretum (Wilted organic minor)
+    pyxel.sounds[25].set("c3e3g3b3 a3f3d3b2", "p", "5555 4444", "v", 14)
+    pyxel.sounds[26].set("a1r e2r c2r e1r", "t", "60 50 60 50", "f", 14)
+    # Cathedral (Sacred organ / solemn bell)
+    pyxel.sounds[27].set("e3g3b3e4 d3f3a3d4", "s", "6666 5555", "n", 16)
+    pyxel.sounds[28].set("e1e2e1e2 d1d2d1d2", "t", "7777 6666", "f", 16)
+    # Ossuary (Submerged water drop dissonance)
+    pyxel.sounds[29].set("f3r c3r g2r e3r", "p", "60 50 60 50", "v", 16)
+    pyxel.sounds[30].set("f1c2 f1c2 e1b1 e1b1", "t", "66 66 66 66", "n", 16)
+    # Foundry (Heavy clanking industrial pulse)
+    pyxel.sounds[31].set("d2d2f2d2 a2d2f2d2", "s", "7676 7676", "n", 8)
+    pyxel.sounds[32].set("d1r d1r d1r d1r", "t", "70 70 70 70", "n", 8)
+    # Observatory (Celestial D Dorian arpeggios)
+    pyxel.sounds[33].set("d3f3a3c4 e4c4a3f3", "p", "5555 5555", "v", 10)
+    pyxel.sounds[34].set("d1r a1r d2r a1r", "t", "60 50 60 50", "f", 10)
+    # Sanctum (Vampiric baroque minor)
+    pyxel.sounds[35].set("a2d3f3a3 g3e3c3b2", "s", "7777 6666", "s", 8)
+    pyxel.sounds[36].set("a1r d2r a1r d2r", "t", "70 60 70 60", "n", 8)
+
+    # =========================================================================
+    # MUSIC TRACKS (Channels 0, 1, 2)
+    # =========================================================================
+    # 0: Title Theme
+    pyxel.musics[0].set([13, 14], [15, 16], [])
+    # 1: Standard Combat
+    pyxel.musics[1].set([17, 18], [19, 20], [10, 11, 10, 12])
+    # 2: Boss Battle
+    pyxel.musics[2].set([21, 22], [23, 24], [10, 11, 10, 11])
+    # 3: Arboretum Map
+    pyxel.musics[3].set([25], [26], [])
+    # 4: Cathedral Map
+    pyxel.musics[4].set([27], [28], [])
+    # 5: Ossuary Map
+    pyxel.musics[5].set([29], [30], [12])
+    # 6: Foundry Map
+    pyxel.musics[6].set([31], [32], [10, 11])
+    # 7: Observatory Map
+    pyxel.musics[7].set([33], [34], [])
+    # 8: Sanctum Map
+    pyxel.musics[8].set([35], [36], [12, 11])
 
     pyxel.save(str(output_path))
     print(f"Successfully generated asset package: {output_path}")

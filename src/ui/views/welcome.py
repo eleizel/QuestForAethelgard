@@ -20,6 +20,7 @@ from src.config import (
     COLOR_YELLOW,
     SCREEN_WIDTH,
 )
+from src.core.audio import audio
 from src.core.game_state import GameMode
 from src.core.i18n import i18n, t
 from src.ui.renderer import Renderer
@@ -39,14 +40,23 @@ class WelcomeView(View):
         from src.config import SND_CLICK
         if Renderer.is_clicked(6, 6, 44, 14) or pyxel.btnp(pyxel.KEY_L):
             i18n.toggle_language()
-            pyxel.play(0, 3)
+            audio.play_sfx(SND_CLICK)
+        elif Renderer.is_clicked(6, 23, 21, 13) or pyxel.btnp(pyxel.KEY_M):
+            audio.toggle_music()
+            audio.play_sfx(SND_CLICK)
+        elif Renderer.is_clicked(29, 23, 21, 13) or pyxel.btnp(pyxel.KEY_S):
+            audio.toggle_sfx()
+            audio.play_sfx(SND_CLICK)
         elif pyxel.btnp(pyxel.KEY_1) or Renderer.is_clicked(36, 158, 184, 16):
-            pyxel.play(0, SND_CLICK)
+            audio.play_sfx(SND_CLICK)
+            game_state.switch_mode(GameMode.CLASS_SELECT)
+        elif pyxel.btnp(pyxel.KEY_1) or Renderer.is_clicked(36, 158, 184, 16):
+            audio.play_sfx( SND_CLICK)
             game_state.switch_mode(GameMode.CLASS_SELECT)
         elif pyxel.btnp(pyxel.KEY_2) or Renderer.is_clicked(36, 178, 184, 16):
             pass
         elif pyxel.btnp(pyxel.KEY_3) or Renderer.is_clicked(36, 198, 184, 16):
-            pyxel.play(0, 3)
+            audio.play_sfx( 3)
             game_state.switch_mode(GameMode.CREDITS)
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
@@ -184,3 +194,14 @@ class WelcomeView(View):
             border_col=COLOR_WHITE,
             text_col=COLOR_YELLOW,
         )
+
+        from src.core.audio import audio
+        # Music Toggle Button [MUS]
+        m_col = COLOR_YELLOW if audio.music_enabled else COLOR_GRAY
+        m_border = COLOR_YELLOW if audio.music_enabled else COLOR_NAVY
+        renderer.draw_button(6, 23, 21, 13, "MUS", bg_col=COLOR_BLACK, border_col=m_border, text_col=m_col)
+
+        # SFX Toggle Button [SFX]
+        s_col = COLOR_LIME if audio.sfx_enabled else COLOR_GRAY
+        s_border = COLOR_LIME if audio.sfx_enabled else COLOR_NAVY
+        renderer.draw_button(29, 23, 21, 13, "SFX", bg_col=COLOR_BLACK, border_col=s_border, text_col=s_col)

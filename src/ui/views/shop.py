@@ -24,6 +24,7 @@ from src.config import (
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
 )
+from src.core.audio import audio
 from src.core.game_state import GameMode
 from src.core.i18n import i18n, t
 from src.systems.inventory import MAX_POUCH_SLOTS
@@ -108,17 +109,17 @@ class ShopView(View):
         if pyxel.btnp(pyxel.KEY_TAB) or Renderer.is_clicked(7, 89, 28, 13):
             self.active_tab = "SELL" if self.active_tab == "BUY" else "BUY"
             self.feedback_msg = ""
-            pyxel.play(0, 3)
+            audio.play_sfx( 3)
             return
         elif Renderer.is_clicked(38, 89, 36, 13):
             self.active_tab = "BUY"
             self.feedback_msg = ""
-            pyxel.play(0, 3)
+            audio.play_sfx( 3)
             return
         elif Renderer.is_clicked(76, 89, 36, 13):
             self.active_tab = "SELL"
             self.feedback_msg = ""
-            pyxel.play(0, 3)
+            audio.play_sfx( 3)
             return
 
         up = pyxel.btnp(pyxel.KEY_UP) or pyxel.btnp(pyxel.KEY_W)
@@ -166,7 +167,7 @@ class ShopView(View):
                         game_state.player.gold -= price
                         game_state.player.inventory.add_to_pouch(item)
                         stock.pop(self.buy_cursor)
-                        pyxel.play(0, 3)
+                        audio.play_sfx( 3)
                         self.feedback_msg = t("shop_purchased", item=item.localized_name)
                         self.feedback_success = True
                         if self.buy_cursor >= len(stock):
@@ -207,7 +208,7 @@ class ShopView(View):
                     popped = game_state.player.inventory.remove_from_pouch(self.sell_cursor)
                     if popped:
                         game_state.player.gold += sell_value
-                        pyxel.play(0, 3)
+                        audio.play_sfx( 3)
                         self.feedback_msg = t("shop_sold", item=popped.localized_name, val=sell_value)
                         self.feedback_success = True
                         if self.sell_cursor >= len(game_state.player.inventory.pouch):

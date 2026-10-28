@@ -24,6 +24,7 @@ from src.config import (
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
 )
+from src.core.audio import audio
 from src.core.game_state import GameMode
 from src.core.i18n import t, i18n
 from src.ui.renderer import Renderer
@@ -46,7 +47,7 @@ class EventsView(View):
             # Resolved state
             if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.KEY_RETURN) or Renderer.is_clicked(0, 0, SCREEN_WIDTH,
                                                                                                   SCREEN_HEIGHT):
-                pyxel.play(0, 3)
+                audio.play_sfx( 3)
                 game_state.current_event = None
                 if game_state.player.pending_ability_choices:
                     game_state.switch_mode(GameMode.ABILITY_CHOICE)
@@ -71,7 +72,7 @@ class EventsView(View):
                 if i == 2 and (pyxel.btnp(pyxel.KEY_3) or pyxel.btnp(pyxel.KEY_KP_3)): key_pressed = True
 
                 if (clicked or key_pressed) and is_avail:
-                    pyxel.play(0, 3)
+                    audio.play_sfx( 3)
                     outcome = choice.action_hook(game_state)
                     event.resolved_text = outcome
                     break
