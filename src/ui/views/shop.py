@@ -24,6 +24,7 @@ from src.config import (
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
 )
+from src.config import SND_CLICK, SND_DOOR
 from src.core.audio import audio
 from src.core.game_state import GameMode
 from src.core.i18n import i18n, t
@@ -47,6 +48,7 @@ class ShopView(View):
         self.sell_cursor: int = 0
         self.feedback_msg: str = ""
         self.feedback_success: bool = False
+        self._door_played = False
 
     def _get_item_icon(self, item) -> tuple[int, int]:
         """Resolve 8x8 Bank 0 tile coordinates for any shop item."""
@@ -102,6 +104,8 @@ class ShopView(View):
 
     def update(self, game_state: GameState) -> None:
         if pyxel.btnp(pyxel.KEY_ESCAPE) or pyxel.btnp(pyxel.KEY_SPACE) or Renderer.is_clicked(176, 227, 72, 18):
+            self._door_played = False
+            audio.play_sfx(SND_CLICK)
             game_state.switch_mode(GameMode.MAP)
             return
 
@@ -109,17 +113,17 @@ class ShopView(View):
         if pyxel.btnp(pyxel.KEY_TAB) or Renderer.is_clicked(7, 89, 28, 13):
             self.active_tab = "SELL" if self.active_tab == "BUY" else "BUY"
             self.feedback_msg = ""
-            audio.play_sfx( 3)
+            audio.play_sfx(SND_CLICK)
             return
         elif Renderer.is_clicked(38, 89, 36, 13):
             self.active_tab = "BUY"
             self.feedback_msg = ""
-            audio.play_sfx( 3)
+            audio.play_sfx(SND_CLICK)
             return
         elif Renderer.is_clicked(76, 89, 36, 13):
             self.active_tab = "SELL"
             self.feedback_msg = ""
-            audio.play_sfx( 3)
+            audio.play_sfx(SND_CLICK)
             return
 
         up = pyxel.btnp(pyxel.KEY_UP) or pyxel.btnp(pyxel.KEY_W)
@@ -167,7 +171,7 @@ class ShopView(View):
                         game_state.player.gold -= price
                         game_state.player.inventory.add_to_pouch(item)
                         stock.pop(self.buy_cursor)
-                        audio.play_sfx( 3)
+                        audio.play_sfx(SND_CLICK)
                         self.feedback_msg = t("shop_purchased", item=item.localized_name)
                         self.feedback_success = True
                         if self.buy_cursor >= len(stock):
@@ -208,7 +212,7 @@ class ShopView(View):
                     popped = game_state.player.inventory.remove_from_pouch(self.sell_cursor)
                     if popped:
                         game_state.player.gold += sell_value
-                        audio.play_sfx( 3)
+                        audio.play_sfx(SND_CLICK)
                         self.feedback_msg = t("shop_sold", item=popped.localized_name, val=sell_value)
                         self.feedback_success = True
                         if self.sell_cursor >= len(game_state.player.inventory.pouch):
@@ -279,6 +283,10 @@ class ShopView(View):
         pyxel.rectb(vx, vy, vw, vh, COLOR_DARK_BLUE)
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
+        if not getattr(self, "_door_played", False):
+            audio.play_sfx(SND_DOOR)
+            self._door_played = True
+
         renderer.draw_hud(game_state.player, game_state.floor)
 
         box_x, box_y, box_w, box_h = 4, 25, SCREEN_WIDTH - 8, SCREEN_HEIGHT - 28
@@ -300,8 +308,8 @@ class ShopView(View):
         pyxel.rectb(dia_x + 1, dia_y + 1, dia_w - 2, dia_h - 2, COLOR_NAVY)
 
         # Corner accents on dialogue box
-        for cx, cy in [(dia_x + 2, dia_y + 2), (dia_x + dia_w - 3, dia_y + 2), (dia_x + 2, dia_y + dia_h - 3),
-                       (dia_x + dia_w - 3, dia_y + dia_h - 3)]:
+        for cx, cy in [(dia_x + 2, dia_y + 2), (dia_x + dia_w - 3, dia_y + 2), (dia_x + 2, dia_y + dia_h -SND_CLICK),
+                       (dia_x + dia_w - 3, dia_y + dia_h -SND_CLICK)]:
             pyxel.pset(cx, cy, COLOR_LIGHT_BLUE)
 
         m_name = t("wandering_merchant")
@@ -496,20 +504,20 @@ class ShopView(View):
         if isinstance(inspected_item, EquipmentItem):
             st = inspected_item.stats_bonus
             if st.attack > 0:
-                renderer.draw_text(ins_x + 6, stat_y, f"ATK: +{st.attack}", COLOR_WHITE);
+                renderer.draw_text(ins_x + 6, stat_y, f"ATK: +{st.attack}", COLOR_WHITE)
                 stat_y += 8
             if st.defense > 0:
-                renderer.draw_text(ins_x + 6, stat_y, f"DEF: +{st.defense}", COLOR_WHITE);
+                renderer.draw_text(ins_x + 6, stat_y, f"DEF: +{st.defense}", COLOR_WHITE)
                 stat_y += 8
             if st.speed != 0:
-                renderer.draw_text(ins_x + 6, stat_y, f"SPD: {st.speed:+d}", COLOR_WHITE);
+                renderer.draw_text(ins_x + 6, stat_y, f"SPD: {st.speed:+d}", COLOR_WHITE)
                 stat_y += 8
             if st.max_hp > 0:
-                renderer.draw_text(ins_x + 6, stat_y, f"HP : +{st.max_hp}", COLOR_WHITE);
+                renderer.draw_text(ins_x + 6, stat_y, f"HP : +{st.max_hp}", COLOR_WHITE)
                 stat_y += 8
         elif isinstance(inspected_item, ConsumableItem):
             if inspected_item.heal_amount > 0:
-                renderer.draw_text(ins_x + 6, stat_y, f"Heals {inspected_item.heal_amount} HP", COLOR_LIME);
+                renderer.draw_text(ins_x + 6, stat_y, f"Heals {inspected_item.heal_amount} HP", COLOR_LIME)
                 stat_y += 8
             if isinstance(inspected_item, StatPotion):
                 b = inspected_item.stat_bonus

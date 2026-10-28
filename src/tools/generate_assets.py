@@ -1689,6 +1689,8 @@ def build_assets() -> None:
 
     # =========================================================================
     # MUSIC TRACKS (Channels 0, 1, 2)
+    # Note: Pyxel supports 8 hardware music slots (0-7).
+    # Audio playback for all 9 tracks is managed via audio.py using sound banks.
     # =========================================================================
     # 0: Title Theme
     pyxel.musics[0].set([13, 14], [15, 16], [])
@@ -1706,8 +1708,7 @@ def build_assets() -> None:
     pyxel.musics[6].set([31], [32], [10, 11])
     # 7: Observatory Map
     pyxel.musics[7].set([33], [34], [])
-    # 8: Sanctum Map
-    pyxel.musics[8].set([35], [36], [12, 11])
+    # (Removed pyxel.musics[8] to avoid the 8-slot IndexError)
 
     pyxel.save(str(output_path))
     print(f"Successfully generated asset package: {output_path}")

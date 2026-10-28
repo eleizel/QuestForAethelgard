@@ -26,6 +26,8 @@ from src.config import (
     SCREEN_WIDTH,
 )
 from src.core.audio import audio
+from src.config import SND_CLICK, SND_HEAL
+from src.entities.enemy import EnemyTier
 from src.core.i18n import t
 from src.entities import Enemy
 from src.data.abilities import get_random_abilities
@@ -98,7 +100,7 @@ class CombatView(View):
         # Speed toggle [Z] or click at bottom-right corner of dungeon arena (222, 79, 28, 11)
         if pyxel.btnp(pyxel.KEY_Z) or Renderer.is_clicked(222, 79, 28, 11):
             self.speed_index = (self.speed_index + 1) % len(SPEED_INTERVALS)
-            audio.play_sfx( 3)
+            audio.play_sfx(SND_CLICK)
             return
 
         speed_frames = SPEED_INTERVALS[self.speed_index]
@@ -123,7 +125,7 @@ class CombatView(View):
             if pyxel.btnp(key) or Renderer.is_clicked(6, by, 114, 11):
                 old_p_hp = game_state.player.current_hp
                 if game_state.player.inventory.use_belt_item(idx, game_state.player):
-                    pyxel.play(1, 2)
+                    audio.play_sfx(SND_HEAL)
                     game_state.combat.combat_logs.append(
                         t("combat_belt_use", player=game_state.player.name, slot=idx + 1)
                     )
@@ -160,6 +162,10 @@ class CombatView(View):
         return (16, 0)
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
+        if game_state.combat is not None:
+            is_boss = (game_state.combat.enemy.tier == EnemyTier.BOSS)
+            audio.play_combat_music(is_boss=is_boss)
+
         # Camera screen shake
         if self.shake_frames > 0:
             sx = random.randint(-2, 2)
