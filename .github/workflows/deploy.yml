@@ -33,17 +33,41 @@ jobs:
 
       - name: Package Pyxel App to HTML
         run: |
-          # Genera los assets necesarios
+          # 1. Genera los assets necesarios
           cd src/tools
           python generate_assets.py
           cd ../..
-          # Genera la carpeta dist
+          
+          # 2. Genera la carpeta dist
           mkdir dist
-          # Empaqueta la carpeta raiz indicando tu script inicial (ej. main.py)
+          
+          # 3. Empaqueta la carpeta raiz y genera el HTML autonomo
           pyxel package . main.py
-          # Convierte el archivo .pyxapp a HTML autonomo dentro de /dist
           pyxel app2html QuestForAethelgard.pyxapp
           mv QuestForAethelgard.html dist/index.html
+          
+          # 4. Copia los archivos del manifest e iconos a dist/
+          cp manifest.json dist/
+          cp icon-192.png dist/
+          cp icon-512.png dist/
+          
+          # 5. Inyecta los tags en el <head> del HTML generado por Pyxel
+          python -c '
+          with open("dist/index.html", "r", encoding="utf-8") as f:
+              html = f.read()
+          
+          tags = """
+          <link rel="manifest" href="manifest.json">
+          <meta name="theme-color" content="#000000">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+          <link rel="apple-touch-icon" href="icon-512.png">
+          </head>"""
+          
+          html = html.replace("</head>", tags, 1)
+          
+          with open("dist/index.html", "w", encoding="utf-8") as f:
+              f.write(html)
+          '
 
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
