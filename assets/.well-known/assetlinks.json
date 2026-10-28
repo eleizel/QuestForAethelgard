@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.eleizel.aethelgard",
+        "sha256_cert_fingerprints": ["12:AF:A2:66:65:C5:96:5A:F1:3E:77:BF:0B:D9:B0:FD:2D:59:C2:0F:90:DA:F9:2C:32:46:81:10:07:27:2A:3B"]
+      }
+    }]
