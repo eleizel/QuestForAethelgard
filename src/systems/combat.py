@@ -139,7 +139,9 @@ class CombatSystem:
         """Resolve player damage, including vulnerabilities and passives."""
         vulnerable = next((status for status in self.enemy.statuses if status.id == "vulnerable"), None)
         if vulnerable:
-            raw_damage = int(raw_damage * (1 + vulnerable.potency / 100))
+            # Vulnerable statuses created before potency was configurable have potency 0.
+            vulnerability = vulnerable.potency if vulnerable.potency > 0 else 30
+            raw_damage = int(raw_damage * (1 + vulnerability / 100))
 
         has_cull_the_weak = any(
             ability.id == "cull_the_weak" for ability in self.player.abilities.passive
@@ -271,7 +273,9 @@ class CombatSystem:
         raw_dmg, is_crit = self.enemy.calculate_attack(self.rng)
         vulnerable = next((status for status in self.player.statuses if status.id == "vulnerable"), None)
         if vulnerable:
-            raw_dmg = int(raw_dmg * (1 + vulnerable.potency / 100))
+            # Preserve the legacy 30% Vulnerable effect when no potency is supplied.
+            vulnerability = vulnerable.potency if vulnerable.potency > 0 else 30
+            raw_dmg = int(raw_dmg * (1 + vulnerability / 100))
         dmg_dealt = self.player.take_damage(raw_dmg)
 
         # Audio feedback: Sound 1 (Crit) or Sound 0 (Hit)
