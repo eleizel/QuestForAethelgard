@@ -295,7 +295,7 @@ def hook_whirlwind_defense(actor: Actor, target: Actor, damage: int, is_crit: bo
 
 
 # =============================================================================
-# 4. MAGE STANDARD SKILLS (3 Actives, 3 Passives)
+# 4. MAGE STANDARD SKILLS
 # =============================================================================
 
 def execute_fireball(combat: CombatSystem) -> tuple[str, int, bool]:
@@ -329,6 +329,17 @@ def execute_creeping_hands(combat: CombatSystem) -> tuple[str, int, bool]:
         if vulnerable:
             combat.enemy.apply_status(vulnerable)
     return t("log_creeping_hands", player=combat.player.name, dmg=actual_damage), actual_damage, False
+
+
+def execute_soul_siphon(combat: CombatSystem) -> tuple[str, int, bool]:
+    from src.core.i18n import t
+
+    is_burning = combat.enemy.has_status("burn")
+    raw_damage = int(combat.player.effective_stats.attack * 1.00)
+    actual_damage = combat.damage_enemy(raw_damage)
+    healing_ratio = 0.50 if is_burning else 0.30
+    healed = combat.player.heal(int(actual_damage * healing_ratio))
+    return t("log_soul_siphon", player=combat.player.name, dmg=actual_damage, heal=healed), actual_damage, False
 
 
 def hook_bone_barrier(actor: Actor, raw_damage: int) -> int:
@@ -696,6 +707,18 @@ STANDARD_ABILITIES: list[Ability] = [
     Ability(id="bone_barrier", name="Bone Barrier", description="Reduces incoming damage by 20%.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
             on_damage_taken_hook=hook_bone_barrier, affinities=("warlock",)),
+    Ability(id="summon_imp", name="Summon Imp",
+            description="Basic attacks gain a separate 50% ATK imp strike with an independent critical chance and a 50% chance to Burn.",
+            ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
+            affinities=("warlock",)),
+    Ability(id="soul_siphon", name="Soul Siphon",
+            description="Deals 100% ATK and heals for 30% of damage dealt, or 50% if the target is Burning. 4-turn cooldown.",
+            ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
+            execute_hook=execute_soul_siphon, cooldown=4, affinities=("warlock",)),
+    Ability(id="pact_of_pain", name="Pact of Pain",
+            description="Warlock active abilities cost 5% of Max HP per cast and deal 10% more damage. The cost cannot reduce you below 1 HP.",
+            ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
+            affinities=("warlock",)),
     Ability(id="ice_shards", name="Ice Shards",
             description="Reduces incoming damage by 10% and reflects 10% of direct damage taken.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="mage",

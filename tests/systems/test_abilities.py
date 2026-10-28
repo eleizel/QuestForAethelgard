@@ -738,3 +738,84 @@ def test_archmage_passives_do_not_trigger_on_basic_attacks(monkeypatch):
 
     assert combat.arcane_reservoir_charges == 0
     assert rng.calls == 0
+
+
+def test_summon_imp_adds_its_own_basic_attack_and_burn_chance(monkeypatch):
+    from src.entities.enemy import EnemyTier
+    from src.systems.status import get_status_by_id
+
+    monkeypatch.setattr("src.systems.combat.pyxel.play", lambda *args: None)
+    player = Player(name="Warlock", class_id="mage")
+    player.base_stats = Stats(100, 100, 0, 100, 0.0)
+    enemy = Enemy(name="ImpTarget", stats=Stats(500, 1, 0, 1, 0.0),
+                  tier=EnemyTier.COMMON, floor_level=1, exp_reward=0, gold_reward=0)
+    enemy.current_hp = 500
+    combat = CombatSystem(player, enemy)
+    player.abilities.add_ability(get_ability_by_id("summon_imp"))
+
+    class ImpRNG:
+        values = iter((0.99, 0.99, 0.0))
+
+        def random(self):
+            return next(self.values)
+
+        def uniform(self, a, b):
+            return 1.0
+
+    combat.rng = ImpRNG()
+    combat.player_gauge = 100
+    combat._execute_player_attack()
+
+    assert enemy.current_hp == 350
+    assert enemy.has_status("burn")
+
+
+def test_pact_of_pain_costs_health_once_and_buffs_warlock_ability(monkeypatch):
+    from src.entities.enemy import EnemyTier
+
+    monkeypatch.setattr("src.systems.combat.pyxel.play", lambda *args: None)
+    player = Player(name="Warlock", class_id="mage")
+    player.base_stats = Stats(100, 100, 0, 100, 0.0)
+    player.current_hp = 100
+    enemy = Enemy(name="PactTarget", stats=Stats(500, 1, 0, 1, 0.0),
+                  tier=EnemyTier.COMMON, floor_level=1, exp_reward=0, gold_reward=0)
+    enemy.current_hp = 500
+    combat = CombatSystem(player, enemy)
+
+    class NoCritRNG:
+        def random(self):
+            return 0.99
+
+        def uniform(self, a, b):
+            return 1.0
+
+    combat.rng = NoCritRNG()
+    player.abilities.replace_ability(get_ability_by_id("creeping_hands"), 0)
+    assert player.abilities.add_ability(get_ability_by_id("pact_of_pain"))
+    combat.queued_ability = get_ability_by_id("creeping_hands")
+    combat._execute_player_attack()
+
+    assert player.current_hp == 95
+    assert enemy.current_hp == 423  # 70% ATK increased by Pact of Pain's 10%.
+
+
+def test_soul_siphon_heals_more_against_burning_target():
+    from src.entities.enemy import EnemyTier
+    from src.systems.status import get_status_by_id
+
+    player = Player(name="Warlock", class_id="mage")
+    player.base_stats = Stats(100, 100, 0, 100, 0.0)
+    player.current_hp = 60
+    enemy = Enemy(name="BurningTarget", stats=Stats(500, 1, 0, 1, 0.0),
+                  tier=EnemyTier.COMMON, floor_level=1, exp_reward=0, gold_reward=0)
+    enemy.current_hp = 500
+    enemy.apply_status(get_status_by_id("burn", duration=8, potency=1))
+    combat = CombatSystem(player, enemy)
+
+    _, damage, is_crit = get_ability_by_id("soul_siphon").execute(combat)
+
+    assert damage == 100
+    assert not is_crit
+    assert player.current_hp == 100
+    assert enemy.current_hp == 400
+

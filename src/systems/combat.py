@@ -58,6 +58,8 @@ class CombatSystem:
         self._last_player_hit_raw_damage = 0
         self._defer_attack_proc_logs = False
         self._deferred_attack_proc_logs: list[str] = []
+        self._current_action_affinities: tuple[str, ...] = ()
+        self._pact_of_pain_active = False
 
         self.current_tick: int = 0
         self.result: CombatResult = CombatResult.IN_PROGRESS
@@ -145,6 +147,8 @@ class CombatSystem:
 
     def damage_enemy(self, raw_damage: int, defense_penetration: float = 0.0) -> int:
         """Resolve player damage, including vulnerabilities and passives."""
+        if self._pact_of_pain_active:
+            raw_damage = int(raw_damage * 1.10)
         self._last_player_hit_raw_damage = raw_damage
         vulnerable = next((status for status in self.enemy.statuses if status.id == "vulnerable"), None)
         if vulnerable:
@@ -235,6 +239,19 @@ class CombatSystem:
 
             # Track the affinity of the last active skill used. Basic attacks do not clear it.
             self.player._last_ability_affinities = tuple(getattr(self.queued_ability, "affinities", ()))
+            self._current_action_affinities = self.player._last_ability_affinities
+            self._pact_of_pain_active = (
+                "warlock" in self._current_action_affinities
+                and any(ability.id == "pact_of_pain" for ability in self.player.abilities.passive)
+            )
+            if self._pact_of_pain_active:
+                cost = max(1, int(self.player.max_hp * 0.05))
+                paid = min(cost, max(0, self.player.current_hp - 1))
+                self.player.current_hp -= paid
+                if paid:
+                    self.combat_logs.append(
+                        _t("combat_pact_of_pain", actor=self.player.name, cost=paid)
+                    )
 
             # Arcane Missiles resolves its per-hit passives before returning its summary log.
             self._deferred_attack_proc_logs.clear()
@@ -274,6 +291,35 @@ class CombatSystem:
                         self.combat_logs.append(
                             _t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name))
 
+                # Summon Imp adds an independent strike to each successful basic attack.
+                if dmg_dealt > 0 and self.enemy.is_alive and any(
+                    ability.id == "summon_imp" for ability in self.player.abilities.passive
+                ):
+                    imp_crit = self.rng.random() < self.player.effective_stats.crit_chance
+                    imp_raw = int(self.player.effective_stats.attack * 0.50)
+                    if imp_crit:
+                        imp_raw = int(imp_raw * 1.5)
+                    imp_damage = self.damage_enemy(imp_raw)
+                    dmg_dealt += imp_damage
+                    is_crit = is_crit or imp_crit
+
+                    burned = False
+                    if self.enemy.is_alive and self.rng.random() < 0.50:
+                        from src.systems.status import get_status_by_id
+                        burn = get_status_by_id("burn", duration=8, potency=1)
+                        if burn:
+                            self.enemy.apply_status(burn)
+                            burned = True
+
+                    log_key = "combat_summon_imp_crit" if imp_crit else "combat_summon_imp_hit"
+                    self.combat_logs.append(
+                        _t(log_key, actor=self.player.name, target=self.enemy.name, damage=imp_damage)
+                    )
+                    if burned:
+                        self.combat_logs.append(
+                            _t("combat_summon_imp_burn", target=self.enemy.name)
+                        )
+
         if whirlwind_ready and dmg_dealt > 0 and self.enemy.is_alive:
             extra_crit = self.rng.random() < self.player.effective_stats.crit_chance
             extra_raw = int(self.player.effective_stats.attack * 0.25)
@@ -293,6 +339,8 @@ class CombatSystem:
             )
         self._passives_handled_per_hit = False
         self._current_player_action_is_basic = False
+        self._current_action_affinities = ()
+        self._pact_of_pain_active = False
 
         if self.player.abilities.has_veterans_instincts and is_crit:
             self.player_gauge = min(100, self.player_gauge + 20)
