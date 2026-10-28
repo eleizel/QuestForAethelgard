@@ -51,23 +51,8 @@ jobs:
           cp icon-192.png dist/
           cp icon-512.png dist/
           
-          # 5. Inyecta los tags en el <head> del HTML generado por Pyxel
-          python -c '
-          with open("dist/index.html", "r", encoding="utf-8") as f:
-              html = f.read()
-          
-          tags = """
-          <link rel="manifest" href="manifest.json">
-          <meta name="theme-color" content="#000000">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-          <link rel="apple-touch-icon" href="icon-512.png">
-          </head>"""
-          
-          html = html.replace("</head>", tags, 1)
-          
-          with open("dist/index.html", "w", encoding="utf-8") as f:
-              f.write(html)
-          '
+          # 5. Inyecta los tags con el script de parchado
+          python src/tools/patch_html.py
 
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3

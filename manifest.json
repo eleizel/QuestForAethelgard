@@ -1,7 +1,10 @@
 {
   "name": "Quest for Aethelgard",
   "short_name": "Aethelgard",
+  "description": "A gothic retro chiptune dungeon crawler built with Pyxel.",
+  "id": "./",
   "start_url": "./",
+  "scope": "./",
   "display": "fullscreen",
   "orientation": "portrait",
   "background_color": "#000000",
@@ -11,13 +14,19 @@
       "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
