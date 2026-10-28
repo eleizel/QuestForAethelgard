@@ -51,7 +51,7 @@ jobs:
           cp assets/icon-192.png dist/
           cp assets/icon-512.png dist/
           cp assets/screenshots/* dist/
-          cp assets/.well-known/* dist/
+          cp -r assets/.well-known/* dist/.well-known/
           
           # 5. Inyecta los tags con el script de parchado
           python src/tools/patch_html.py
