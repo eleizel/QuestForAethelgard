@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Final
 import pyxel
 
 from src.core.audio import audio
+from src.config import SND_HIT, SND_CRIT, SND_VICTORY, SND_DEFEAT
 from src.systems.abilities import Ability
 
 if TYPE_CHECKING:
@@ -103,13 +104,13 @@ class CombatSystem:
             self.result = CombatResult.PLAYER_VICTORY
             self.combat_logs.append(_t("combat_enemy_defeat", enemy=self.enemy.name))
             self._distribute_rewards()
-            audio.play_sfx( 4)  # Sound 4: Victory fanfare
+            audio.play_sfx(SND_VICTORY)  # Sound 4: Victory fanfare
             return True
         elif not self.player.is_alive:
             self.arcane_reservoir_charges = 0
             self.result = CombatResult.PLAYER_DEFEAT
             self.combat_logs.append(_t("combat_player_defeat", player=self.player.name))
-            audio.play_sfx( 5)  # Sound 5: Defeat sting
+            audio.play_sfx(SND_DEFEAT)  # Sound 5: Defeat sting
             return True
         return False
 
@@ -262,7 +263,7 @@ class CombatSystem:
             self.combat_logs.append(f"[Tick {self.current_tick}] {log_str}")
             self.combat_logs.extend(self._deferred_attack_proc_logs)
             self._deferred_attack_proc_logs.clear()
-            audio.play_sfx( 1 if is_crit else 0)
+            audio.play_sfx(SND_CRIT if is_crit else SND_HIT)
             self.queued_ability = None
         else:
             if self.player.has_status("blind") and self.rng.random() < 0.50:
@@ -278,7 +279,7 @@ class CombatSystem:
                 else:
                     self.combat_logs.append(
                         _t("combat_hit", actor=self.player.name, target=self.enemy.name, damage=dmg_dealt))
-                audio.play_sfx( 1 if is_crit else 0)
+                audio.play_sfx(SND_CRIT if is_crit else SND_HIT)
 
                 # Check on_hit_status for player weapons
                 weapon = self.player.inventory.get_equipment_in_slot("Main Hand")
@@ -372,7 +373,7 @@ class CombatSystem:
         dmg_dealt = self.player.take_damage(raw_dmg)
 
         # Audio feedback: Sound 1 (Crit) or Sound 0 (Hit)
-        audio.play_sfx( 1 if is_crit else 0)
+        audio.play_sfx(SND_CRIT if is_crit else SND_HIT)
 
         if is_crit:
             self.combat_logs.append(_t("combat_crit", actor=self.enemy.name, target=self.player.name, damage=dmg_dealt))

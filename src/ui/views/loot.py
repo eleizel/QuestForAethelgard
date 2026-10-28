@@ -21,7 +21,7 @@ from src.config import (
     COLOR_WHITE,
     COLOR_YELLOW,
     SCREEN_HEIGHT,
-    SCREEN_WIDTH,
+    SCREEN_WIDTH, SND_CLICK, SND_CHEST,
 )
 from src.core.audio import audio
 from src.core.game_state import GameMode
@@ -62,8 +62,9 @@ class LootView(View):
         elif pyxel.btnp(pyxel.KEY_SPACE) or Renderer.is_clicked(110, 228, 66, 18):
             for i in range(len(game_state.pending_loot) - 1, -1, -1):
                 self._take_loot(game_state, i, play_sound=False)
-            audio.play_sfx( 3)
+            audio.play_sfx(SND_CHEST)
         elif pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_C) or Renderer.is_clicked(180, 228, 68, 18):
+            audio.play_sfx(SND_CLICK)
             self._exit_loot(game_state)
 
     def _take_loot(self, game_state: GameState, index: int, play_sound: bool = True) -> None:
@@ -73,7 +74,7 @@ class LootView(View):
         if game_state.player.inventory.add_to_pouch(item):
             game_state.pending_loot.pop(index)
             if play_sound:
-                audio.play_sfx( 3)
+                audio.play_sfx(SND_CHEST)
 
     def _exit_loot(self, game_state: GameState) -> None:
         if game_state.player.pending_ability_choices:

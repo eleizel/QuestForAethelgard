@@ -22,7 +22,7 @@ from src.config import (
     COLOR_WHITE,
     COLOR_YELLOW,
     SCREEN_HEIGHT,
-    SCREEN_WIDTH,
+    SCREEN_WIDTH, SND_CLICK, SND_CHEST,
 )
 from src.core.audio import audio
 from src.core.game_state import GameMode
@@ -47,7 +47,7 @@ class EventsView(View):
             # Resolved state
             if pyxel.btnp(pyxel.KEY_SPACE) or pyxel.btnp(pyxel.KEY_RETURN) or Renderer.is_clicked(0, 0, SCREEN_WIDTH,
                                                                                                   SCREEN_HEIGHT):
-                audio.play_sfx( 3)
+                audio.play_sfx(SND_CLICK)
                 game_state.current_event = None
                 if game_state.player.pending_ability_choices:
                     game_state.switch_mode(GameMode.ABILITY_CHOICE)
@@ -72,7 +72,8 @@ class EventsView(View):
                 if i == 2 and (pyxel.btnp(pyxel.KEY_3) or pyxel.btnp(pyxel.KEY_KP_3)): key_pressed = True
 
                 if (clicked or key_pressed) and is_avail:
-                    audio.play_sfx( 3)
+                    sound = SND_CHEST if (event and event.scene_type == "CHEST") else SND_CLICK
+                    audio.play_sfx(sound)
                     outcome = choice.action_hook(game_state)
                     event.resolved_text = outcome
                     break

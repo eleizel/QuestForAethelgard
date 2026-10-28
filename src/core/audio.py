@@ -17,6 +17,19 @@ from src.config import (
     SND_CH_SFX,
 )
 
+# Multi-channel sound mappings for all 9 tracks: (ch0_lead, ch1_bass, ch2_rhythm)
+TRACK_CHANNELS: dict[int, tuple[list[int], list[int], list[int]]] = {
+    MUS_TITLE: ([13, 14], [15, 16], []),
+    MUS_COMBAT: ([17, 18], [19, 20], [10, 11, 10, 12]),
+    MUS_BOSS: ([21, 22], [23, 24], [10, 11, 10, 11]),
+    MUS_MAP_ARBORETUM: ([25], [26], []),
+    MUS_MAP_CATHEDRAL: ([27], [28], []),
+    MUS_MAP_OSSUARY: ([29], [30], [12]),
+    MUS_MAP_FOUNDRY: ([31], [32], [10, 11]),
+    MUS_MAP_OBSERVATORY: ([33], [34], []),
+    MUS_MAP_SANCTUM: ([35], [36], [12, 11]),
+}
+
 
 class AudioManager:
     """Manages audio playback, mute toggles, and track transitions."""
@@ -63,10 +76,27 @@ class AudioManager:
             return
 
         self.current_track = track_id
-        if self.music_enabled:
-            pyxel.playm(track_id, loop=True)
-        else:
+        if not self.music_enabled:
             self.stop_music()
+            return
+
+        track_data = TRACK_CHANNELS.get(track_id)
+        if track_data:
+            ch0, ch1, ch2 = track_data
+            if ch0:
+                pyxel.play(0, ch0, loop=True)
+            else:
+                pyxel.stop(0)
+
+            if ch1:
+                pyxel.play(1, ch1, loop=True)
+            else:
+                pyxel.stop(1)
+
+            if ch2:
+                pyxel.play(2, ch2, loop=True)
+            else:
+                pyxel.stop(2)
 
     def stop_music(self) -> None:
         """Stop music on channels 0, 1, and 2."""

@@ -21,7 +21,7 @@ from src.config import (
     COLOR_RED,
     COLOR_WHITE,
     COLOR_YELLOW,
-    SCREEN_WIDTH,
+    SCREEN_WIDTH, SND_VICTORY, SND_DEFEAT, SND_CLICK,
 )
 from src.core.audio import audio
 from src.core.i18n import i18n
@@ -42,9 +42,9 @@ class EndGameView(View):
         btn_w, btn_h = 104, 18
         btn_x = (SCREEN_WIDTH - btn_w) // 2
         btn_y = 206 if self.is_victory else 196
-        if pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_SPACE) or Renderer.is_clicked(btn_x, btn_y, btn_w,
-                                                                                              btn_h):
-            audio.play_sfx( 3)
+        if pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_SPACE) or Renderer.is_clicked(btn_x, btn_y, btn_w, btn_h):
+            audio.play_sfx(SND_CLICK)
+            self._played_end_sound = False
             game_state.__init__()
 
     def _draw_bold_letter(self, x: int, y: int, char: str, col: int) -> int:
@@ -514,6 +514,10 @@ class EndGameView(View):
         renderer.draw_text(cx - renderer.get_text_width(sub2) // 2, div_y + 16, sub2, COLOR_WHITE)
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
+        if not getattr(self, "_played_end_sound", False):
+            audio.stop_music()  # Stop battle/dungeon loop
+            audio.play_sfx(SND_VICTORY if self.is_victory else SND_DEFEAT)
+            self._played_end_sound = True
         renderer.draw_hud(game_state.player, game_state.floor)
 
         box_x, box_y, box_w, box_h = 10, 28, SCREEN_WIDTH - 20, 220

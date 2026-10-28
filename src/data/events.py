@@ -3,7 +3,7 @@ import random
 from dataclasses import dataclass, field
 from typing import Callable
 
-from src.core import GameState
+from src.core.game_state import GameState
 from src.core.i18n import i18n
 from src.data.items import ITEM_CATALOG
 from src.systems.status import create_bleed, create_poison, create_weaken, create_burn

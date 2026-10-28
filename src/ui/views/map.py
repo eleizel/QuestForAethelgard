@@ -26,6 +26,7 @@ from src.config import (
     SCREEN_WIDTH,
 )
 from src.core.audio import audio
+from src.config import SND_CLICK
 from src.core.i18n import i18n
 from src.systems.map_gen import NodeType
 from src.ui.renderer import Renderer
@@ -61,14 +62,14 @@ class MapView(View):
         for node in available:
             nx, ny = self._get_node_pos(node, total_floors)
             if Renderer.is_clicked(nx - 8, ny - 8, 16, 26):
-                audio.play_sfx( 3)
+                audio.play_sfx(SND_CLICK)
                 game_state.select_map_node(node.id)
                 return
 
         for idx, node in enumerate(available):
             key = getattr(pyxel, f"KEY_{idx + 1}", None)
             if key and pyxel.btnp(key):
-                audio.play_sfx( 3)
+                audio.play_sfx(SND_CLICK)
                 game_state.select_map_node(node.id)
                 break
 
@@ -136,6 +137,7 @@ class MapView(View):
             pyxel.pset(nx + 2, ny, COLOR_RED)
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
+        audio.play_biome_music(game_state.current_biome)
         renderer.draw_hud(game_state.player, game_state.floor)
 
         box_x, box_y, box_w, box_h = 4, 25, SCREEN_WIDTH - 8, SCREEN_HEIGHT - 28
