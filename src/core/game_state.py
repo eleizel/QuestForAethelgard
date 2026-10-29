@@ -26,6 +26,7 @@ class GameMode(Enum):
     MAP = auto()
     COMBAT = auto()
     INVENTORY = auto()
+    CHARACTER = auto()
     EVENTS = auto()
     GAME_OVER = auto()
     VICTORY = auto()
@@ -57,6 +58,7 @@ class GameState:
         self.last_gold_earned: int = 0
         self.last_exp_earned: int = 0
         self.promotion_return_mode: GameMode | None = None
+        self.overlay_return_modes: list[GameMode] = []
 
     def start_new_game(
             self, class_id: str = "warrior", route_mode: str = "FATE"
@@ -80,6 +82,7 @@ class GameState:
         self.combat = None
         self.pending_loot = []
         self.promotion_return_mode = None
+        self.overlay_return_modes.clear()
 
         if self.biome_route_mode == "FATE":
             from src.data.biomes import ACT_BIOMES
@@ -139,12 +142,24 @@ class GameState:
         self.previous_mode = self.current_mode
         self.current_mode = new_mode
 
+    def _toggle_menu_overlay(self, target: GameMode) -> None:
+        """Open an inventory or character overlay, or return to its previous view."""
+        overlay_modes = (GameMode.INVENTORY, GameMode.CHARACTER)
+        if self.current_mode == target:
+            destination = self.overlay_return_modes.pop() if self.overlay_return_modes else self.previous_mode
+            self.switch_mode(destination)
+            return
+
+        self.overlay_return_modes.append(self.current_mode)
+        self.switch_mode(target)
+
     def toggle_inventory(self) -> None:
         """Open or close the inventory screen."""
-        if self.current_mode == GameMode.INVENTORY:
-            self.switch_mode(self.previous_mode)
-        elif self.current_mode in (GameMode.MAP, GameMode.EVENTS):
-            self.switch_mode(GameMode.INVENTORY)
+        self._toggle_menu_overlay(GameMode.INVENTORY)
+
+    def toggle_character(self) -> None:
+        """Open or close the character sheet."""
+        self._toggle_menu_overlay(GameMode.CHARACTER)
 
     def select_map_node(self, node_id: int) -> bool:
         """Enter a map node and transition to its associated gameplay mode."""
