@@ -539,6 +539,7 @@ def _instrument_combat(combat: Any, run: dict[str, Any], act: dict[str, Any], en
 
     def status_ticks(actor: Any) -> None:
         hp_before = actor.current_hp
+        player_hp_before = combat.player.current_hp
         original_status_ticks(actor)
         hp_lost = max(0, hp_before - actor.current_hp)
         if actor is combat.player:
@@ -547,6 +548,11 @@ def _instrument_combat(combat: Any, run: dict[str, Any], act: dict[str, Any], en
         elif actor is combat.enemy:
             _increment((run, act, encounter), "status_damage_dealt", hp_lost)
             _record_max((run, act, encounter), "largest_status_tick_dealt", hp_lost)
+        _increment(
+            (run, act, encounter),
+            "hp_restored_in_combat",
+            max(0, combat.player.current_hp - player_hp_before),
+        )
 
     def distribute_rewards() -> None:
         hp_before = combat.player.current_hp
