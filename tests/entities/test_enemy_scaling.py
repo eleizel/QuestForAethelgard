@@ -13,7 +13,13 @@ if str(PROJECT_ROOT) not in sys.path:
 from src.data.enemies import ENEMY_CATALOG
 from src.data.biomes import BIOME_REGISTRY
 from src.entities.enemy import (
+    ACT_2_BOSS_ATK_MULT,
+    ACT_2_BOSS_HP_OVER_ELITE_RATIO,
     ACT_3_BOSS_ATK_MULT,
+    ACT_3_BOSS_HP_OVER_ELITE_RATIO,
+    ACT_3_ENEMY_ATK_MULT,
+    ACT_3_ENEMY_DEF_MULT,
+    ACT_3_ENEMY_HP_MULT,
     BOSS_HP_OVER_ELITE_RATIO,
     COMMON_ENEMY_SPEED_BONUS,
     ENEMY_ATK_GROWTH_PER_FLOOR,
@@ -37,19 +43,36 @@ def test_boss_health_is_normalized_to_one_and_a_half_times_biome_elite_average()
     biome = BIOME_REGISTRY["observatory"]
     elite_mean_hp = sum(ENEMY_CATALOG[enemy_id].base_hp for enemy_id in biome.elites) / len(biome.elites)
     boss_mean_hp = sum(ENEMY_CATALOG[enemy_id].base_hp for enemy_id in biome.bosses) / len(biome.bosses)
-    expected_hp_multiplier = TIER_HP_MULT[EnemyTier.ELITE] * BOSS_HP_OVER_ELITE_RATIO * elite_mean_hp / boss_mean_hp
+    expected_hp_multiplier = (
+        TIER_HP_MULT[EnemyTier.ELITE]
+        * ACT_3_BOSS_HP_OVER_ELITE_RATIO
+        * elite_mean_hp
+        / boss_mean_hp
+        * ACT_3_ENEMY_HP_MULT
+    )
 
     assert act_3_boss.max_hp == int(
         archetype.base_hp * (1 + (25 - 1) * ENEMY_HP_GROWTH_PER_FLOOR) * expected_hp_multiplier
     )
     assert act_3_boss.base_stats.attack == int(
-        archetype.base_atk * (1 + (25 - 1) * ENEMY_ATK_GROWTH_PER_FLOOR) * ACT_3_BOSS_ATK_MULT
+        archetype.base_atk
+        * (1 + (25 - 1) * ENEMY_ATK_GROWTH_PER_FLOOR)
+        * ACT_3_BOSS_ATK_MULT
+        * ACT_3_ENEMY_ATK_MULT
     )
     assert BOSS_HP_OVER_ELITE_RATIO == 1.5
-    assert ACT_3_BOSS_ATK_MULT == 1.35
+    assert ACT_2_BOSS_HP_OVER_ELITE_RATIO == 1.25
+    assert ACT_2_BOSS_ATK_MULT == 1.20
+    assert ACT_3_BOSS_HP_OVER_ELITE_RATIO == 1.25
+    assert ACT_3_BOSS_ATK_MULT == 1.20
+    assert (ACT_3_ENEMY_HP_MULT, ACT_3_ENEMY_ATK_MULT, ACT_3_ENEMY_DEF_MULT) == (
+        0.90,
+        0.90,
+        0.90,
+    )
 
 
-def test_generated_boss_health_averages_one_and_a_half_times_elites_in_each_biome() -> None:
+def test_generated_act_3_boss_health_averages_one_and_a_quarter_times_elites() -> None:
     class FixedChoiceRng:
         def __init__(self, selected_id: str) -> None:
             self.selected_id = selected_id
@@ -82,7 +105,7 @@ def test_generated_boss_health_averages_one_and_a_half_times_elites_in_each_biom
         ]
 
         assert mean(boss_health) / mean(elite_health) == pytest.approx(
-            BOSS_HP_OVER_ELITE_RATIO, abs=0.01
+            ACT_3_BOSS_HP_OVER_ELITE_RATIO, abs=0.01
         )
 
 
@@ -95,9 +118,21 @@ def test_non_boss_act_3_enemies_keep_standard_tier_scaling() -> None:
     )
     archetype = ENEMY_CATALOG[enemy.archetype_id]
 
-    assert enemy.max_hp == int(archetype.base_hp * (1 + (25 - 1) * ENEMY_HP_GROWTH_PER_FLOOR) * 1.25)
+    assert enemy.max_hp == int(
+        archetype.base_hp
+        * (1 + (25 - 1) * ENEMY_HP_GROWTH_PER_FLOOR)
+        * TIER_HP_MULT[EnemyTier.COMMON]
+        * ACT_3_ENEMY_HP_MULT
+    )
     assert enemy.base_stats.attack == int(
-        archetype.base_atk * (1 + (25 - 1) * ENEMY_ATK_GROWTH_PER_FLOOR)
+        archetype.base_atk
+        * (1 + (25 - 1) * ENEMY_ATK_GROWTH_PER_FLOOR)
+        * ACT_3_ENEMY_ATK_MULT
+    )
+    assert enemy.base_stats.defense == int(
+        archetype.base_def
+        * (1 + (25 - 1) * ENEMY_DEF_GROWTH_PER_FLOOR)
+        * ACT_3_ENEMY_DEF_MULT
     )
 
 
