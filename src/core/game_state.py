@@ -32,6 +32,7 @@ class GameMode(Enum):
     ABILITY_CHOICE = auto()
     LOOT = auto()
     SHOP = auto()
+    PROMOTION = auto()
 
 
 class GameState:
@@ -55,6 +56,7 @@ class GameState:
         self.merchant_stock: list[tuple[Item, int]] = []
         self.last_gold_earned: int = 0
         self.last_exp_earned: int = 0
+        self.promotion_return_mode: GameMode | None = None
 
     def start_new_game(
             self, class_id: str = "warrior", route_mode: str = "FATE"
@@ -77,6 +79,7 @@ class GameState:
         self.act = 1
         self.combat = None
         self.pending_loot = []
+        self.promotion_return_mode = None
 
         if self.biome_route_mode == "FATE":
             from src.data.biomes import ACT_BIOMES
@@ -96,10 +99,17 @@ class GameState:
 
             self.current_biome = random.choice(ACT_BIOMES[self.act])
 
-        self.player.heal(9999)
+        self.player.heal(int(self.player.max_hp * 0.50))
         num_floors = 18 if self.act == 3 else 12
         self.map_graph = generate_spire_map(num_floors=num_floors, width_lanes=4)
         self.switch_mode(GameMode.MAP)
+
+    def begin_promotion(self, return_mode: GameMode | None = None) -> bool:
+        if not self.player.promotion_due or not self.player.available_promotions():
+            return False
+        self.promotion_return_mode = return_mode or self.current_mode
+        self.switch_mode(GameMode.PROMOTION)
+        return True
 
     def switch_mode(self, new_mode: GameMode) -> None:
         """Transition the active game mode."""

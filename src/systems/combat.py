@@ -182,7 +182,7 @@ class CombatSystem:
             raw_damage = int(raw_damage * (1 + vulnerability / 100))
 
         has_cull_the_weak = any(
-            ability.id == "cull_the_weak" for ability in self.player.abilities.passive
+            ability.id == "cull_the_weak" for ability in self.player.all_passives
         )
         if has_cull_the_weak and self.enemy.current_hp > 0 and self.enemy.current_hp <= self.enemy.max_hp * 0.30:
             raw_damage = int(raw_damage * 1.30)
@@ -190,7 +190,7 @@ class CombatSystem:
         # Defensive Superiority converts the player's relative DEF advantage into
         # penetration. It does nothing when the enemy has equal or higher DEF.
         has_defensive_superiority = any(
-            ability.id == "defensive_superiority" for ability in self.player.abilities.passive
+            ability.id == "defensive_superiority" for ability in self.player.all_passives
         )
         if has_defensive_superiority:
             enemy_defense = max(0, self.enemy.effective_stats.defense)
@@ -323,7 +323,7 @@ class CombatSystem:
         if damage <= 0:
             return
         skip_ids = skip_ids or set()
-        for passive in self.player.abilities.passive:
+        for passive in self.player.all_passives:
             if passive.id in skip_ids or (only_ids is not None and passive.id not in only_ids):
                 continue
             if passive.id == "soulfire" and not is_basic_attack:
@@ -361,7 +361,7 @@ class CombatSystem:
             self._current_action_affinities = self.player._last_ability_affinities
             self._pact_of_pain_active = (
                 "warlock" in self._current_action_affinities
-                and any(ability.id == "pact_of_pain" for ability in self.player.abilities.passive)
+                and any(ability.id == "pact_of_pain" for ability in self.player.all_passives)
             )
             if self._pact_of_pain_active:
                 cost = max(1, int(self.player.max_hp * 0.05))
@@ -412,7 +412,7 @@ class CombatSystem:
 
                 # Summon Imp adds an independent strike to each successful basic attack.
                 if dmg_dealt > 0 and self.enemy.is_alive and any(
-                    ability.id == "summon_imp" for ability in self.player.abilities.passive
+                    ability.id == "summon_imp" for ability in self.player.all_passives
                 ):
                     imp_crit = self.rng.random() < self.player.effective_stats.crit_chance
                     imp_raw = int(self.player.effective_stats.attack * 0.50)
@@ -495,7 +495,7 @@ class CombatSystem:
             self.combat_logs.append(_t("combat_blind_miss", actor=self.enemy.name))
             return
 
-        if any(ability.id == "riposte" for ability in self.player.abilities.passive):
+        if any(ability.id == "riposte" for ability in self.player.all_passives):
             if self.rng.random() < 0.25:
                 self.player.activate_stance("riposte")
                 self.combat_logs.append(_t("combat_riposte_block", actor=self.player.name))
@@ -554,7 +554,7 @@ class CombatSystem:
             self.combat_logs.append(_t("combat_hit", actor=self.enemy.name, target=self.player.name, damage=dmg_dealt))
 
         if dmg_dealt > 0 and self.enemy.is_alive and any(
-                ability.id == "ice_shards" for ability in self.player.abilities.passive):
+                ability.id == "ice_shards" for ability in self.player.all_passives):
             reflected_raw = int(dmg_dealt * 0.10)
             if reflected_raw > 0:
                 reflected = self.enemy.take_damage(reflected_raw)

@@ -49,8 +49,8 @@ class AbilityChoiceView(View):
             return
 
         self.pending_rarity = game_state.player.pending_ability_choices[0]
-        rarity_enum = AbilityRarity.STANDARD if self.pending_rarity == "STANDARD" else AbilityRarity.EPIC
-        known = [a.id for a in game_state.player.abilities.active + game_state.player.abilities.passive]
+        rarity_enum = AbilityRarity.STANDARD if self.pending_rarity in ("STANDARD", "PROMOTION") else AbilityRarity.EPIC
+        known = [a.id for a in game_state.player.all_passives + game_state.player.abilities.active]
         self.choices = get_random_abilities(
             rarity_enum,
             known,
@@ -111,6 +111,10 @@ class AbilityChoiceView(View):
 
         if game_state.player.pending_ability_choices:
             self._init_choices(game_state)
+        elif game_state.promotion_return_mode is not None:
+            return_mode = game_state.promotion_return_mode
+            game_state.promotion_return_mode = None
+            game_state.switch_mode(return_mode)
         else:
             current_node = game_state.map_graph.current_node
             if current_node and current_node.node_type == NodeType.BOSS:
@@ -225,10 +229,10 @@ class AbilityChoiceView(View):
             renderer.draw_text(SCREEN_WIDTH // 2 - renderer.get_text_width(sub_title) // 2, by + 15, sub_title,
                                COLOR_LIME)
         else:
-            v_title = "LEVEL UP!" if i18n.locale == "en" else "¡SUBIDA DE NIVEL!"
-            rarity_label = "STANDARD ABILITY CHOICE" if self.pending_rarity == "STANDARD" else "EPIC ABILITY CHOICE"
+            v_title = ("PROMOTION!" if self.pending_rarity == "PROMOTION" else "LEVEL UP!") if i18n.locale == "en" else ("¡PROMOCION!" if self.pending_rarity == "PROMOTION" else "¡SUBIDA DE NIVEL!")
+            rarity_label = "PROMOTION ABILITY CHOICE" if self.pending_rarity == "PROMOTION" else ("STANDARD ABILITY CHOICE" if self.pending_rarity == "STANDARD" else "EPIC ABILITY CHOICE")
             if i18n.locale == "es":
-                rarity_label = "ELECCIÓN ESTÁNDAR" if self.pending_rarity == "STANDARD" else "ELECCIÓN ÉPICA"
+                rarity_label = "HABILIDAD DE PROMOCION" if self.pending_rarity == "PROMOTION" else ("ELECCIÓN ESTÁNDAR" if self.pending_rarity == "STANDARD" else "ELECCIÓN ÉPICA")
 
             renderer.draw_text(SCREEN_WIDTH // 2 - renderer.get_text_width(v_title) // 2, by + 5, v_title, COLOR_YELLOW)
             renderer.draw_text(SCREEN_WIDTH // 2 - renderer.get_text_width(rarity_label) // 2, by + 15, rarity_label,

@@ -16,6 +16,7 @@ from src.ui.views.end_game import EndGameView
 from src.ui.views.events import EventsView
 from src.ui.views.inventory import InventoryView
 from src.ui.views.loot import LootView
+from src.ui.views.promotion import PromotionView
 from src.ui.views.map import MapView
 from src.ui.views.shop import ShopView
 from src.ui.views.welcome import WelcomeView
@@ -42,9 +43,14 @@ class ViewManager:
             GameMode.ABILITY_CHOICE: AbilityChoiceView(),
             GameMode.LOOT: LootView(),
             GameMode.SHOP: ShopView(),
+            GameMode.PROMOTION: PromotionView(),
         }
 
     def update(self, game_state: GameState) -> None:
+        if game_state.current_mode not in (GameMode.LOOT, GameMode.GAME_OVER, GameMode.VICTORY,
+                                           GameMode.WELCOME, GameMode.CLASS_SELECT) and game_state.player.promotion_due:
+            game_state.begin_promotion(game_state.current_mode)
+
         if game_state.current_mode in (GameMode.MAP, GameMode.COMBAT, GameMode.EVENTS, GameMode.INVENTORY,
                                        GameMode.LOOT, GameMode.SHOP):
             inv_clicked = Renderer.is_clicked(222, 3, 30, 16)

@@ -305,12 +305,23 @@ def _collect_loot_and_ability_drafts(
                 inventory.pouch.remove(item)
     state.pending_loot.clear()
 
+    # Model the level-10 promotion and its separate ability reward in each run.
+    if state.player.promotion_due:
+        promotions = state.player.available_promotions()
+        affinity_scores = {
+            class_id: sum(ability.affinities.count(class_id) for ability in
+                          (*state.player.abilities.active, *state.player.abilities.passive))
+            for class_id in promotions
+        }
+        promoted_class = max(promotions, key=lambda class_id: (affinity_scores[class_id], -promotions.index(class_id)))
+        state.player.promote(promoted_class)
+
     ability_drafts = 0
     abilities_selected: list[str] = []
     while state.player.pending_ability_choices:
         choice = state.player.pending_ability_choices.pop(0)
         rarity = AbilityRarity.EPIC if choice == "EPIC" else AbilityRarity.STANDARD
-        known = [ability.id for ability in (*state.player.abilities.active, *state.player.abilities.passive)]
+        known = [ability.id for ability in (*state.player.abilities.active, *state.player.all_passives)]
         draft = get_random_abilities(
             rarity=rarity,
             known_abilities=known,

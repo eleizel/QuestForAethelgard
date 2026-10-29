@@ -77,6 +77,8 @@ class LootView(View):
                 audio.play_sfx(SND_CHEST)
 
     def _exit_loot(self, game_state: GameState) -> None:
+        if game_state.player.promotion_due and game_state.begin_promotion(GameMode.LOOT):
+            return
         if game_state.player.pending_ability_choices:
             game_state.switch_mode(GameMode.ABILITY_CHOICE)
             return
