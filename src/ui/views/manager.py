@@ -10,6 +10,7 @@ from src.ui.views.ability_choice import AbilityChoiceView
 from src.ui.views.base import View
 from src.ui.views.biome_select import BiomeSelectView
 from src.ui.views.class_select import ClassSelectView
+from src.ui.views.character import CharacterView
 from src.ui.views.combat import CombatView
 from src.ui.views.credits import CreditsView
 from src.ui.views.end_game import EndGameView
@@ -37,6 +38,7 @@ class ViewManager:
             GameMode.MAP: MapView(),
             GameMode.COMBAT: CombatView(),
             GameMode.INVENTORY: InventoryView(),
+            GameMode.CHARACTER: CharacterView(),
             GameMode.EVENTS: EventsView(),
             GameMode.GAME_OVER: EndGameView(is_victory=False),
             GameMode.VICTORY: EndGameView(is_victory=True),
@@ -51,11 +53,25 @@ class ViewManager:
                                            GameMode.WELCOME, GameMode.CLASS_SELECT) and game_state.player.promotion_due:
             game_state.begin_promotion(game_state.current_mode)
 
-        if game_state.current_mode in (GameMode.MAP, GameMode.COMBAT, GameMode.EVENTS, GameMode.INVENTORY,
-                                       GameMode.LOOT, GameMode.SHOP):
+        overlay_modes = (
+            GameMode.MAP, GameMode.COMBAT, GameMode.EVENTS, GameMode.INVENTORY,
+            GameMode.CHARACTER, GameMode.LOOT, GameMode.SHOP,
+        )
+        if game_state.current_mode in overlay_modes:
             inv_clicked = Renderer.is_clicked(222, 3, 30, 16)
-            if pyxel.btnp(pyxel.KEY_I) or inv_clicked or (
-                    game_state.current_mode == GameMode.INVENTORY and pyxel.btnp(pyxel.KEY_ESCAPE)):
+            character_clicked = Renderer.is_clicked(188, 3, 30, 16)
+            if game_state.current_mode == GameMode.CHARACTER and (
+                    pyxel.btnp(pyxel.KEY_C) or character_clicked or pyxel.btnp(pyxel.KEY_ESCAPE)):
+                game_state.toggle_character()
+                return
+            if game_state.current_mode == GameMode.INVENTORY and (
+                    pyxel.btnp(pyxel.KEY_I) or inv_clicked or pyxel.btnp(pyxel.KEY_ESCAPE)):
+                game_state.toggle_inventory()
+                return
+            if pyxel.btnp(pyxel.KEY_C) or character_clicked:
+                game_state.toggle_character()
+                return
+            if pyxel.btnp(pyxel.KEY_I) or inv_clicked:
                 game_state.toggle_inventory()
                 return
 
