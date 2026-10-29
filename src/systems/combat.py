@@ -521,6 +521,22 @@ class CombatSystem:
                         self.combat_logs.append(
                             _t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name))
 
+                if (
+                    dmg_dealt > 0
+                    and (
+                        self._has_signature("paladin_oath")
+                        or duelist_flourish_ready
+                    )
+                ):
+                    # Resolve attack passives per hit when a signature adds hits, so
+                    # status procs can occur on each strike without double-firing later.
+                    self.trigger_player_attack_passives(
+                        dmg_dealt,
+                        is_crit,
+                        is_basic_attack=True,
+                    )
+                    self._passives_handled_per_hit = True
+
                 if dmg_dealt > 0 and self.enemy.is_alive and self._has_signature("paladin_oath"):
                     extra_damage, extra_crit = self._signature_bonus_hit(0.50, "paladin_oath")
                     dmg_dealt += extra_damage
