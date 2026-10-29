@@ -194,6 +194,29 @@ def test_targeted_act_1_and_act_3_boss_tuning() -> None:
     blood_god = ENEMY_CATALOG["blood_god_avatar"]
     assert (blood_god.base_hp, blood_god.base_atk) == (450, 46)
 
+    act_2_boss = generate_enemy(
+        tier=EnemyTier.BOSS,
+        floor=13,
+        biome_id="ossuary",
+        rng=random.Random(11),
+    )
+    act_2_boss_archetype = ENEMY_CATALOG[act_2_boss.archetype_id]
+    assert act_2_boss.max_hp == int(
+        act_2_boss_archetype.base_hp
+        * (1 + (13 - 1) * ENEMY_HP_GROWTH_PER_FLOOR)
+        * TIER_HP_MULT[EnemyTier.ELITE]
+        * ACT_2_BOSS_HP_OVER_ELITE_RATIO
+        * (
+            mean(ENEMY_CATALOG[enemy_id].base_hp for enemy_id in BIOME_REGISTRY["ossuary"].elites)
+            / mean(ENEMY_CATALOG[enemy_id].base_hp for enemy_id in BIOME_REGISTRY["ossuary"].bosses)
+        )
+    )
+    assert act_2_boss.base_stats.attack == int(
+        act_2_boss_archetype.base_atk
+        * (1 + (13 - 1) * ENEMY_ATK_GROWTH_PER_FLOOR)
+        * ACT_2_BOSS_ATK_MULT
+    )
+
 
 def test_enemy_attack_and_defense_keep_scaling_at_high_floors() -> None:
     enemy = generate_enemy(
