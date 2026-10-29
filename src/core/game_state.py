@@ -144,7 +144,6 @@ class GameState:
 
     def _toggle_menu_overlay(self, target: GameMode) -> None:
         """Open an inventory or character overlay, or return to its previous view."""
-        overlay_modes = (GameMode.INVENTORY, GameMode.CHARACTER)
         if self.current_mode == target:
             destination = self.overlay_return_modes.pop() if self.overlay_return_modes else self.previous_mode
             self.switch_mode(destination)
