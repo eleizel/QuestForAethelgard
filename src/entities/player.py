@@ -179,7 +179,11 @@ class Player(Actor):
             self.signature_passive = get_ability_by_id(new_class_def.signature_passive)
             self.heal(int(self.max_hp * 0.50))
             self.promotion_due = False
-            self.pending_ability_choices.insert(0, "PROMOTION")
+            # The level-10 Epic draft is the promotion's additional ability reward.
+            # Bring it forward before any other queued level-up drafts.
+            if "EPIC" in self.pending_ability_choices:
+                self.pending_ability_choices.remove("EPIC")
+            self.pending_ability_choices.insert(0, "EPIC")
             while self.level < 20 and self.experience >= self.exp_to_next_level:
                 self.experience -= self.exp_to_next_level
                 self.level += 1

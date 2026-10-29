@@ -107,9 +107,32 @@ class GameState:
     def begin_promotion(self, return_mode: GameMode | None = None) -> bool:
         if not self.player.promotion_due or not self.player.available_promotions():
             return False
-        self.promotion_return_mode = return_mode or self.current_mode
+        if return_mode is not None:
+            self.promotion_return_mode = return_mode
+        elif self.current_mode == GameMode.ABILITY_CHOICE:
+            # AbilityChoiceView already owns the post-choice route and must not
+            # be restored with an empty queue after promotion.
+            self.promotion_return_mode = None
+        else:
+            self.promotion_return_mode = self.current_mode
         self.switch_mode(GameMode.PROMOTION)
         return True
+
+    def continue_after_rewards(self) -> None:
+        """Resume the route after loot and all queued reward choices are complete."""
+        current_node = self.map_graph.current_node if self.map_graph else None
+        if current_node and current_node.node_type == NodeType.BOSS:
+            if self.act < 3:
+                self.act += 1
+                self.floor = 1
+                if self.biome_route_mode == "PATHFINDER":
+                    self.switch_mode(GameMode.BIOME_SELECT)
+                else:
+                    self.advance_act()
+            else:
+                self.switch_mode(GameMode.VICTORY)
+        else:
+            self.switch_mode(GameMode.MAP)
 
     def switch_mode(self, new_mode: GameMode) -> None:
         """Transition the active game mode."""

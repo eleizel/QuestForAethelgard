@@ -59,7 +59,7 @@ def test_promote_success():
     assert player.base_stats == initial_base_stats
     assert player.signature_passive.id == "paladin_oath"
     assert len(player.abilities.passive) <= 2
-    assert player.pending_ability_choices[0] == "PROMOTION"
+    assert player.pending_ability_choices[0] == "EPIC"
 
 
 def test_effective_stats_base():
@@ -304,7 +304,7 @@ def test_level_ten_sets_promotion_due_and_uses_current_class_growth():
     assert player.base_stats.attack == old_attack
     assert player.signature_passive.id == "berserker_rage"
     assert player.current_hp <= player.max_hp
-    assert player.pending_ability_choices == ["PROMOTION", "EPIC"]
+    assert player.pending_ability_choices == ["EPIC"]
 
     player.level = 10
     player._apply_level_up_bonuses()
@@ -331,3 +331,70 @@ def test_game_state_can_start_level_ten_promotion_and_restore_return_mode():
     assert state.begin_promotion()
     assert state.current_mode == GameMode.PROMOTION
     assert state.promotion_return_mode == GameMode.EVENTS
+
+
+def test_promotion_from_ability_choice_does_not_restore_an_empty_choice_view():
+    from src.core.game_state import GameMode, GameState
+
+    state = GameState()
+    state.player.level = 10
+    state.player.promotion_due = True
+    state.current_mode = GameMode.ABILITY_CHOICE
+
+    assert state.begin_promotion()
+    assert state.promotion_return_mode is None
+
+
+def test_promotion_epic_choice_resumes_after_act_boss_rewards():
+    from types import SimpleNamespace
+
+    from src.core.game_state import GameMode, GameState
+    from src.systems.map_gen import NodeType
+    from src.ui.views.ability_choice import AbilityChoiceView
+
+    state = GameState()
+    state.player.pending_ability_choices = ["EPIC"]
+    state.promotion_return_mode = GameMode.LOOT
+    state.map_graph = SimpleNamespace(current_node=SimpleNamespace(node_type=NodeType.BOSS))
+    state.act = 1
+    state.biome_route_mode = "PATHFINDER"
+
+    AbilityChoiceView()._finish_choice(state)
+
+    assert state.current_mode == GameMode.BIOME_SELECT
+    assert state.act == 2
+
+
+def test_promotion_epic_choice_finishes_act_three_boss_run():
+    from types import SimpleNamespace
+
+    from src.core.game_state import GameMode, GameState
+    from src.systems.map_gen import NodeType
+    from src.ui.views.ability_choice import AbilityChoiceView
+
+    state = GameState()
+    state.player.pending_ability_choices = ["EPIC"]
+    state.promotion_return_mode = GameMode.LOOT
+    state.map_graph = SimpleNamespace(current_node=SimpleNamespace(node_type=NodeType.BOSS))
+    state.act = 3
+
+    AbilityChoiceView()._finish_choice(state)
+
+    assert state.current_mode == GameMode.VICTORY
+
+
+def test_promotion_epic_choice_returns_to_map_for_middle_node():
+    from types import SimpleNamespace
+
+    from src.core.game_state import GameMode, GameState
+    from src.systems.map_gen import NodeType
+    from src.ui.views.ability_choice import AbilityChoiceView
+
+    state = GameState()
+    state.player.pending_ability_choices = ["EPIC"]
+    state.promotion_return_mode = GameMode.LOOT
+    state.map_graph = SimpleNamespace(current_node=SimpleNamespace(node_type=NodeType.COMBAT))
+
+    AbilityChoiceView()._finish_choice(state)
+
+    assert state.current_mode == GameMode.MAP
