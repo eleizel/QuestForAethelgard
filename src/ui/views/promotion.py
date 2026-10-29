@@ -280,7 +280,7 @@ class PromotionView(View):
 
         # Corner and diamond tick endpoints on banner
         pyxel.line(px - 2, py_banner + 6, px + 1, py_banner + 6, banner_border)
-        pyxel.line(px + pw - 2, py_banner + 6, px + pw + 1, banner_border)
+        pyxel.line(px + pw - 2, py_banner + 6, px + pw + 1, py_banner + 6, banner_border)
         pyxel.pset(px + 2, py_banner + 2, COLOR_WHITE)
         pyxel.pset(px + pw - 3, py_banner + 2, COLOR_WHITE)
 
