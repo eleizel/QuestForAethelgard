@@ -603,6 +603,14 @@ class CombatSystem:
             raw_damage = int(raw_damage * 1.5)
         damage = self.damage_enemy(raw_damage)
         if damage > 0:
+            # Preserve ordinary on-hit effects for each bonus strike, while suppressing
+            # the critical-hit stance trigger so a flourish cannot recursively arm itself.
+            self.trigger_player_attack_passives(
+                damage,
+                is_crit,
+                is_basic_attack=True,
+                skip_ids={"whirlwind_defense"},
+            )
             weapon = self.player.inventory.get_equipment_in_slot("Main Hand")
             if weapon and getattr(weapon, "on_hit_status", None) and self.rng.random() < getattr(weapon, "on_hit_chance", 0.0):
                 from src.systems.status import get_status_by_id
