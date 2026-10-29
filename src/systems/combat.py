@@ -428,6 +428,10 @@ class CombatSystem:
         is_basic_attack = self.queued_ability is None
         self._current_player_action_is_basic = is_basic_attack
         duelist_flourish_ready = is_basic_attack and self.duelist_flourish_armed
+        if duelist_flourish_ready:
+            # Reserve the armed flourish for this action; stance consumption during
+            # this same action can then arm a fresh flourish for the following attack.
+            self.duelist_flourish_armed = False
         berserker_bonus_this_action = self.berserker_bonus_ready
         self._berserker_bonus_damage_active = berserker_bonus_this_action
         whirlwind_ready = is_basic_attack and self.player.consume_stance("whirlwind_defense")
@@ -557,9 +561,7 @@ class CombatSystem:
             self.combat_logs.append(_t(log_key, actor=self.player.name, target=self.enemy.name, damage=extra_damage))
 
         if duelist_flourish_ready and dmg_dealt > 0:
-            # Consume the stored flourish on this successful basic attack. The extra
-            # strikes apply weapon on-hit effects but do not trigger stance hooks.
-            self.duelist_flourish_armed = False
+            # The extra strikes apply weapon on-hit effects but do not trigger stances.
             self._record_signature_proc("duelist_precision")
             for _ in range(2):
                 if not self.enemy.is_alive:
@@ -567,6 +569,9 @@ class CombatSystem:
                 extra_damage, extra_crit = self._signature_bonus_hit(0.50, "duelist_precision")
                 dmg_dealt += extra_damage
                 is_crit = is_crit or extra_crit
+        elif duelist_flourish_ready:
+            # A miss does not spend the stored flourish.
+            self.duelist_flourish_armed = True
 
         # Trigger passive hooks for attack dealt. Soulfire is deliberately
         # restricted to basic attacks; other passives may still react to abilities.
