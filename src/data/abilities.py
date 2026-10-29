@@ -4,6 +4,7 @@ import random
 from typing import TYPE_CHECKING
 
 from src.entities.actor import Actor, Stats
+from src.data.classes import CLASS_REGISTRY
 from src.systems.abilities import Ability, AbilityType, AbilityRarity
 
 if TYPE_CHECKING:
@@ -827,12 +828,18 @@ def get_random_abilities(
 ) -> list[Ability]:
     """Retrieve random available abilities matching rarity and class criteria."""
     pool = STANDARD_ABILITIES if rarity == AbilityRarity.STANDARD else EPIC_ABILITIES
+    parent_class = next(
+        (class_id for class_id, class_def in CLASS_REGISTRY.items()
+         if player_class in class_def.promotions),
+        None,
+    )
 
     available = [
         ab for ab in pool
         if ab.id not in known_abilities
            and (ab.required_class is None or player_class is None
-                or ab.required_class == player_class or player_class in ab.affinities)
+                or ab.required_class == player_class or player_class in ab.affinities
+                or (rarity == AbilityRarity.EPIC and ab.required_class == parent_class))
     ]
 
     return random.sample(available, min(count, len(available)))

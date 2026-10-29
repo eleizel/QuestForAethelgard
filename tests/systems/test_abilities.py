@@ -342,6 +342,32 @@ def test_ability_registry_and_retrieval():
     assert len(random_fallback) == len(eligible_warrior)
 
 
+def test_advanced_classes_can_draft_parent_class_epic_abilities():
+    from types import SimpleNamespace
+
+    from src.data.abilities import EPIC_ABILITIES, get_random_abilities
+    from src.data.classes import CLASS_REGISTRY
+    from src.entities.player import Player
+    from src.ui.views.ability_choice import AbilityChoiceView
+
+    for parent_id, class_def in CLASS_REGISTRY.items():
+        for advanced_class in class_def.promotions:
+            eligible = [ability for ability in EPIC_ABILITIES if ability.required_class == parent_id]
+            draft = get_random_abilities(AbilityRarity.EPIC, [], player_class=advanced_class, count=2)
+
+            assert len(eligible) >= 2
+            assert len(draft) == 2
+            assert all(ability in eligible for ability in draft)
+
+            player = Player(class_id=parent_id)
+            player.level = 10
+            assert player.promote(advanced_class)
+            view = AbilityChoiceView()
+            view._init_choices(SimpleNamespace(player=player))
+            assert len(view.choices) == 2
+            assert all(ability.rarity == AbilityRarity.EPIC for ability in view.choices)
+
+
 def test_berserker_standard_abilities(monkeypatch):
     from src.data.abilities import get_ability_by_id
     from src.entities.enemy import EnemyTier
