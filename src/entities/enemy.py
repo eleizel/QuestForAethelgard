@@ -43,7 +43,7 @@ TIER_REWARD_MULT: dict[EnemyTier, float] = {
     EnemyTier.BOSS: 4.0,
 }
 
-from src.data.enemies import ENEMY_CATALOG
+from src.data.enemies import ENEMY_CATALOG, EnemyHook, EnemySkill, ENEMY_SKILLS
 
 
 # Complete Archetype Registry: 24 Commons/Uncommons + 12 Elites + 12 Bosses = 48 Total
@@ -70,12 +70,34 @@ class Enemy(Actor):
         self.archetype_id: str = archetype_id
 
         archetype = ENEMY_CATALOG.get(archetype_id)
+        self.archetype = archetype
         if archetype:
             self.on_hit_status: str | None = archetype.on_hit_status
             self.status_chance: float = archetype.status_chance
+            self.on_death_hook: EnemyHook = archetype.on_death_hook
+            self.half_hp_hook: EnemyHook = archetype.half_hp_hook
+            self.quarter_hp_hook: EnemyHook = archetype.quarter_hp_hook
+            self.phase_style: str = archetype.phase_style
+            if tier == EnemyTier.BOSS:
+                skill_ids = archetype.boss_skills
+            elif tier in (EnemyTier.UNCOMMON, EnemyTier.ELITE):
+                skill_ids = (archetype.uncommon_skill,)
+            else:
+                skill_ids = ()
+            self.skills: tuple[EnemySkill, ...] = tuple(
+                ENEMY_SKILLS[skill_id] for skill_id in skill_ids if skill_id in ENEMY_SKILLS
+            )
         else:
             self.on_hit_status: str | None = None
             self.status_chance: float = 0.0
+            self.on_death_hook = EnemyHook(
+                event="death", effect="concept_death", dialogue_key="enemy_death_hook",
+            )
+            self.half_hp_hook = EnemyHook(event="threshold", effect="phase", threshold=0.50)
+            self.quarter_hp_hook = EnemyHook(event="threshold", effect="signature", threshold=0.25,
+                                             skill_id="signature_attack")
+            self.phase_style = "enrage"
+            self.skills = ()
 
     @property
     def display_name(self) -> str:

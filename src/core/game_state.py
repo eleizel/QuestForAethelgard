@@ -170,10 +170,20 @@ class GameState:
 
     def update_combat(self) -> None:
         """Tick combat simulation when in COMBAT mode."""
-        if self.combat is None or not self.combat.is_active():
+        if self.combat is None:
             return
 
-        result = self.combat.step()
+        if self.combat.is_active():
+            result = self.combat.step()
+        else:
+            result = self.combat.result
+
+        # Leave a short arena beat for the death-hook speech bubble and its effect
+        # popup to be seen before changing to the reward or defeat screen.
+        if result != CombatResult.IN_PROGRESS and self.combat.completion_delay_ticks > 0:
+            self.combat.completion_delay_ticks -= 1
+            return
+
         if result == CombatResult.PLAYER_VICTORY:
             # Rewards already processed in combat.py, but we can capture the specific amounts to show in LOOT mode
             self.last_exp_earned = self.combat.enemy.exp_reward

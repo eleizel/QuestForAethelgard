@@ -51,6 +51,14 @@ TRANSLATIONS_ES = {
     "combat_veteran": "¡Instintos de Veterano restauraron 20 de medidor!",
     "combat_queued": "¡En cola: {ability}!",
     "combat_cooldown": "¡Habilidad en enfriamiento ({cooldown} turnos)!",
+    "combat_enemy_skill_attack": "¡{enemy} usa {skill}!",
+    "combat_enemy_skill_heal": "{enemy} recupera {healed} PV.",
+    "enemy_skill_heal": "Curación",
+    "enemy_skill_strong_attack": "Ataque potente",
+    "enemy_skill_signature_attack": "Ataque definitivo",
+    "enemy_phase_half": "¡Ahora sí que me enfado!",
+    "enemy_phase_quarter": "¡Siente mi verdadero poder!",
+    "enemy_death_hook": "¡Esto no acaba aquí!",
 
     # Biome Selection & Exploration
     "biome_threats": "Amenazas:",

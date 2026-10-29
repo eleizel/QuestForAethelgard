@@ -9,8 +9,9 @@ from typing import TYPE_CHECKING, Final
 import pyxel
 
 from src.core.audio import audio
-from src.config import SND_HIT, SND_CRIT, SND_VICTORY, SND_DEFEAT
+from src.config import SND_HIT, SND_CRIT, SND_VICTORY, SND_DEFEAT, SND_HEAL
 from src.systems.abilities import Ability
+from src.data.enemies import ENEMY_SKILLS, EnemySkill
 
 if TYPE_CHECKING:
     from src.entities.enemy import Enemy
@@ -63,6 +64,17 @@ class CombatSystem:
         self._current_action_affinities: tuple[str, ...] = ()
         self._pact_of_pain_active = False
 
+        # Enemy actions use their own cooldown clock (one decrement per enemy action).
+        self.enemy_skill_cooldowns: dict[str, int] = {}
+        self.enemy_actions_taken = 0
+        self.enemy_speech_bubble: str | None = None
+        self.enemy_speech_actions_remaining = 0
+        self.pending_enemy_signature: EnemySkill | None = None
+        self._enemy_half_phase_triggered = False
+        self._enemy_quarter_hook_triggered = False
+        self._enemy_death_hook_triggered = False
+        self.completion_delay_ticks = 0
+
         self.current_tick: int = 0
         self.result: CombatResult = CombatResult.IN_PROGRESS
         self.combat_logs: list[str] = [
@@ -79,8 +91,11 @@ class CombatSystem:
         for s in active_statuses:
             if s.trigger == StatusTrigger.ON_TICK:
                 if s.on_tick_hook:
+                    previous_hp = actor.current_hp
                     log_str, dmg = s.on_tick_hook(self, actor, s)
                     self.combat_logs.append(log_str)
+                    if actor is self.enemy and actor.current_hp < previous_hp:
+                        self._check_enemy_threshold_hooks(previous_hp, actor.current_hp)
 
             # Prevent decrementing duration for PRE_ACTION statuses (e.g. Stun) which are measured in turns, not ticks.
             if s.trigger != StatusTrigger.PRE_ACTION:
@@ -100,11 +115,17 @@ class CombatSystem:
 
     def _evaluate_battle_outcome(self) -> bool:
         if not self.enemy.is_alive:
+            self._trigger_enemy_death_hook()
             self.arcane_reservoir_charges = 0
-            self.result = CombatResult.PLAYER_VICTORY
-            self.combat_logs.append(_t("combat_enemy_defeat", enemy=self.enemy.name))
-            self._distribute_rewards()
-            audio.play_sfx(SND_VICTORY)  # Sound 4: Victory fanfare
+            if not self.player.is_alive:
+                self.result = CombatResult.PLAYER_DEFEAT
+                self.combat_logs.append(_t("combat_player_defeat", player=self.player.name))
+                audio.play_sfx(SND_DEFEAT)
+            else:
+                self.result = CombatResult.PLAYER_VICTORY
+                self.combat_logs.append(_t("combat_enemy_defeat", enemy=self.enemy.name))
+                self._distribute_rewards()
+                audio.play_sfx(SND_VICTORY)  # Sound 4: Victory fanfare
             return True
         elif not self.player.is_alive:
             self.arcane_reservoir_charges = 0
@@ -184,7 +205,96 @@ class CombatSystem:
             raw_damage = int(raw_damage * 1.25)
             self.player._next_strike_bonus = False
 
-        return self.enemy.take_damage(raw_damage, defense_penetration=defense_penetration)
+        previous_hp = self.enemy.current_hp
+        actual_damage = self.enemy.take_damage(raw_damage, defense_penetration=defense_penetration)
+        if actual_damage > 0:
+            self._check_enemy_threshold_hooks(previous_hp, self.enemy.current_hp)
+        return actual_damage
+
+    def _show_enemy_speech(self, dialogue_key: str | None, actions: int) -> None:
+        self.enemy_speech_bubble = _t(dialogue_key) if dialogue_key else None
+        self.enemy_speech_actions_remaining = max(0, actions)
+
+    def _check_enemy_threshold_hooks(self, previous_hp: int, current_hp: int) -> None:
+        """Fire threshold hooks once, in descending HP order when a hit skips a phase."""
+        from src.entities.enemy import EnemyTier
+
+        if self.enemy.tier not in (EnemyTier.ELITE, EnemyTier.BOSS):
+            return
+        hooks = (
+            (self.enemy.half_hp_hook, 0.50, "half"),
+            (self.enemy.quarter_hp_hook, 0.25, "quarter"),
+        )
+        for hook, fallback_threshold, hook_name in hooks:
+            if hook_name == "half" and self._enemy_half_phase_triggered:
+                continue
+            if hook_name == "quarter" and (self.enemy.tier != EnemyTier.BOSS or self._enemy_quarter_hook_triggered):
+                continue
+            threshold = hook.threshold if hook.threshold is not None else fallback_threshold
+            if previous_hp > self.enemy.max_hp * threshold >= current_hp:
+                if hook_name == "half":
+                    self._enemy_half_phase_triggered = True
+                    self._apply_enemy_half_phase()
+                else:
+                    self._enemy_quarter_hook_triggered = True
+                    self.pending_enemy_signature = ENEMY_SKILLS.get(hook.skill_id or "signature_attack")
+                self._show_enemy_speech(hook.dialogue_key, hook.dialogue_actions)
+
+    def _apply_enemy_half_phase(self) -> None:
+        """Apply the archetype's configured phase tradeoff at half health."""
+        if self.enemy.phase_style == "haste_bleed":
+            from src.systems.status import get_status_by_id
+
+            haste = get_status_by_id("haste", duration=10, potency=4)
+            bleed = get_status_by_id("bleed", duration=10, potency=2)
+            if haste:
+                self.enemy.apply_status(haste)
+            if bleed:
+                self.enemy.apply_status(bleed)
+        else:
+            self.enemy.base_stats.attack = max(1, int(self.enemy.base_stats.attack * 1.20))
+            self.enemy.base_stats.defense = max(0, self.enemy.base_stats.defense - 2)
+
+    def _trigger_enemy_death_hook(self) -> None:
+        """Resolve a common/uncommon concept death effect exactly once."""
+        from src.entities.enemy import EnemyTier
+        from src.systems.status import get_status_by_id
+
+        if self._enemy_death_hook_triggered:
+            return
+        self._enemy_death_hook_triggered = True
+        self.enemy_speech_bubble = None
+        self.enemy_speech_actions_remaining = 0
+        self.pending_enemy_signature = None
+        if self.enemy.tier not in (EnemyTier.COMMON, EnemyTier.UNCOMMON):
+            return
+
+        hook = self.enemy.on_death_hook
+        status_id = hook.status_id or (self.enemy.on_hit_status if hook.effect == "concept_death" else None)
+        if hook.effect in ("concept_death", "status") and status_id:
+            effect = get_status_by_id(status_id)
+            if effect:
+                self.player.apply_status(effect)
+                self._show_enemy_speech(hook.dialogue_key, 0)
+                self.completion_delay_ticks = 3
+                return
+
+        if hook.effect in ("concept_death", "damage"):
+            damage = max(1, int(self.player.max_hp * hook.damage_fraction))
+            actual = min(self.player.current_hp, damage)
+            self.player.current_hp -= actual  # Death bursts bypass defense.
+            self._show_enemy_speech(hook.dialogue_key, 0)
+            self.completion_delay_ticks = 3
+
+    def _choose_enemy_skill(self) -> EnemySkill | None:
+        available = [
+            skill for skill in self.enemy.skills
+            if self.enemy_skill_cooldowns.get(skill.id, 0) <= 0
+        ]
+        heal = next((skill for skill in available if skill.kind == "heal"), None)
+        if heal and self.enemy.current_hp <= self.enemy.max_hp * 0.70:
+            return heal
+        return next((skill for skill in available if skill.kind != "heal"), None)
 
     def log_attack_proc(self, message: str) -> None:
         """Append proc logs after the parent ability log when its hits are resolved first."""
@@ -349,10 +459,30 @@ class CombatSystem:
             self.combat_logs.append(_t("combat_veteran", player=self.player.name))
 
     def _execute_enemy_attack(self) -> None:
-        """Execute an enemy strike against the player."""
+        """Resolve one enemy action, skill, or telegraphed signature move."""
         self.enemy_gauge -= ACTION_THRESHOLD
+        self.enemy_actions_taken += 1
+        for skill_id in list(self.enemy_skill_cooldowns):
+            self.enemy_skill_cooldowns[skill_id] -= 1
+            if self.enemy_skill_cooldowns[skill_id] <= 0:
+                del self.enemy_skill_cooldowns[skill_id]
         if not self._can_actor_act(self.enemy):
             return
+
+        skill = self.pending_enemy_signature
+        if skill is not None:
+            self.enemy_speech_actions_remaining -= 1
+            if self.enemy_speech_actions_remaining <= 0:
+                # The warning bubble disappears as the signature move begins.
+                self.enemy_speech_bubble = None
+                self.pending_enemy_signature = None
+            else:
+                skill = None
+                return
+        elif self.enemy_speech_bubble:
+            self.enemy_speech_actions_remaining -= 1
+            if self.enemy_speech_actions_remaining <= 0:
+                self.enemy_speech_bubble = None
 
         if self.enemy.has_status("blind") and self.rng.random() < 0.50:
             self.combat_logs.append(_t("combat_blind_miss", actor=self.enemy.name))
@@ -364,7 +494,43 @@ class CombatSystem:
                 self.combat_logs.append(_t("combat_riposte_block", actor=self.player.name))
                 return
 
+        if skill is None:
+            skill = self._choose_enemy_skill()
+
+        if skill is not None and skill.kind == "heal":
+            amount = max(1, int(self.enemy.max_hp * skill.heal_fraction))
+            healed = self.enemy.heal(amount)
+            # This action has already advanced the enemy action clock. Add one
+            # so a cooldown of N means N complete enemy actions must pass.
+            self.enemy_skill_cooldowns[skill.id] = skill.cooldown + 1
+            self.combat_logs.append(
+                _t("combat_enemy_skill_heal", enemy=self.enemy.name, healed=healed)
+            )
+            audio.play_sfx(SND_HEAL)
+            return
+
+        if skill is not None and skill.kind == "status":
+            from src.systems.status import get_status_by_id
+
+            effect = get_status_by_id(skill.status_id or "stun", duration=skill.status_duration)
+            if effect:
+                self.player.apply_status(effect)
+                self.combat_logs.append(
+                    _t("combat_status_applied", target=self.player.name, effect=effect.localized_name)
+                )
+            self.enemy_skill_cooldowns[skill.id] = skill.cooldown + 1
+            return
+
+        if skill is not None:
+            self.enemy_skill_cooldowns[skill.id] = skill.cooldown + 1
+            self.combat_logs.append(
+                _t("combat_enemy_skill_attack", enemy=self.enemy.name,
+                   skill=_t(f"enemy_skill_{skill.id}"))
+            )
+
         raw_dmg, is_crit = self.enemy.calculate_attack(self.rng)
+        if skill is not None:
+            raw_dmg = max(1, int(raw_dmg * skill.damage_multiplier))
         vulnerable = next((status for status in self.player.statuses if status.id == "vulnerable"), None)
         if vulnerable:
             # Preserve the legacy 30% Vulnerable effect when no potency is supplied.
@@ -397,6 +563,16 @@ class CombatSystem:
                 self.player.apply_status(effect)
                 self.combat_logs.append(
                     _t("combat_status_applied", target=self.player.name, effect=effect.localized_name))
+
+        if skill is not None and skill.status_id and self.player.is_alive:
+            from src.systems.status import get_status_by_id
+
+            effect = get_status_by_id(skill.status_id, duration=skill.status_duration)
+            if effect:
+                self.player.apply_status(effect)
+                self.combat_logs.append(
+                    _t("combat_status_applied", target=self.player.name, effect=effect.localized_name)
+                )
 
         if dmg_dealt > 0:
             chest = self.player.inventory.get_equipment_in_slot("Chest")

@@ -51,6 +51,14 @@ TRANSLATIONS_EN = {
     "combat_veteran": "{player}'s Veteran's Instincts restored 20 gauge!",
     "combat_queued": "Queued {ability}!",
     "combat_cooldown": "Ability on cooldown ({cooldown} turns)!",
+    "combat_enemy_skill_attack": "{enemy} uses {skill}!",
+    "combat_enemy_skill_heal": "{enemy} restores {healed} HP.",
+    "enemy_skill_heal": "Mend",
+    "enemy_skill_strong_attack": "Strong Attack",
+    "enemy_skill_signature_attack": "Signature Attack",
+    "enemy_phase_half": "Now I'm really mad!",
+    "enemy_phase_quarter": "Feel my real power!",
+    "enemy_death_hook": "You haven't seen the last of me!",
 
     # Biome Selection & Exploration
     "biome_threats": "Threats:",

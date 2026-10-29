@@ -118,6 +118,9 @@ class CombatView(View):
         if game_state.combat is None:
             return
 
+        if not game_state.combat.is_active():
+            return
+
         # Belt hotkeys: [1, 2, 3] or click on command panel
         belt_y_positions = [162, 174, 186]
         for idx, key in enumerate((pyxel.KEY_1, pyxel.KEY_2, pyxel.KEY_3)):
@@ -160,6 +163,29 @@ class CombatView(View):
         if "goblin" in name_lower or "scavenger" in name_lower or "cultist" in name_lower:
             return (32, 0)
         return (16, 0)
+
+    @staticmethod
+    def _draw_enemy_speech_bubble(combat, renderer: Renderer) -> None:
+        """Draw the active hook/phase telegraph above the enemy in the arena."""
+        text = combat.enemy_speech_bubble
+        if not text:
+            return
+
+        max_width = 124
+        full_text = text
+        ellipsis_width = renderer.get_text_width("…")
+        while text and renderer.get_text_width(text) + (ellipsis_width if text != full_text else 0) > max_width - 8:
+            text = text[:-1]
+        text = text.rstrip() + ("…" if text != full_text else "")
+        bubble_w = max(30, renderer.get_text_width(text) + 8)
+        bubble_h = 15
+        bubble_x = max(128, min(252 - bubble_w, 186 - bubble_w // 2))
+        bubble_y = 38
+
+        pyxel.tri(183, bubble_y + bubble_h - 1, 189, bubble_y + bubble_h - 1, 186, 61, COLOR_WHITE)
+        pyxel.rect(bubble_x, bubble_y, bubble_w, bubble_h, COLOR_WHITE)
+        pyxel.rectb(bubble_x, bubble_y, bubble_w, bubble_h, COLOR_YELLOW)
+        renderer.draw_text(bubble_x + 4, bubble_y + 4, text, COLOR_BLACK)
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
         if game_state.combat is not None:
@@ -294,6 +320,8 @@ class CombatView(View):
             pyxel.pal()
         else:
             pyxel.blt(enemy_x, enemy_y, 0, eu, ev, 16, 16, 0)
+
+        self._draw_enemy_speech_bubble(combat, renderer)
 
         # Ambient floating magic/spore motes around enemy
         spore_coords = [(172, 56), (180, 50), (192, 52), (198, 58), (175, 66), (196, 68)]

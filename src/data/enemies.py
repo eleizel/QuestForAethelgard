@@ -3,6 +3,42 @@ from typing import Final
 
 
 @dataclass(frozen=True)
+class EnemySkill:
+    """A simple enemy action, with cooldown measured in enemy actions."""
+
+    id: str
+    kind: str
+    cooldown: int
+    damage_multiplier: float = 1.0
+    heal_fraction: float = 0.0
+    status_id: str | None = None
+    status_duration: int = 1
+
+
+@dataclass(frozen=True)
+class EnemyHook:
+    """A declarative enemy event hook."""
+
+    event: str
+    effect: str
+    threshold: float | None = None
+    dialogue_key: str | None = None
+    dialogue_actions: int = 0
+    status_id: str | None = None
+    damage_fraction: float = 0.10
+    skill_id: str | None = None
+
+
+ENEMY_SKILLS: Final[dict[str, EnemySkill]] = {
+    "heal": EnemySkill(id="heal", kind="heal", cooldown=2, heal_fraction=0.10),
+    "strong_attack": EnemySkill(id="strong_attack", kind="attack", cooldown=3, damage_multiplier=1.30),
+    "signature_attack": EnemySkill(
+        id="signature_attack", kind="attack", cooldown=0, damage_multiplier=2.0,
+    ),
+}
+
+
+@dataclass(frozen=True)
 class EnemyArchetype:
     id: str
     name: str
@@ -14,6 +50,21 @@ class EnemyArchetype:
     description: str
     on_hit_status: str | None = None
     status_chance: float = 0.0
+    uncommon_skill: str = "strong_attack"
+    boss_skills: tuple[str, ...] = ("heal", "strong_attack")
+    phase_style: str = "enrage"
+    on_death_hook: EnemyHook = EnemyHook(
+        event="death", effect="concept_death", dialogue_key="enemy_death_hook",
+    )
+    half_hp_hook: EnemyHook = EnemyHook(
+        event="threshold", effect="phase", threshold=0.50,
+        dialogue_key="enemy_phase_half", dialogue_actions=3,
+    )
+    quarter_hp_hook: EnemyHook = EnemyHook(
+        event="threshold", effect="signature", threshold=0.25,
+        dialogue_key="enemy_phase_quarter", dialogue_actions=1,
+        skill_id="signature_attack",
+    )
 
     @property
     def localized_name(self) -> str:
@@ -48,7 +99,7 @@ ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
     "rotting_woodwose": EnemyArchetype(
         id="rotting_woodwose", name="Rotting Woodwose",
         base_hp=48, base_atk=8, base_def=4, base_spd=5, base_crit=0.01,
-        description="Lumbering hollow tree golem with regenerative bark.",
+        description="Lumbering hollow tree golem with regenerative bark.", uncommon_skill="heal",
     ),
     "mandragora_matron": EnemyArchetype(
         id="mandragora_matron", name="Mandragora Matron",
@@ -59,7 +110,7 @@ ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
     "corpse_treant": EnemyArchetype(
         id="corpse_treant", name="Corpse-Root Treant",
         base_hp=110, base_atk=16, base_def=7, base_spd=5, base_crit=0.04,
-        description="Massive corrupted timber construct that slams the floor.",
+        description="Massive corrupted timber construct that slams the floor.", uncommon_skill="heal",
     ),
     "malignant_belladonna": EnemyArchetype(
         id="malignant_belladonna", name="Malignant Belladonna",
@@ -69,7 +120,7 @@ ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
     "verdant_abomination": EnemyArchetype(
         id="verdant_abomination", name="The Verdant Abomination",
         base_hp=250, base_atk=18, base_def=10, base_spd=8, base_crit=0.12,
-        description="Mutated tangle of rot that grows fiercer as health dwindles.",
+        description="Mutated tangle of rot that grows fiercer as health dwindles.", phase_style="haste_bleed",
     ),
 
     # -------------------------------------------------------------------------
@@ -146,12 +197,12 @@ ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
         id="tide_gravekeeper", name="Tide-Risen Gravekeeper",
         base_hp=140, base_atk=22, base_def=8, base_spd=7, base_crit=0.08,
         description="Brine-crusted giant swinging a ship anchor that wipes action meters.", on_hit_status="stun",
-        status_chance=0.35,
+        status_chance=0.35, uncommon_skill="heal",
     ),
     "carrion_behemoth": EnemyArchetype(
         id="carrion_behemoth", name="Carrion Behemoth",
         base_hp=170, base_atk=19, base_def=6, base_spd=6, base_crit=0.04,
-        description="Undead mound of muck and bones with enormous staying power.",
+        description="Undead mound of muck and bones with enormous staying power.", uncommon_skill="heal",
     ),
     "drowned_patriarch": EnemyArchetype(
         id="drowned_patriarch", name="The Drowned Patriarch",
@@ -192,6 +243,7 @@ ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
         id="furnace_warden", name="Furnace Warden",
         base_hp=160, base_atk=23, base_def=12, base_spd=6, base_crit=0.05,
         description="Reinforced boiler golem venting scalding steam clouds.", on_hit_status="blind", status_chance=0.40,
+        uncommon_skill="heal",
     ),
     "retching_alchemist": EnemyArchetype(
         id="retching_alchemist", name="Retching Alchemist",
@@ -201,7 +253,7 @@ ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
     "ironforge_tyrant": EnemyArchetype(
         id="ironforge_tyrant", name="The Ironforge Tyrant",
         base_hp=360, base_atk=34, base_def=14, base_spd=7, base_crit=0.12,
-        description="Colossal plate-clad blacksmith hammering shockwaves through stone.",
+        description="Colossal plate-clad blacksmith hammering shockwaves through stone.", uncommon_skill="heal",
     ),
     "molten_sovereign": EnemyArchetype(
         id="molten_sovereign", name="Molten Sovereign",
@@ -280,12 +332,12 @@ ENEMY_CATALOG: Final[dict[str, EnemyArchetype]] = {
         id="flayed_duelist", name="Flayed Duelist",
         base_hp=70, base_atk=26, base_def=4, base_spd=18, base_crit=0.32,
         description="Cursed fencing master boasting devastating critical ripostes.", on_hit_status="bleed",
-        status_chance=0.50,
+        status_chance=0.50, phase_style="haste_bleed",
     ),
     "baroness_vespera": EnemyArchetype(
         id="baroness_vespera", name="Baroness Vespera",
         base_hp=220, base_atk=36, base_def=6, base_spd=16, base_crit=0.25,
-        description="Airborne vampiress raining blood daggers while evading attacks.",
+        description="Airborne vampiress raining blood daggers while evading attacks.", phase_style="haste_bleed",
     ),
     "amalgam_of_veins": EnemyArchetype(
         id="amalgam_of_veins", name="Amalgam of Veins",
