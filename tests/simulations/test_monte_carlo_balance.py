@@ -645,8 +645,17 @@ def _expected_ability_damage(combat: Any, ability: Any, samples: int = 5) -> flo
             scratch._current_player_action_is_basic = False
             scratch._pact_of_pain_active = (
                 "warlock" in affinities
-                and any(passive.id == "pact_of_pain" for passive in player.abilities.passive)
+                and any(passive.id == "pact_of_pain" for passive in player.all_passives)
             )
+            # Forecast an Archmage cast with the stack it grants before dealing damage.
+            if (
+                ability.id != "pw_kill"
+                and "archmage" in affinities
+                and any(passive.id == "archmage_focus" for passive in player.all_passives)
+            ):
+                scratch.arcane_momentum_stacks = min(
+                    5, getattr(combat, "arcane_momentum_stacks", 0) + 1
+                )
         else:
             # Lightweight policy tests use small stand-ins rather than entities.
             scratch = SimpleNamespace(
@@ -688,6 +697,8 @@ def _ability_damage_per_action(combat: Any, ability: Any) -> float:
         status_key,
         int(4 * combat.enemy.current_hp / max(1, combat.enemy.max_hp)),
         combat.enemy.current_hp < combat.enemy.max_hp * 0.40,
+        tuple(sorted(passive.id for passive in getattr(combat.player, "all_passives", ()))),
+        getattr(combat, "arcane_momentum_stacks", 0),
     )
     cache = getattr(combat, "_mc_ability_damage_cache", None)
     if cache is None:
@@ -806,6 +817,7 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
         "ability_uses": {},
         "ability_effectiveness": {},
         "abilities_selected": {},
+        "signature_procs": {},
         "equipment_selected": {},
         "nodes": {},
         "loot_items": 0,
@@ -1021,6 +1033,15 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
                             flush=True,
                         )
 
+                    encounter_signature_procs = dict(
+                        getattr(state.combat, "signature_proc_counts", {})
+                    )
+                    encounter["signature_procs"] = encounter_signature_procs
+                    for signature_id, proc_count in encounter_signature_procs.items():
+                        metrics["signature_procs"][signature_id] = (
+                            metrics["signature_procs"].get(signature_id, 0) + proc_count
+                        )
+
                     if state.current_mode == GameMode.GAME_OVER:
                         encounter["won"] = False
                         encounter["player_hp_end"] = state.player.current_hp
@@ -1105,6 +1126,11 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
                 experience=state.player.experience,
                 act_reached=state.act,
                 final_floor=state.floor,
+                signature_id=(
+                    state.player.signature_passive.id
+                    if state.player.signature_passive is not None
+                    else None
+                ),
                 final_status=(
                     "victory"
                     if metrics["victory"]
@@ -1626,6 +1652,26 @@ def _print_detailed_tables(
                 selected_counts[item_id] = selected_counts.get(item_id, 0) + count
         for item_id, count in sorted(selected_counts.items(), key=lambda item: (-item[1], item[0])):
             print(f"{class_id},{route},{item_id},{count}")
+
+    print("\n=== ACTIVACIÓN DE HABILIDADES DE FIRMA ===")
+    print("class,route,signature_id,promoted_runs,runs_with_proc,total_procs,procs_per_promoted_run")
+    for class_id, route, rows, _summary in summaries:
+        by_signature: dict[str, list[dict[str, Any]]] = {}
+        for row in rows:
+            signature_id = row.get("signature_id")
+            if signature_id:
+                by_signature.setdefault(signature_id, []).append(row)
+        for signature_id, promoted_rows in sorted(by_signature.items()):
+            total_procs = sum(
+                sum(row.get("signature_procs", {}).values()) for row in promoted_rows
+            )
+            runs_with_proc = sum(
+                sum(row.get("signature_procs", {}).values()) > 0 for row in promoted_rows
+            )
+            print(
+                f"{class_id},{route},{signature_id},{len(promoted_rows)},{runs_with_proc},"
+                f"{total_procs},{total_procs / len(promoted_rows):.2f}"
+            )
 
     print("\n=== DIFERENCIA PAREADA DE RUTA (PATHFINDER - FATE) ===")
     print("class,metric,n,fate_mean,pathfinder_mean,delta,delta_95ci,pathfinder_better,tie,fate_better")
