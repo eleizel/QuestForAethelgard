@@ -32,8 +32,8 @@ CLASS_REGISTRY: Final[dict[str, ClassDefinition]] = {
         id="warrior",
         name="Warrior",
         tier=1,
-        base_stats=Stats(max_hp=100, attack=14, defense=4, speed=10, crit_chance=0.05),
-        growth_per_level=Stats(max_hp=15, attack=3, defense=2, speed=1, crit_chance=0.005),
+        base_stats=Stats(max_hp=120, attack=12, defense=12, speed=10, crit_chance=0.05),
+        growth_per_level=Stats(max_hp=15, attack=2, defense=3, speed=1, crit_chance=0.005),
         promotions=["paladin", "berserker"],
         description="A resilient fighter focused on martial combat.",
         starting_abilities=["cross_cut", "pw_kill"]
@@ -42,8 +42,8 @@ CLASS_REGISTRY: Final[dict[str, ClassDefinition]] = {
         id="rogue",
         name="Rogue",
         tier=1,
-        base_stats=Stats(max_hp=85, attack=14, defense=2, speed=15, crit_chance=0.10),
-        growth_per_level=Stats(max_hp=11, attack=3, defense=1, speed=2, crit_chance=0.01),
+        base_stats=Stats(max_hp=105, attack=15, defense=8, speed=15, crit_chance=0.05),
+        growth_per_level=Stats(max_hp=12, attack=3, defense=2, speed=1, crit_chance=0.01),
         promotions=["venomancer", "duelist"],
         description="A nimble and deadly striking expert.",
         starting_abilities=["shadow_strike", "pw_kill"]
@@ -52,8 +52,8 @@ CLASS_REGISTRY: Final[dict[str, ClassDefinition]] = {
         id="mage",
         name="Mage",
         tier=1,
-        base_stats=Stats(max_hp=80, attack=18, defense=2, speed=10, crit_chance=0.05),
-        growth_per_level=Stats(max_hp=10, attack=4, defense=2, speed=2, crit_chance=0.005),
+        base_stats=Stats(max_hp=100, attack=18, defense=8, speed=10, crit_chance=0.05),
+        growth_per_level=Stats(max_hp=10, attack=4, defense=2, speed=1, crit_chance=0.005),
         promotions=["archmage", "warlock"],
         description="A fragile but destructive spellcaster.",
         starting_abilities=["arcane_bolt", "pw_kill"]
