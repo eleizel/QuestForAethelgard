@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import random
+from statistics import mean
 from enum import Enum
+from math import ceil
 
 from src.entities.actor import Actor, Stats
 
@@ -28,12 +30,14 @@ TIER_ATK_MULT: dict[EnemyTier, float] = {
     EnemyTier.BOSS:     1.50,
 }
 
-# Act 3 bosses need a distinct curve: the normal floor scaling compounds sharply
-# by floor 42, where the final encounters currently become an extreme damage race.
 ACT_3_START_FLOOR = 25
-ACT_3_BOSS_HP_MULT = 2.50
-ACT_3_BOSS_ATK_MULT = 1.35
+ACT_3_BOSS_ATK_MULT = 1.50
+BOSS_HP_OVER_ELITE_RATIO = 2.00
+ENEMY_HP_GROWTH_PER_FLOOR = 0.045
+ENEMY_ATK_GROWTH_PER_FLOOR = 0.050
+ENEMY_DEF_GROWTH_PER_FLOOR = 0.050
 COMMON_ENEMY_SPEED_BONUS = 2
+MIN_ENEMY_SPEED_RATIO = 0.80
 
 # Reward scaling is kept explicit so enum values do not implicitly set economy balance.
 TIER_REWARD_MULT: dict[EnemyTier, float] = {
@@ -43,7 +47,7 @@ TIER_REWARD_MULT: dict[EnemyTier, float] = {
     EnemyTier.BOSS: 4.0,
 }
 
-from src.data.enemies import ENEMY_CATALOG
+from src.data.enemies import ENEMY_CATALOG, EnemyHook, EnemySkill, ENEMY_SKILLS
 
 
 # Complete Archetype Registry: 24 Commons/Uncommons + 12 Elites + 12 Bosses = 48 Total
@@ -70,12 +74,34 @@ class Enemy(Actor):
         self.archetype_id: str = archetype_id
 
         archetype = ENEMY_CATALOG.get(archetype_id)
+        self.archetype = archetype
         if archetype:
             self.on_hit_status: str | None = archetype.on_hit_status
             self.status_chance: float = archetype.status_chance
+            self.on_death_hook: EnemyHook = archetype.on_death_hook
+            self.half_hp_hook: EnemyHook = archetype.half_hp_hook
+            self.quarter_hp_hook: EnemyHook = archetype.quarter_hp_hook
+            self.phase_style: str = archetype.phase_style
+            if tier == EnemyTier.BOSS:
+                skill_ids = archetype.boss_skills
+            elif tier in (EnemyTier.UNCOMMON, EnemyTier.ELITE):
+                skill_ids = (archetype.uncommon_skill,)
+            else:
+                skill_ids = ()
+            self.skills: tuple[EnemySkill, ...] = tuple(
+                ENEMY_SKILLS[skill_id] for skill_id in skill_ids if skill_id in ENEMY_SKILLS
+            )
         else:
             self.on_hit_status: str | None = None
             self.status_chance: float = 0.0
+            self.on_death_hook = EnemyHook(
+                event="death", effect="concept_death", dialogue_key="enemy_death_hook",
+            )
+            self.half_hp_hook = EnemyHook(event="threshold", effect="phase", threshold=0.50)
+            self.quarter_hp_hook = EnemyHook(event="threshold", effect="signature", threshold=0.25,
+                                             skill_id="signature_attack")
+            self.phase_style = "enrage"
+            self.skills = ()
 
     @property
     def display_name(self) -> str:
@@ -99,8 +125,9 @@ def generate_enemy(
         floor: int = 1,
         biome_id: str = "arboretum",
         rng: random.Random | None = None,
+        player_speed: int | None = None,
 ) -> Enemy:
-    """Generate a tier-scaled enemy tailored to the current biome and floor."""
+    """Generate a tier-scaled enemy, optionally keeping pace with player base speed."""
     from src.data.biomes import BIOME_REGISTRY
 
     rand = rng if rng is not None else random.Random()
@@ -120,20 +147,37 @@ def generate_enemy(
 
     hp_mult = TIER_HP_MULT[tier]
     atk_mult = TIER_ATK_MULT[tier]
-    if tier == EnemyTier.BOSS and floor >= ACT_3_START_FLOOR:
-        hp_mult = ACT_3_BOSS_HP_MULT
-        atk_mult = ACT_3_BOSS_ATK_MULT
+    if tier == EnemyTier.BOSS:
+        # Normalize the biome's average boss against its average Elite so that
+        # the average boss has a modest 10% HP premium. Per-archetype variation
+        # is preserved, so particularly large/small bosses still feel distinct.
+        elite_mean_hp = mean(ENEMY_CATALOG[enemy_id].base_hp for enemy_id in biome.elites)
+        boss_mean_hp = mean(ENEMY_CATALOG[enemy_id].base_hp for enemy_id in biome.bosses)
+        hp_mult = (
+            TIER_HP_MULT[EnemyTier.ELITE]
+            * BOSS_HP_OVER_ELITE_RATIO
+            * elite_mean_hp
+            / boss_mean_hp
+        )
+        if floor >= ACT_3_START_FLOOR:
+            atk_mult = ACT_3_BOSS_ATK_MULT
+
+    enemy_speed = min(
+        25,
+        template.base_spd
+        + floor_offset // 5
+        + (COMMON_ENEMY_SPEED_BONUS if tier == EnemyTier.COMMON else 0),
+    )
+    if player_speed is not None:
+        # Equipment and temporary buffs are excluded: this floor follows natural
+        # class/level progression so enemy speed does not lag by over 20%.
+        enemy_speed = max(enemy_speed, ceil(max(1, player_speed) * MIN_ENEMY_SPEED_RATIO))
 
     scaled_stats = Stats(
-        max_hp=max(1, int(template.base_hp * (1 + floor_offset * 0.045) * hp_mult)),
-        attack=max(1, int(template.base_atk * (1 + floor_offset * 0.030) * atk_mult)),
-        defense=max(0, int(template.base_def * (1 + floor_offset * 0.025))),
-        speed=min(
-            25,
-            template.base_spd
-            + floor_offset // 5
-            + (COMMON_ENEMY_SPEED_BONUS if tier == EnemyTier.COMMON else 0),
-        ),
+        max_hp=max(1, int(template.base_hp * (1 + floor_offset * ENEMY_HP_GROWTH_PER_FLOOR) * hp_mult)),
+        attack=max(1, int(template.base_atk * (1 + floor_offset * ENEMY_ATK_GROWTH_PER_FLOOR) * atk_mult)),
+        defense=max(0, int(template.base_def * (1 + floor_offset * ENEMY_DEF_GROWTH_PER_FLOOR))),
+        speed=enemy_speed,
         crit_chance=template.base_crit,
     )
 
