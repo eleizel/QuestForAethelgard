@@ -56,6 +56,9 @@ class Player(Actor):
         if stance_id not in self._active_stances:
             return False
         self._active_stances.remove(stance_id)
+        combat = getattr(self, "combat_ref", None)
+        if combat:
+            combat.on_player_stance_consumed(stance_id)
         return True
 
     @property
@@ -93,6 +96,7 @@ class Player(Actor):
     def take_damage(self, raw_damage: int, defense_penetration: float = 0.0) -> int:
         """Apply damage mitigated by defense and passive abilities."""
         from src.core.math_utils import calculate_damage
+        previous_hp = self.current_hp
         if getattr(self, "_reckless_assault_vulnerable", False):
             raw_damage = int(raw_damage * 1.10)
         for passive in self.all_passives:
@@ -123,6 +127,10 @@ class Player(Actor):
                 dealt = combat.damage_enemy(counter)
                 from src.core.i18n import t
                 combat.combat_logs.append(t("combat_riposte_counter", actor=self.name, damage=dealt))
+
+        combat = getattr(self, "combat_ref", None)
+        if actual_damage > 0 and combat:
+            combat.on_player_damaged(previous_hp, actual_damage)
 
         return actual_damage
 
