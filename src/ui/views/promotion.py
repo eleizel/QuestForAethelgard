@@ -29,6 +29,18 @@ if TYPE_CHECKING:
 class PromotionView(View):
     """Advanced-class selection presented as a pair of biome-style cards."""
 
+    def __init__(self) -> None:
+        self.selected_index: int | None = None
+
+    def _select_or_promote(self, game_state: GameState, index: int, class_id: str) -> bool:
+        if self.selected_index != index:
+            self.selected_index = index
+            return False
+        if game_state.player.promote(class_id):
+            game_state.switch_mode(GameMode.ABILITY_CHOICE)
+            return True
+        return False
+
     def _recommended_class(self, game_state: GameState) -> str:
         promotions = game_state.player.available_promotions()
         scores = {class_id: 0 for class_id in promotions}
@@ -50,15 +62,24 @@ class PromotionView(View):
                 game_state.switch_mode(return_mode)
             return
 
+        if pyxel.btnp(pyxel.KEY_LEFT) or pyxel.btnp(pyxel.KEY_A):
+            self.selected_index = 0 if self.selected_index != 0 else 1
+        elif pyxel.btnp(pyxel.KEY_RIGHT) or pyxel.btnp(pyxel.KEY_D):
+            self.selected_index = 1 if len(promotions) > 1 and self.selected_index != 1 else 0
+
         for index, class_id in enumerate(promotions[:2]):
             card_x = 7 if index == 0 else 130
             clicked = Renderer.is_clicked(card_x, 50, 119, 184)
             pressed = (index == 0 and (pyxel.btnp(pyxel.KEY_1) or pyxel.btnp(pyxel.KEY_KP_1))) or (
                 index == 1 and (pyxel.btnp(pyxel.KEY_2) or pyxel.btnp(pyxel.KEY_KP_2))
             )
-            if (clicked or pressed) and game_state.player.promote(class_id):
-                game_state.switch_mode(GameMode.ABILITY_CHOICE)
+            if (clicked or pressed) and self._select_or_promote(game_state, index, class_id):
                 return
+
+        if self.selected_index is not None and (pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_SPACE)):
+            if self.selected_index < len(promotions):
+                class_id = promotions[self.selected_index]
+                self._select_or_promote(game_state, self.selected_index, class_id)
 
     def _draw_card(self, renderer: Renderer, class_id: str,
                    index: int, x: int, recommended: str) -> None:
@@ -68,21 +89,25 @@ class PromotionView(View):
 
         y, width, height = 50, 119, 184
         is_recommended = class_id == recommended
-        border = COLOR_YELLOW if is_recommended else COLOR_LIGHT_BLUE
-        renderer.draw_box(x, y, width, height, bg_col=COLOR_DARK_BLUE if is_recommended else COLOR_BLACK,
+        is_selected = index == self.selected_index
+        border = COLOR_YELLOW if is_selected else (COLOR_PEACH if is_recommended else COLOR_LIGHT_BLUE)
+        renderer.draw_box(x, y, width, height, bg_col=COLOR_DARK_BLUE if is_selected or is_recommended else COLOR_BLACK,
                           border_col=border)
-        if is_recommended:
+        if is_selected:
             pyxel.rectb(x + 1, y + 1, width - 2, height - 2,
                         COLOR_YELLOW if pyxel.frame_count // 6 % 2 == 0 else COLOR_ORANGE)
+        elif is_recommended:
+            pyxel.rectb(x + 1, y + 1, width - 2, height - 2, COLOR_PEACH)
         for corner_x, corner_y in ((x + 2, y + 2), (x + width - 3, y + 2),
                                    (x + 2, y + height - 3), (x + width - 3, y + height - 3)):
-            pyxel.pset(corner_x, corner_y, COLOR_WHITE if is_recommended else COLOR_CYAN)
+            pyxel.pset(corner_x, corner_y, COLOR_WHITE if is_selected else COLOR_CYAN)
 
         # Portrait and battle sprite mirror the dual-art presentation on class selection.
         portrait_bank, portrait_u, portrait_v = get_class_portrait(class_id)
         frame_x, frame_y = x + 34, y + 4
         pyxel.rect(frame_x - 1, frame_y - 1, 50, 66, COLOR_NAVY)
-        pyxel.rectb(frame_x - 1, frame_y - 1, 50, 66, COLOR_PEACH if is_recommended else COLOR_LIGHT_BLUE)
+        portrait_border = COLOR_YELLOW if is_selected else (COLOR_PEACH if is_recommended else COLOR_LIGHT_BLUE)
+        pyxel.rectb(frame_x - 1, frame_y - 1, 50, 66, portrait_border)
         pyxel.blt(frame_x, frame_y, portrait_bank, portrait_u, portrait_v, 48, 64, 0)
         sprite_u, sprite_v = CLASS_SPRITE_COORDS[class_id]
         pyxel.blt(x + 8, y + 27, 0, sprite_u, sprite_v, 16, 16, 0)
@@ -90,7 +115,7 @@ class PromotionView(View):
         class_def = CLASS_REGISTRY[class_id]
         ability = get_ability_by_id(class_def.signature_passive) if class_def.signature_passive else None
         title = f"[{index + 1}] {class_def.localized_name}"
-        renderer.draw_text(x + 4, y + 70, title[:27], COLOR_YELLOW if is_recommended else COLOR_WHITE)
+        renderer.draw_text(x + 4, y + 70, title[:27], COLOR_YELLOW if is_selected or is_recommended else COLOR_WHITE)
         if is_recommended:
             tag = "RECOMMENDED" if i18n.locale == "en" else "RECOMENDADA"
             renderer.draw_text(x + 4, y + 78, tag, COLOR_CYAN)
@@ -133,7 +158,7 @@ class PromotionView(View):
         for index, (class_id, x) in enumerate(zip(promotions, (7, 130))):
             self._draw_card(renderer, class_id, index, x, recommended)
 
-        hint = "Choose with [1] or [2]" if i18n.locale == "en" else "Elige con [1] o [2]"
+        hint = "Tap to select; tap again to confirm" if i18n.locale == "en" else "Toca para seleccionar y confirmar"
         renderer.draw_text(SCREEN_WIDTH // 2 - renderer.get_text_width(hint) // 2, 239, hint, COLOR_WHITE)
         pyxel.rectb(box_x, box_y, box_w, box_h, COLOR_DARK_BLUE)
         pyxel.rectb(box_x + 2, box_y + 2, box_w - 4, box_h - 4, COLOR_NAVY)

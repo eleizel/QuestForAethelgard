@@ -330,6 +330,36 @@ def test_every_advanced_class_has_a_combat_sprite():
     assert advanced_classes <= CLASS_SPRITE_COORDS.keys()
 
 
+def test_promotion_portrait_requires_a_second_tap_to_confirm(monkeypatch):
+    import pyxel
+
+    from src.core.game_state import GameMode, GameState
+    from src.ui.renderer import Renderer
+    from src.ui.views.promotion import PromotionView
+
+    state = GameState()
+    state.player.level = 10
+    state.player.promotion_due = True
+    state.current_mode = GameMode.PROMOTION
+    view = PromotionView()
+
+    monkeypatch.setattr(pyxel, "btnp", lambda *_args: False)
+    monkeypatch.setattr(
+        Renderer,
+        "is_clicked",
+        staticmethod(lambda x, _y, _w, _h: x == 7),
+    )
+
+    view.update(state)
+    assert view.selected_index == 0
+    assert state.current_mode == GameMode.PROMOTION
+    assert state.player.class_id == "warrior"
+
+    view.update(state)
+    assert state.current_mode == GameMode.ABILITY_CHOICE
+    assert state.player.class_id == "paladin"
+
+
 def test_game_state_can_start_level_ten_promotion_and_restore_return_mode():
     from src.core.game_state import GameMode, GameState
 
