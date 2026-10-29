@@ -50,7 +50,7 @@ class PromotionView(View):
     """Advanced-class promotion selection with dual showcase cards and gothic framing."""
 
     def __init__(self) -> None:
-        self.selected_index: int = 0
+        self.selected_index: int | None = None
 
     def _select_or_promote(self, game_state: GameState, index: int, class_id: str) -> bool:
         if self.selected_index != index:
