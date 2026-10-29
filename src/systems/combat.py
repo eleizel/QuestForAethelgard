@@ -58,6 +58,15 @@ class CombatSystem:
         self.queued_ability = None
         self.cooldowns: dict[str, int] = {}
         self.arcane_reservoir_charges = 0
+        self.arcane_momentum_stacks = 0
+        self.signature_proc_counts: dict[str, int] = {}
+        self.venom_poison_ticks = 0
+        self._warlock_last_enemy_action = -1
+        self.berserker_threshold_triggered = False
+        self.berserker_bonus_ready = False
+        self._berserker_bonus_damage_active = False
+        self.berserker_heal_this_action = 0
+        self.duelist_flourish_armed = False
         self._current_player_action_is_basic = False
         self._passives_handled_per_hit = False
         self._last_player_hit_raw_damage = 0
@@ -87,6 +96,48 @@ class CombatSystem:
         """Return True if combat is still ongoing."""
         return self.result == CombatResult.IN_PROGRESS
 
+    def _has_signature(self, signature_id: str) -> bool:
+        return any(ability.id == signature_id for ability in self.player.all_passives)
+
+    def _record_signature_proc(self, signature_id: str, count: int = 1) -> None:
+        self.signature_proc_counts[signature_id] = self.signature_proc_counts.get(signature_id, 0) + count
+
+    def on_player_stance_consumed(self, stance_id: str) -> None:
+        if self._has_signature("duelist_precision"):
+            self.duelist_flourish_armed = True
+            self._record_signature_proc("duelist_precision")
+
+    def on_player_damaged(self, previous_hp: int, actual_damage: int) -> None:
+        if actual_damage <= 0:
+            return
+        if (
+            self._has_signature("berserker_rage")
+            and not self.berserker_threshold_triggered
+            and previous_hp >= self.player.max_hp * 0.30
+            and self.player.current_hp < self.player.max_hp * 0.30
+        ):
+            self.berserker_threshold_triggered = True
+            self.berserker_bonus_ready = True
+            self.player_gauge = max(self.player_gauge, ACTION_THRESHOLD)
+            self._record_signature_proc("berserker_rage")
+            self.combat_logs.append(_t("combat_deathless_onslaught_ready", actor=self.player.name))
+
+        if (
+            self._has_signature("warlock_pact")
+            and self.enemy.is_alive
+            and self._warlock_last_enemy_action != self.enemy_actions_taken
+        ):
+            from src.systems.status import get_status_by_id
+
+            burn = get_status_by_id("burn", duration=8, potency=1)
+            if burn:
+                self.enemy.apply_status(burn)
+                self._warlock_last_enemy_action = self.enemy_actions_taken
+                self._record_signature_proc("warlock_pact")
+                self.combat_logs.append(
+                    _t("combat_daemonic_pact_burn", target=self.enemy.name)
+                )
+
     def _process_status_ticks(self, actor: 'Actor') -> None:
         from src.systems.status import StatusTrigger
         active_statuses = list(actor.statuses)
@@ -94,8 +145,37 @@ class CombatSystem:
             if s.trigger == StatusTrigger.ON_TICK:
                 if s.on_tick_hook:
                     previous_hp = actor.current_hp
+                    burn_early_stacks = 0
+                    burn_early_damage = 0
+                    if s.id == "burn" and actor is self.enemy and self._has_signature("warlock_pact"):
+                        if len(s.stack_tick_counts) < s.stacks:
+                            s.stack_tick_counts.extend([0] * (s.stacks - len(s.stack_tick_counts)))
+                        burn_early_stacks = sum(ticks < 2 for ticks in s.stack_tick_counts[:s.stacks])
+                        burn_early_damage = max(1, actor.max_hp * s.potency // 100) * burn_early_stacks
                     log_str, dmg = s.on_tick_hook(self, actor, s)
                     self.combat_logs.append(log_str)
+                    if s.id == "burn":
+                        if len(s.stack_tick_counts) < s.stacks:
+                            s.stack_tick_counts.extend([0] * (s.stacks - len(s.stack_tick_counts)))
+                        for index in range(s.stacks):
+                            s.stack_tick_counts[index] += 1
+                        if burn_early_stacks and dmg > 0:
+                            healed = self.player.heal(min(dmg, burn_early_damage) // 2)
+                            if healed:
+                                self.combat_logs.append(
+                                    _t("combat_daemonic_pact_heal", actor=self.player.name, heal=healed)
+                                )
+                                self._record_signature_proc("warlock_pact")
+                    if s.id == "poison" and actor is self.enemy and self._has_signature("venomancer_mastery"):
+                        self.venom_poison_ticks += 1
+                        if self.venom_poison_ticks % 4 == 0 and dmg > 0 and actor.is_alive:
+                            detonation = min(actor.current_hp, max(0, dmg * 2))
+                            actor.current_hp -= detonation
+                            dmg += detonation
+                            self.combat_logs.append(
+                                _t("combat_perfect_toxin", target=actor.name, damage=detonation)
+                            )
+                            self._record_signature_proc("venomancer_mastery")
                     if actor is self.enemy and actor.current_hp < previous_hp:
                         self._check_enemy_threshold_hooks(previous_hp, actor.current_hp)
 
@@ -174,6 +254,10 @@ class CombatSystem:
         """Resolve player damage, including vulnerabilities and passives."""
         if self._pact_of_pain_active:
             raw_damage = int(raw_damage * 1.10)
+        if self._has_signature("archmage_focus"):
+            raw_damage = int(raw_damage * (1 + 0.10 * self.arcane_momentum_stacks))
+        if self._berserker_bonus_damage_active:
+            raw_damage *= 2
         self._last_player_hit_raw_damage = raw_damage
         vulnerable = next((status for status in self.enemy.statuses if status.id == "vulnerable"), None)
         if vulnerable:
@@ -206,6 +290,10 @@ class CombatSystem:
         if getattr(self.player, "_next_strike_bonus", False):
             raw_damage = int(raw_damage * 1.25)
             self.player._next_strike_bonus = False
+
+        if self._has_signature("archmage_focus"):
+            # The signature adds 25% armor penetration to every direct hit.
+            defense_penetration = 1 - (1 - defense_penetration) * 0.75
 
         previous_hp = self.enemy.current_hp
         actual_damage = self.enemy.take_damage(raw_damage, defense_penetration=defense_penetration)
@@ -339,6 +427,9 @@ class CombatSystem:
         self._passives_handled_per_hit = False
         is_basic_attack = self.queued_ability is None
         self._current_player_action_is_basic = is_basic_attack
+        duelist_flourish_ready = is_basic_attack and self.duelist_flourish_armed
+        berserker_bonus_this_action = self.berserker_bonus_ready
+        self._berserker_bonus_damage_active = berserker_bonus_this_action
         whirlwind_ready = is_basic_attack and self.player.consume_stance("whirlwind_defense")
 
         # Reckless Assault's vulnerability lasts until this next player action.
@@ -363,6 +454,16 @@ class CombatSystem:
                 "warlock" in self._current_action_affinities
                 and any(ability.id == "pact_of_pain" for ability in self.player.all_passives)
             )
+            if (
+                self._has_signature("archmage_focus")
+                and any(affinity in ("archmage", "hybrid") for affinity in self._current_action_affinities)
+            ):
+                self.arcane_momentum_stacks = min(5, self.arcane_momentum_stacks + 1)
+                self._record_signature_proc("archmage_focus")
+                self.combat_logs.append(
+                    _t("combat_arcane_momentum", actor=self.player.name, stacks=self.arcane_momentum_stacks)
+                )
+
             if self._pact_of_pain_active:
                 cost = max(1, int(self.player.max_hp * 0.05))
                 paid = min(cost, max(0, self.player.current_hp - 1))
@@ -410,6 +511,11 @@ class CombatSystem:
                         self.combat_logs.append(
                             _t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name))
 
+                if dmg_dealt > 0 and self.enemy.is_alive and self._has_signature("paladin_oath"):
+                    extra_damage, extra_crit = self._signature_bonus_hit(0.50, "paladin_oath")
+                    dmg_dealt += extra_damage
+                    is_crit = is_crit or extra_crit
+
                 # Summon Imp adds an independent strike to each successful basic attack.
                 if dmg_dealt > 0 and self.enemy.is_alive and any(
                     ability.id == "summon_imp" for ability in self.player.all_passives
@@ -450,6 +556,18 @@ class CombatSystem:
             log_key = "combat_whirlwind_crit" if extra_crit else "combat_whirlwind_hit"
             self.combat_logs.append(_t(log_key, actor=self.player.name, target=self.enemy.name, damage=extra_damage))
 
+        if duelist_flourish_ready and dmg_dealt > 0:
+            # Consume the stored flourish on this successful basic attack. The extra
+            # strikes apply weapon on-hit effects but do not trigger stance hooks.
+            self.duelist_flourish_armed = False
+            self._record_signature_proc("duelist_precision")
+            for _ in range(2):
+                if not self.enemy.is_alive:
+                    break
+                extra_damage, extra_crit = self._signature_bonus_hit(0.50, "duelist_precision")
+                dmg_dealt += extra_damage
+                is_crit = is_crit or extra_crit
+
         # Trigger passive hooks for attack dealt. Soulfire is deliberately
         # restricted to basic attacks; other passives may still react to abilities.
         if dmg_dealt > 0 and not self._passives_handled_per_hit:
@@ -460,10 +578,44 @@ class CombatSystem:
         self._current_player_action_is_basic = False
         self._current_action_affinities = ()
         self._pact_of_pain_active = False
+        self._berserker_bonus_damage_active = False
+        if berserker_bonus_this_action and dmg_dealt > 0:
+            self.berserker_bonus_ready = False
+            heal_cap = int(self.player.max_hp * 0.25)
+            healed = self.player.heal(min(dmg_dealt // 2, heal_cap))
+            if healed:
+                self.combat_logs.append(_t("combat_deathless_onslaught_heal", actor=self.player.name, heal=healed))
 
         if self.player.abilities.has_veterans_instincts and is_crit:
             self.player_gauge = min(100, self.player_gauge + 20)
             self.combat_logs.append(_t("combat_veteran", player=self.player.name))
+
+    def _signature_bonus_hit(self, multiplier: float, signature_id: str) -> tuple[int, bool]:
+        """Resolve an independent signature hit with crit and weapon on-hit behavior."""
+        raw_damage = int(self.player.effective_stats.attack * multiplier)
+        is_crit = self.rng.random() < self.player.effective_stats.crit_chance
+        if is_crit:
+            raw_damage = int(raw_damage * 1.5)
+        damage = self.damage_enemy(raw_damage)
+        if damage > 0:
+            weapon = self.player.inventory.get_equipment_in_slot("Main Hand")
+            if weapon and getattr(weapon, "on_hit_status", None) and self.rng.random() < getattr(weapon, "on_hit_chance", 0.0):
+                from src.systems.status import get_status_by_id
+
+                effect = get_status_by_id(weapon.on_hit_status)
+                if effect:
+                    self.enemy.apply_status(effect)
+                    self.combat_logs.append(
+                        _t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name)
+                    )
+            if signature_id == "paladin_oath":
+                self.player.heal(damage // 2)
+            self._record_signature_proc(signature_id)
+        log_key = "combat_signature_hit_crit" if is_crit else "combat_signature_hit"
+        self.combat_logs.append(
+            _t(log_key, actor=self.player.name, target=self.enemy.name, damage=damage)
+        )
+        return damage, is_crit
 
     def _execute_enemy_attack(self) -> None:
         """Resolve one enemy action, skill, or telegraphed signature move."""
