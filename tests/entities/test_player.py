@@ -86,8 +86,8 @@ def test_player_base_stats_are_not_shared_with_class_template():
 def test_rogue_has_modest_survivability_tuning():
     rogue = CLASS_REGISTRY["rogue"]
 
-    assert rogue.base_stats.max_hp == 85
-    assert rogue.growth_per_level.max_hp == 11
+    assert rogue.base_stats.max_hp == 105
+    assert rogue.growth_per_level.max_hp == 12
 
 
 def test_effective_stats_with_equipment(monkeypatch):

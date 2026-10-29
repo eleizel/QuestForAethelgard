@@ -727,47 +727,326 @@ def build_assets() -> None:
     ]
     pyxel.images[0].set(32, 32, merchant_sprite)
 
-    # Six promoted-class sprites occupy the unused character row.
-    promoted_sprites = {
-        "paladin": ("a", "6", "7"), "berserker": ("4", "9", "8"),
-        "venomancer": ("3", "a", "c"), "duelist": ("7", "5", "a"),
-        "archmage": ("c", "9", "7"), "warlock": ("2", "8", "a"),
-    }
-    for i, (class_id, (accent, armor, glow)) in enumerate(promoted_sprites.items()):
-        grid = [["0" for _ in range(16)] for _ in range(16)]
-        for y, start, end in [(1, 5, 10), (2, 4, 11), (3, 4, 11), (4, 3, 12),
-                              (5, 3, 12), (6, 2, 13), (7, 1, 14), (8, 2, 13),
-                              (9, 2, 13), (10, 2, 13), (11, 3, 12), (12, 3, 12),
-                              (13, 3, 12), (14, 2, 13)]:
-            for x in range(start, end + 1):
-                grid[y][x] = accent if y < 4 else armor
-        grid[4][6] = glow; grid[4][9] = glow
-        grid[5][6] = "0"; grid[5][9] = "0"
-        grid[9][4] = accent; grid[9][11] = accent
-        rows = ["".join(row) for row in grid]
-        u, v = CLASS_SPRITE_COORDS[class_id]
-        pyxel.images[0].set(u, v, rows)
+    # 6 Promoted Class In-Game Sprites (16x16) in Bank 0 row y=32
+    pyxel.images[0].set(48, 32, [  # paladin
+        "00000aa000000000", "0000aaaa00000000", "0000077000000000", "0000777700000000",
+        "0000700700000000", "0000777700000000", "0aa077770aa00000", "aaa076670aaaa000",
+        "aaa061160aaaaa00", "0aa061160aa0aa00", "0000611600000a00", "0000777700000000",
+        "0000770770000000", "0000aa0aa0000000", "0000aa0aa0000000", "0000550550000000",
+    ])
+    pyxel.images[0].set(64, 32, [  # berserker
+        "0800000000080000", "0880044000880000", "0080444400800000", "0000499400000000",
+        "0000488400000000", "0000444400000000", "0088888888000000", "0888ffff88870000",
+        "0808ffff88777000", "0808944980070000", "0000944900040000", "0000444400040000",
+        "0000440440040000", "0000880880000000", "0000880880000000", "0000440440000000",
+    ])
+    pyxel.images[0].set(80, 32, [  # venomancer
+        "0000033300000000", "0000333330000000", "0000355530000000", "00033b0b33000000",
+        "0003355533000000", "0000333330000000", "0b001111100b0000", "b3b013b310b3b000",
+        "0b001111100b0000", "0000511150000000", "0000111110000000", "0000330330000000",
+        "0000110110000000", "0000110110000000", "0000330330000000", "0000000000000000",
+    ])
+    pyxel.images[0].set(96, 32, [  # duelist
+        "0000008880000000", "0000088888000000", "0000888888800000", "0000885558800000",
+        "0000880808800000", "0000088888000000", "0070777770000000", "0760771770077777",
+        "007077177000a000", "0000511150000000", "0000111110000000", "0000550550000000",
+        "0000110110000000", "0000110110000000", "0000550550000000", "0000000000000000",
+    ])
+    pyxel.images[0].set(112, 32, [  # archmage
+        "000000c000000000", "00000ccc00000000", "00000ccc00000000", "0000ccccc0000000",
+        "000caaaaac000000", "00cc22222cc07000", "0000777770077700", "00007c7c7007a700",
+        "0000777770004000", "000cc777cc004000", "00ccc777ccc04000", "00ccccccccc04000",
+        "000cc202cc004000", "000cc202cc004000", "0001110111004000", "0000000000000000",
+    ])
+    pyxel.images[0].set(128, 32, [  # warlock
+        "0200000000020000", "0220002200220000", "0022022220220000", "0002222222200000",
+        "0002888882000000", "0022222222200000", "0000777770008000", "000078787008e800",
+        "0000777770004000", "0002288822004000", "0022288822204000", "0022222222204000",
+        "0002210122004000", "0002210122004000", "0001110111004000", "0000000000000000",
+    ])
 
-    # Portraits in bank 2 are kept separate from the existing base-class atlas.
-    portrait_palettes = {
-        "paladin": ("1", "f", "a", "6"), "berserker": ("4", "f", "9", "8"),
-        "venomancer": ("3", "f", "a", "c"), "duelist": ("7", "f", "5", "a"),
-        "archmage": ("c", "f", "9", "7"), "warlock": ("2", "f", "8", "a"),
-    }
-    for class_id, (background, skin, hair, robe) in portrait_palettes.items():
-        pixels = [[background for _ in range(48)] for _ in range(64)]
-        for y in range(64):
-            for x in range(48):
-                if 10 <= x <= 37 and 9 <= y <= 39 and (x - 24) ** 2 / 180 + (y - 24) ** 2 / 260 <= 1:
-                    pixels[y][x] = skin
-                if 9 <= x <= 38 and 8 <= y <= 19 and (x + y) % 4 != 0:
-                    pixels[y][x] = hair
-                if 39 <= y <= 63 and 4 <= x <= 43:
-                    pixels[y][x] = robe
-        pixels[34][17] = "0"; pixels[34][30] = "0"
-        pixels[35][17] = "7"; pixels[35][30] = "7"
-        u, v = ADVANCED_PORTRAIT_COORDS[class_id]
-        pyxel.images[2].set(u, v, ["".join(row) for row in pixels])
+    # =========================================================================
+    # IMAGE BANK 2: 48x64 ADVANCED PROMOTED CLASS PORTRAITS
+    # =========================================================================
+    def create_paladin_portrait() -> list[str]:
+        W, H = 48, 64
+        g = [["0"] * W for _ in range(H)]
+        for y in range(4, 38):
+            for x in range(6, 42):
+                d2 = (x - 24)**2 + (y - 20)**2
+                if 144 <= d2 <= 289: g[y][x] = "a"
+                elif 290 <= d2 <= 360 and (x + y) % 2 == 0: g[y][x] = "9"
+        for y in range(24, 64):
+            w_cloak = min(22, int((y - 20) * 0.7) + 6)
+            for x in range(24 - w_cloak, 24 + w_cloak + 1):
+                if 0 <= x < W:
+                    g[y][x] = "1"
+                    if x in (24 - w_cloak, 24 + w_cloak): g[y][x] = "a"
+        for y, x1, x2 in [(6, 20, 28), (7, 18, 30), (8, 16, 32), (9, 15, 33), (10, 14, 34),
+                          (11, 13, 35), (12, 13, 35), (13, 12, 36), (14, 12, 36), (15, 12, 36),
+                          (16, 12, 36), (17, 12, 36), (18, 12, 36), (19, 13, 35), (20, 13, 35)]:
+            for x in range(x1, x2 + 1): g[y][x] = "7" if (x + y) % 3 == 0 else "a"
+        for y, x1, x2 in [(16, 17, 31), (17, 17, 31), (18, 17, 31), (19, 16, 32), (20, 16, 32),
+                          (21, 16, 32), (22, 16, 32), (23, 17, 31), (24, 17, 31), (25, 18, 30),
+                          (26, 18, 30), (27, 19, 29), (28, 19, 29), (29, 20, 28), (30, 21, 27),
+                          (31, 22, 26), (32, 22, 26), (33, 23, 25), (34, 23, 25)]:
+            for x in range(x1, x2 + 1): g[y][x] = "e" if x >= x2 - 2 else "f"
+        for y in range(34, 43):
+            for x in range(20, 29): g[y][x] = "e" if x in (20, 28) or y > 38 else "f"
+        for x in range(16, 33): g[17][x] = "a"
+        g[17][24] = "7"; g[16][24] = "c"; g[15][24] = "a"; g[17][20] = "c"; g[17][28] = "c"
+        for x in range(18, 22): g[19][x] = "a"
+        for x in range(27, 31): g[19][x] = "a"
+        g[21][19] = "7"; g[21][20] = "c"; g[22][19] = "c"; g[22][20] = "1"
+        g[21][28] = "c"; g[21][29] = "7"; g[22][28] = "1"; g[22][29] = "c"
+        g[24][24] = "e"; g[25][24] = "e"; g[26][24] = "f"; g[27][24] = "e"
+        for x in range(22, 27): g[29][x] = "e"
+        for y in range(40, 64):
+            span = min(22, int((y - 38) * 1.4) + 6)
+            for x in range(24 - span, 24 + span + 1):
+                if 0 <= x < W:
+                    g[y][x] = "7"
+                    if x < 24 - span + 3 or x > 24 + span - 3: g[y][x] = "a"
+        for y in range(45, 59): g[y][23] = "a"; g[y][24] = "c" if y in (49, 50) else "a"; g[y][25] = "a"
+        for x in range(18, 31): g[49][x] = "a"; g[50][x] = "a"
+        g[49][24] = "7"; g[50][24] = "7"
+        return ["".join(row) for row in g]
+
+    def create_berserker_portrait() -> list[str]:
+        W, H = 48, 64
+        g = [["0"] * W for _ in range(H)]
+        for y in range(4, 38):
+            for x in range(6, 42):
+                d2 = (x - 24)**2 + (y - 20)**2
+                if 144 <= d2 <= 289: g[y][x] = "8" if (x + y) % 2 == 0 else "9"
+                elif 290 <= d2 <= 360 and (x * 3 + y * 2) % 4 == 0: g[y][x] = "2"
+        for y in range(24, 64):
+            w_cloak = min(22, int((y - 20) * 0.7) + 6)
+            for x in range(24 - w_cloak, 24 + w_cloak + 1):
+                if 0 <= x < W: g[y][x] = "8" if (x + y) % 3 == 0 else "4"
+        for hy, hx in [(6, 10), (7, 9), (8, 9), (9, 10), (10, 11), (11, 12), (12, 13)]:
+            g[hy][hx] = "7"; g[hy][hx+1] = "6"; g[hy+1][hx] = "5"
+        for hy, hx in [(6, 37), (7, 38), (8, 38), (9, 37), (10, 36), (11, 35), (12, 34)]:
+            g[hy][hx] = "7"; g[hy][hx-1] = "6"; g[hy+1][hx] = "5"
+        for y, x1, x2 in [(8, 16, 32), (9, 15, 33), (10, 14, 34), (11, 13, 35), (12, 13, 35),
+                          (13, 12, 36), (14, 12, 36), (15, 12, 36), (16, 12, 36), (17, 12, 36)]:
+            for x in range(x1, x2 + 1): g[y][x] = "9" if (x + y) % 3 == 0 else "8"
+        for y, x1, x2 in [(16, 17, 31), (17, 17, 31), (18, 17, 31), (19, 16, 32), (20, 16, 32),
+                          (21, 16, 32), (22, 16, 32), (23, 17, 31), (24, 17, 31), (25, 18, 30),
+                          (26, 18, 30), (27, 19, 29), (28, 19, 29), (29, 20, 28), (30, 21, 27),
+                          (31, 22, 26), (32, 22, 26), (33, 23, 25), (34, 23, 25)]:
+            for x in range(x1, x2 + 1):
+                g[y][x] = "8" if x in (21, 22, 26, 27) and 18 <= y <= 27 else "f"
+        for y in range(34, 43):
+            for x in range(20, 29): g[y][x] = "e" if (x + y) % 2 == 0 else "f"
+        for x in range(18, 22): g[19][x] = "2"
+        for x in range(27, 31): g[19][x] = "2"
+        g[21][19] = "9"; g[21][20] = "7"; g[22][19] = "8"; g[22][20] = "9"
+        g[21][28] = "7"; g[21][29] = "9"; g[22][28] = "9"; g[22][29] = "8"
+        g[24][24] = "e"; g[25][24] = "e"; g[26][24] = "f"; g[27][24] = "2"
+        for x in range(21, 28): g[29][x] = "2"
+        g[29][22] = "7"; g[29][26] = "7"; g[30][24] = "8"
+        for y in range(40, 64):
+            span = min(22, int((y - 38) * 1.4) + 6)
+            for x in range(24 - span, 24 + span + 1):
+                if 0 <= x < W:
+                    g[y][x] = "5"
+                    if (x + y) % 4 == 0: g[y][x] = "6"
+                    if x < 24 - span + 3 or x > 24 + span - 3: g[y][x] = "8"
+        for sp_y, sp_x in [(42, 8), (41, 7), (40, 6), (42, 39), (41, 40), (40, 41)]:
+            g[sp_y][sp_x] = "7"
+        return ["".join(row) for row in g]
+
+    def create_venomancer_portrait() -> list[str]:
+        W, H = 48, 64
+        g = [["0"] * W for _ in range(H)]
+        for y in range(4, 40):
+            for x in range(4, 44):
+                d2 = (x - 24)**2 + (y - 22)**2
+                if 144 <= d2 <= 320:
+                    if (x * 3 + y * 2) % 5 == 0: g[y][x] = "3"
+                    elif (x + y) % 4 == 0: g[y][x] = "b"
+        for y, x1, x2 in [(4, 23, 25), (5, 22, 26), (6, 21, 27), (7, 20, 28), (8, 19, 29),
+                          (9, 18, 30), (10, 17, 31), (11, 16, 32), (12, 15, 33), (13, 14, 34),
+                          (14, 13, 35), (15, 12, 36), (16, 11, 37), (17, 11, 37), (18, 10, 38),
+                          (19, 10, 38), (20, 10, 38), (21, 10, 38), (22, 11, 37), (23, 11, 37),
+                          (24, 11, 37), (25, 12, 36), (26, 12, 36), (27, 13, 35), (28, 13, 35)]:
+            for x in range(x1, x2 + 1):
+                g[y][x] = "1"
+                if x in (x1, x1 + 1): g[y][x] = "b" if (x + y) % 2 == 0 else "3"
+                elif x in (x2 - 1, x2): g[y][x] = "0"
+        for y in range(16, 32):
+            cav_w = min(11, int((y - 14) * 0.9) + 4)
+            for x in range(24 - cav_w, 24 + cav_w + 1): g[y][x] = "0"
+        g[20][18] = "b"; g[20][19] = "7"; g[20][20] = "b"
+        g[21][18] = "3"; g[21][19] = "b"; g[21][20] = "3"; g[22][19] = "3"
+        g[20][27] = "b"; g[20][28] = "7"; g[20][29] = "b"
+        g[21][27] = "3"; g[21][28] = "b"; g[21][29] = "3"; g[22][28] = "3"
+        g[25][24] = "f"; g[26][24] = "f"; g[27][24] = "e"
+        g[24][16] = "f"; g[25][17] = "f"; g[26][18] = "e"
+        for y in range(28, 38):
+            mw = min(7, int((37 - y) * 0.8) + 4)
+            for x in range(24 - mw, 24 + mw + 1): g[y][x] = "3" if (x + y) % 3 == 0 else "4"
+        g[33][21] = "a"; g[33][27] = "a"; g[34][21] = "9"; g[34][27] = "9"
+        for y in range(36, 45):
+            sw = min(12, int((y - 34) * 1.2) + 6)
+            for x in range(24 - sw, 24 + sw + 1):
+                g[y][x] = "3" if x in (24 - sw, 24 + sw) else "1"
+        for y in range(44, 64):
+            span = min(22, int((y - 42) * 1.3) + 7)
+            for x in range(24 - span, 24 + span + 1):
+                if 0 <= x < W: g[y][x] = "3" if x < 24 - span + 3 or x > 24 + span - 3 else "1"
+        for vy, vx in [(46, 16), (49, 20), (52, 24), (55, 28), (58, 32)]:
+            g[vy][vx] = "c"; g[vy][vx+1] = "b"; g[vy+1][vx] = "b"; g[vy+1][vx+1] = "7"; g[vy-1][vx] = "4"
+        for dy, dx in [(40, 10), (43, 8), (48, 6), (42, 38), (45, 41), (50, 42)]:
+            g[dy][dx] = "b"; g[dy+1][dx] = "3"
+        return ["".join(row) for row in g]
+
+    def create_duelist_portrait() -> list[str]:
+        W, H = 48, 64
+        g = [["0"] * W for _ in range(H)]
+        for y in range(4, 40):
+            for x in range(4, 44):
+                d2 = (x - 24)**2 + (y - 22)**2
+                if 144 <= d2 <= 320:
+                    g[y][x] = "8" if (x + y * 2) % 6 == 0 else "2"
+        for fy, fx in [(3, 14), (4, 15), (5, 16), (6, 17), (7, 18), (8, 19), (9, 20)]:
+            g[fy][fx] = "7"; g[fy][fx+1] = "6"
+        for y, x1, x2 in [(5, 22, 26), (6, 21, 27), (7, 20, 28), (8, 19, 29), (9, 18, 30),
+                          (10, 17, 31), (11, 16, 32), (12, 15, 33), (13, 14, 34), (14, 13, 35),
+                          (15, 12, 36), (16, 11, 37), (17, 11, 37), (18, 10, 38), (19, 10, 38),
+                          (20, 10, 38), (21, 10, 38), (22, 11, 37), (23, 11, 37), (24, 11, 37),
+                          (25, 12, 36), (26, 12, 36), (27, 13, 35), (28, 13, 35)]:
+            for x in range(x1, x2 + 1):
+                g[y][x] = "8"
+                if x in (x1, x1 + 1): g[y][x] = "a" if (x + y) % 2 == 0 else "7"
+                elif x in (x2 - 1, x2): g[y][x] = "2"
+        for y in range(16, 32):
+            cav_w = min(11, int((y - 14) * 0.9) + 4)
+            for x in range(24 - cav_w, 24 + cav_w + 1): g[y][x] = "0"
+        g[20][18] = "8"; g[20][19] = "e"; g[20][20] = "8"
+        g[21][18] = "8"; g[21][19] = "7"; g[21][20] = "8"; g[22][19] = "8"
+        g[20][27] = "8"; g[20][28] = "e"; g[20][29] = "8"
+        g[21][27] = "8"; g[21][28] = "7"; g[21][29] = "8"; g[22][28] = "8"
+        g[25][24] = "f"; g[26][24] = "f"; g[27][24] = "e"
+        g[24][16] = "f"; g[25][17] = "f"; g[26][18] = "e"
+        for y in range(28, 38):
+            mw = min(7, int((37 - y) * 0.8) + 4)
+            for x in range(24 - mw, 24 + mw + 1): g[y][x] = "5" if x in (24 - mw, 24 - mw + 1) else "1"
+        g[30][25] = "e"; g[30][26] = "f"
+        for y in range(36, 44):
+            cw = min(10, int((y - 34) * 1.1) + 4)
+            for x in range(24 - cw, 24 + cw + 1): g[y][x] = "6" if (x + y) % 2 == 0 else "7"
+        g[40][24] = "a"
+        for y in range(44, 64):
+            span = min(22, int((y - 42) * 1.3) + 7)
+            for x in range(24 - span, 24 + span + 1):
+                if 0 <= x < W:
+                    g[y][x] = "1"
+                    if x in (24 - span + 2, 24 + span - 2) or (x in (23, 25) and y > 46): g[y][x] = "a"
+        for i in range(22):
+            rx = 34 + int(i * 0.5)
+            ry = 38 + i
+            if 0 <= rx < W and 0 <= ry < H:
+                g[ry][rx] = "7"
+                if rx + 1 < W: g[ry][rx+1] = "c"
+        for gx, gy in [(34, 48), (35, 47), (36, 47), (35, 49), (36, 50)]:
+            if 0 <= gx < W and 0 <= gy < H: g[gy][gx] = "a"
+        return ["".join(row) for row in g]
+
+    def create_archmage_portrait() -> list[str]:
+        W, H = 48, 64
+        g = [["0"] * W for _ in range(H)]
+        for sy, sx in [(6, 10), (12, 6), (8, 38), (14, 42), (24, 4), (28, 44), (40, 6), (44, 42)]:
+            g[sy][sx] = "c"; g[sy][sx+1] = "7"
+        for y, sx, row in [
+            (2, 32, "cc"), (3, 30, "cc7"), (4, 28, "ccc7"), (5, 26, "ccc77"),
+            (6, 25, "cccc77"), (7, 24, "cccc77"), (8, 23, "ccccc77"), (9, 22, "ccccc77"),
+            (10, 21, "cccccc77"), (11, 20, "cccccc77"), (12, 19, "ccccccc77"),
+            (13, 18, "cccccccc77"), (14, 17, "ccccccccc77"), (15, 16, "cccccccccc77"),
+            (16, 15, "ccccccccccc77"), (17, 14, "cccccccccccc77")
+        ]:
+            for i, ch in enumerate(row):
+                if 0 <= sx + i < W: g[y][sx + i] = ch
+        for y in range(18, 21):
+            for x in range(13, 37): g[y][x] = "a"
+        g[19][24] = "7"; g[19][23] = "c"; g[19][25] = "c"
+        for y, x1, x2 in [(21, 10, 38), (22, 7, 41), (23, 6, 42), (24, 7, 41)]:
+            for x in range(x1, x2 + 1): g[y][x] = "c" if y == 21 and (x + y) % 2 == 0 else "1"
+        for y in range(25, 54):
+            for x in range(11, 18): g[y][x] = "c" if (x + y) % 3 == 0 else "7"
+            for x in range(31, 38): g[y][x] = "c" if (x + y) % 3 == 0 else "7"
+        for y, x1, x2 in [(25, 17, 31), (26, 17, 31), (27, 17, 31), (28, 17, 31), (29, 18, 30),
+                          (30, 18, 30), (31, 18, 30), (32, 19, 29), (33, 19, 29), (34, 20, 28),
+                          (35, 20, 28), (36, 21, 27), (37, 21, 27), (38, 22, 26), (39, 23, 25), (40, 23, 25)]:
+            for x in range(x1, x2 + 1): g[y][x] = "e" if x in (x1, x2) else "f"
+        for y in range(40, 47):
+            for x in range(22, 27): g[y][x] = "f"
+        for x in range(18, 22): g[26][x] = "c"
+        for x in range(27, 31): g[26][x] = "c"
+        g[28][19] = "7"; g[28][20] = "c"; g[29][19] = "c"; g[29][20] = "7"
+        g[28][28] = "c"; g[28][29] = "7"; g[29][28] = "7"; g[29][29] = "c"
+        g[31][24] = "e"; g[32][24] = "e"; g[33][23] = "e"; g[33][24] = "f"; g[34][24] = "e"
+        for y, sx, row in [(42, 14, "cca"), (42, 31, "acc"), (43, 15, "caa"), (43, 30, "aac"), (44, 16, "caa"), (44, 29, "aac")]:
+            for i, ch in enumerate(row): g[y][sx + i] = ch
+        for y in range(46, 64):
+            span = min(22, int((y - 44) * 1.3) + 7)
+            for x in range(24 - span, 24 + span + 1):
+                if 0 <= x < W:
+                    g[y][x] = "1"
+                    if (x + y) % 5 == 0: g[y][x] = "c"
+                    if x in (24 - span + 2, 24 + span - 2): g[y][x] = "a"
+        g[48][24] = "7"; g[49][23] = "c"; g[49][24] = "7"; g[49][25] = "c"; g[50][24] = "c"
+        return ["".join(row) for row in g]
+
+    def create_warlock_portrait() -> list[str]:
+        W, H = 48, 64
+        g = [["0"] * W for _ in range(H)]
+        for y in range(4, 38):
+            for x in range(6, 42):
+                d2 = (x - 24)**2 + (y - 20)**2
+                if 144 <= d2 <= 289: g[y][x] = "2" if (x + y) % 2 == 0 else "8"
+                elif 290 <= d2 <= 360 and (x * 2 + y * 3) % 4 == 0: g[y][x] = "0"
+        for hy, hx in [(4, 12), (5, 11), (6, 11), (7, 12), (8, 13), (9, 14)]:
+            g[hy][hx] = "2"; g[hy][hx+1] = "8"
+        for hy, hx in [(4, 35), (5, 36), (6, 36), (7, 35), (8, 34), (9, 33)]:
+            g[hy][hx] = "8"; g[hy][hx-1] = "2"
+        for y, x1, x2 in [(6, 21, 27), (7, 20, 28), (8, 19, 29), (9, 18, 30), (10, 17, 31),
+                          (11, 16, 32), (12, 15, 33), (13, 14, 34), (14, 13, 35), (15, 12, 36),
+                          (16, 11, 37), (17, 11, 37), (18, 10, 38), (19, 10, 38), (20, 10, 38),
+                          (21, 10, 38), (22, 11, 37), (23, 11, 37), (24, 11, 37), (25, 12, 36),
+                          (26, 12, 36), (27, 13, 35), (28, 13, 35)]:
+            for x in range(x1, x2 + 1):
+                g[y][x] = "2"
+                if x in (x1, x1 + 1): g[y][x] = "8"
+                elif x in (x2 - 1, x2): g[y][x] = "0"
+        for y in range(16, 32):
+            cav_w = min(11, int((y - 14) * 0.9) + 4)
+            for x in range(24 - cav_w, 24 + cav_w + 1): g[y][x] = "0"
+        g[20][18] = "8"; g[20][19] = "e"; g[20][20] = "8"
+        g[21][18] = "8"; g[21][19] = "7"; g[21][20] = "8"
+        g[20][27] = "8"; g[20][28] = "e"; g[20][29] = "8"
+        g[21][27] = "8"; g[21][28] = "7"; g[21][29] = "8"
+        g[25][24] = "f"; g[26][24] = "f"; g[27][24] = "e"; g[28][24] = "e"
+        g[36][24] = "7"; g[37][23] = "7"; g[37][24] = "0"; g[37][25] = "7"
+        g[38][23] = "7"; g[38][24] = "7"; g[38][25] = "7"; g[39][24] = "7"
+        for y in range(40, 64):
+            span = min(22, int((y - 38) * 1.3) + 7)
+            for x in range(24 - span, 24 + span + 1):
+                if 0 <= x < W:
+                    g[y][x] = "2"
+                    if (x + y) % 4 == 0: g[y][x] = "8"
+        for ry, rx in [(46, 18), (52, 17), (58, 16), (46, 30), (52, 31), (58, 32)]:
+            g[ry][rx] = "8"; g[ry][rx+1] = "e"
+        return ["".join(row) for row in g]
+
+    pyxel.images[2].set(0, 0, create_paladin_portrait())
+    pyxel.images[2].set(48, 0, create_berserker_portrait())
+    pyxel.images[2].set(96, 0, create_venomancer_portrait())
+    pyxel.images[2].set(144, 0, create_duelist_portrait())
+    pyxel.images[2].set(192, 0, create_archmage_portrait())
+    pyxel.images[2].set(0, 64, create_warlock_portrait())
+
 
     # 8x8 Item, Currency & Map Icons
     pyxel.images[0].set(64, 0, ["00044000", "00077000", "00766700", "07888870", "07878870", "07888870", "00788700",
