@@ -30,9 +30,16 @@ TIER_ATK_MULT: dict[EnemyTier, float] = {
     EnemyTier.BOSS:     1.35,
 }
 
+ACT_2_START_FLOOR = 13
 ACT_3_START_FLOOR = 25
-ACT_3_BOSS_ATK_MULT = 1.35
+ACT_2_BOSS_HP_OVER_ELITE_RATIO = 1.25
+ACT_2_BOSS_ATK_MULT = 1.20
+ACT_3_BOSS_HP_OVER_ELITE_RATIO = 1.25
+ACT_3_BOSS_ATK_MULT = 1.20
 BOSS_HP_OVER_ELITE_RATIO = 1.50
+ACT_3_ENEMY_HP_MULT = 0.90
+ACT_3_ENEMY_ATK_MULT = 0.90
+ACT_3_ENEMY_DEF_MULT = 0.90
 ENEMY_HP_GROWTH_PER_FLOOR = 0.045
 ENEMY_ATK_GROWTH_PER_FLOOR = 0.050
 ENEMY_DEF_GROWTH_PER_FLOOR = 0.050
@@ -147,19 +154,27 @@ def generate_enemy(
 
     hp_mult = TIER_HP_MULT[tier]
     atk_mult = TIER_ATK_MULT[tier]
+    act_3_stat_mult = 1.0
+    if floor >= ACT_3_START_FLOOR:
+        act_3_stat_mult = ACT_3_ENEMY_HP_MULT
     if tier == EnemyTier.BOSS:
-        # Normalize average boss HP against average Elite HP, then apply the
-        # current balance target while preserving each archetype's relative size.
+        # Normalize average boss HP against average Elite HP, then apply an
+        # act-specific premium while preserving each archetype's relative size.
         elite_mean_hp = mean(ENEMY_CATALOG[enemy_id].base_hp for enemy_id in biome.elites)
         boss_mean_hp = mean(ENEMY_CATALOG[enemy_id].base_hp for enemy_id in biome.bosses)
+        boss_hp_ratio = BOSS_HP_OVER_ELITE_RATIO
+        if floor >= ACT_3_START_FLOOR:
+            boss_hp_ratio = ACT_3_BOSS_HP_OVER_ELITE_RATIO
+            atk_mult = ACT_3_BOSS_ATK_MULT
+        elif floor >= ACT_2_START_FLOOR:
+            boss_hp_ratio = ACT_2_BOSS_HP_OVER_ELITE_RATIO
+            atk_mult = ACT_2_BOSS_ATK_MULT
         hp_mult = (
             TIER_HP_MULT[EnemyTier.ELITE]
-            * BOSS_HP_OVER_ELITE_RATIO
+            * boss_hp_ratio
             * elite_mean_hp
             / boss_mean_hp
         )
-        if floor >= ACT_3_START_FLOOR:
-            atk_mult = ACT_3_BOSS_ATK_MULT
 
     enemy_speed = min(
         25,
@@ -173,9 +188,9 @@ def generate_enemy(
         enemy_speed = max(enemy_speed, ceil(max(1, player_speed) * MIN_ENEMY_SPEED_RATIO))
 
     scaled_stats = Stats(
-        max_hp=max(1, int(template.base_hp * (1 + floor_offset * ENEMY_HP_GROWTH_PER_FLOOR) * hp_mult)),
-        attack=max(1, int(template.base_atk * (1 + floor_offset * ENEMY_ATK_GROWTH_PER_FLOOR) * atk_mult)),
-        defense=max(0, int(template.base_def * (1 + floor_offset * ENEMY_DEF_GROWTH_PER_FLOOR))),
+        max_hp=max(1, int(template.base_hp * (1 + floor_offset * ENEMY_HP_GROWTH_PER_FLOOR) * hp_mult * act_3_stat_mult)),
+        attack=max(1, int(template.base_atk * (1 + floor_offset * ENEMY_ATK_GROWTH_PER_FLOOR) * atk_mult * act_3_stat_mult)),
+        defense=max(0, int(template.base_def * (1 + floor_offset * ENEMY_DEF_GROWTH_PER_FLOOR) * act_3_stat_mult)),
         speed=enemy_speed,
         crit_chance=template.base_crit,
     )
