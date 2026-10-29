@@ -49,6 +49,8 @@ class CombatSystem:
         # Passive hooks may update combat-owned resources such as action gauge.
         self.player.combat_ref = self
         self.rng: random.Random = random.Random(seed)
+        # Keep cosmetic bark selection from shifting the combat RNG stream.
+        self.dialogue_rng: random.Random = random.Random(seed + 1 if seed is not None else None)
 
         # Action gauges (0 to ACTION_THRESHOLD)
         self.player_gauge: int = 0
@@ -212,7 +214,12 @@ class CombatSystem:
         return actual_damage
 
     def _show_enemy_speech(self, dialogue_key: str | None, actions: int) -> None:
-        self.enemy_speech_bubble = _t(dialogue_key) if dialogue_key else None
+        if dialogue_key:
+            from src.core.i18n import t_choice
+
+            self.enemy_speech_bubble = t_choice(dialogue_key, self.dialogue_rng)
+        else:
+            self.enemy_speech_bubble = None
         self.enemy_speech_actions_remaining = max(0, actions)
 
     def _check_enemy_threshold_hooks(self, previous_hp: int, current_hp: int) -> None:

@@ -56,9 +56,20 @@ TRANSLATIONS_EN = {
     "enemy_skill_heal": "Mend",
     "enemy_skill_strong_attack": "Strong Attack",
     "enemy_skill_signature_attack": "Signature Attack",
-    "enemy_phase_half": "Now I'm really mad!",
-    "enemy_phase_quarter": "Feel my real power!",
-    "enemy_death_hook": "You haven't seen the last of me!",
+    "enemy_phase_half": (
+        "Now I'm angry!", "Feel my fury!", "Enough! Face me!", "You woke the beast!",
+        "Rage takes me!", "Now you suffer!", "I grow stronger!", "My turn to strike!",
+        "Rrraagh!", "Watch me rise!",
+    ),
+    "enemy_phase_quarter": (
+        "Behold my power!", "Feel my true might!", "This ends now!", "Face your doom!",
+        "Unleash hell!", "Raaagh! Begone!", "You're finished!", "Now, tremble!",
+        "Hissss! Perish!", "Die beneath me!",
+    ),
+    "enemy_death_hook": (
+        "Rrraagh!", "Never!", "Not... yet!", "Join me!", "Curse you!",
+        "Hissss!", "One last bite!", "Fall with me!", "Flee... now!", "GRRR!",
+    ),
 
     # Biome Selection & Exploration
     "biome_threats": "Threats:",

@@ -34,6 +34,15 @@ class LocalizationManager:
                 return pattern
         return pattern
 
+    def random_choice(self, key: str, rng: Any) -> str:
+        """Choose a localized line from a translation pool using a supplied RNG."""
+        catalog = self._catalogs.get(self.locale, TRANSLATIONS_EN)
+        options = catalog.get(key, TRANSLATIONS_EN.get(key, key))
+        if isinstance(options, (list, tuple)):
+            return rng.choice(options) if options else key
+        return options
+
 
 i18n = LocalizationManager()
 t = i18n.t
+t_choice = i18n.random_choice

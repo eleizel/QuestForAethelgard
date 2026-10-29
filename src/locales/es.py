@@ -56,9 +56,20 @@ TRANSLATIONS_ES = {
     "enemy_skill_heal": "Curación",
     "enemy_skill_strong_attack": "Ataque potente",
     "enemy_skill_signature_attack": "Ataque definitivo",
-    "enemy_phase_half": "¡Ahora sí que me enfado!",
-    "enemy_phase_quarter": "¡Siente mi verdadero poder!",
-    "enemy_death_hook": "¡Esto no acaba aquí!",
+    "enemy_phase_half": (
+        "¡Ahora me enfado!", "¡Siente mi furia!", "¡Te vas a enterar!", "¡Crece mi rabia!",
+        "¡Ahora sufrirás!", "¡Me hago más fuerte!", "¡Voy a por ti!", "¡Raaagh!",
+        "¡Me enfurezco!", "¡Ruge la bestia!",
+    ),
+    "enemy_phase_quarter": (
+        "¡Mira mi poder!", "¡Siente mi fuerza!", "¡Esto acaba ya!", "¡Llega tu fin!",
+        "¡Arde en el averno!", "¡Raaagh! ¡Muere!", "¡No escaparás!", "¡Tiembla!",
+        "¡Ssssh! ¡Perece!", "¡Caerás ante mí!",
+    ),
+    "enemy_death_hook": (
+        "¡Raaagh!", "¡Jamás!", "¡Aún no!", "¡Ven conmigo!", "¡Maldito seas!",
+        "¡Ssssss!", "¡Un mordisco más!", "¡Caemos juntos!", "¡Huye... ya!", "¡GRRR!",
+    ),
 
     # Biome Selection & Exploration
     "biome_threats": "Amenazas:",

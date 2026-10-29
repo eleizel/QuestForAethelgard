@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import random
 from enum import Enum
+from math import ceil
 
 from src.entities.actor import Actor, Stats
 
@@ -34,6 +35,7 @@ ACT_3_START_FLOOR = 25
 ACT_3_BOSS_HP_MULT = 2.50
 ACT_3_BOSS_ATK_MULT = 1.35
 COMMON_ENEMY_SPEED_BONUS = 2
+MIN_ENEMY_SPEED_RATIO = 0.80
 
 # Reward scaling is kept explicit so enum values do not implicitly set economy balance.
 TIER_REWARD_MULT: dict[EnemyTier, float] = {
@@ -121,8 +123,9 @@ def generate_enemy(
         floor: int = 1,
         biome_id: str = "arboretum",
         rng: random.Random | None = None,
+        player_speed: int | None = None,
 ) -> Enemy:
-    """Generate a tier-scaled enemy tailored to the current biome and floor."""
+    """Generate a tier-scaled enemy, optionally keeping pace with player base speed."""
     from src.data.biomes import BIOME_REGISTRY
 
     rand = rng if rng is not None else random.Random()
@@ -146,16 +149,22 @@ def generate_enemy(
         hp_mult = ACT_3_BOSS_HP_MULT
         atk_mult = ACT_3_BOSS_ATK_MULT
 
+    enemy_speed = min(
+        25,
+        template.base_spd
+        + floor_offset // 5
+        + (COMMON_ENEMY_SPEED_BONUS if tier == EnemyTier.COMMON else 0),
+    )
+    if player_speed is not None:
+        # Equipment and temporary buffs are excluded: this floor follows natural
+        # class/level progression so enemy speed does not lag by over 20%.
+        enemy_speed = max(enemy_speed, ceil(max(1, player_speed) * MIN_ENEMY_SPEED_RATIO))
+
     scaled_stats = Stats(
         max_hp=max(1, int(template.base_hp * (1 + floor_offset * 0.045) * hp_mult)),
         attack=max(1, int(template.base_atk * (1 + floor_offset * 0.030) * atk_mult)),
         defense=max(0, int(template.base_def * (1 + floor_offset * 0.025))),
-        speed=min(
-            25,
-            template.base_spd
-            + floor_offset // 5
-            + (COMMON_ENEMY_SPEED_BONUS if tier == EnemyTier.COMMON else 0),
-        ),
+        speed=enemy_speed,
         crit_chance=template.base_crit,
     )
 

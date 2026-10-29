@@ -140,7 +140,10 @@ class GameState:
                 12 if self.act == 2 else (24 if self.act == 3 else 0)
             )
             enemy = generate_enemy(
-                tier=tier, floor=effective_floor, biome_id=self.current_biome
+                tier=tier,
+                floor=effective_floor,
+                biome_id=self.current_biome,
+                player_speed=self.player.base_stats.speed,
             )
             self.combat = CombatSystem(player=self.player, enemy=enemy)
             self.switch_mode(GameMode.COMBAT)

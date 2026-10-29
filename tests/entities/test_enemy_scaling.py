@@ -1,5 +1,6 @@
 import random
 import sys
+from math import ceil
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -11,6 +12,7 @@ from src.entities.enemy import (
     ACT_3_BOSS_ATK_MULT,
     ACT_3_BOSS_HP_MULT,
     COMMON_ENEMY_SPEED_BONUS,
+    MIN_ENEMY_SPEED_RATIO,
     EnemyTier,
     generate_enemy,
 )
@@ -78,6 +80,22 @@ def test_non_common_enemies_do_not_get_common_speed_bonus() -> None:
     archetype = ENEMY_CATALOG[enemy.archetype_id]
 
     assert enemy.base_stats.speed == archetype.base_spd
+
+
+def test_enemy_speed_never_lags_player_natural_speed_by_over_twenty_percent() -> None:
+    natural_player_speed = 50
+    minimum_enemy_speed = ceil(natural_player_speed * MIN_ENEMY_SPEED_RATIO)
+
+    for tier in EnemyTier:
+        enemy = generate_enemy(
+            tier=tier,
+            floor=12,
+            biome_id="arboretum",
+            rng=random.Random(21),
+            player_speed=natural_player_speed,
+        )
+
+        assert enemy.base_stats.speed >= minimum_enemy_speed
 
 
 def test_targeted_act_1_and_act_3_boss_tuning() -> None:

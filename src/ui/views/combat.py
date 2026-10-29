@@ -171,6 +171,9 @@ class CombatView(View):
         if not text:
             return
 
+        if len(text) > 20:
+            text = text[:19].rstrip() + "…"
+
         max_width = 124
         full_text = text
         ellipsis_width = renderer.get_text_width("…")
