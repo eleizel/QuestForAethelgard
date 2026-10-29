@@ -317,7 +317,9 @@ def test_signature_passive_is_applied_but_not_in_regular_slots():
     assert player.promote("paladin")
     assert len(player.abilities.passive) == 0
     assert player.signature_passive not in player.abilities.passive
-    assert player.effective_stats.defense == player.base_stats.defense + 3
+    # The signature now grants a combat effect instead of flat stat bonuses.
+    assert player.signature_passive.id == "paladin_oath"
+    assert player.effective_stats.defense == player.base_stats.defense
 
 
 def test_every_advanced_class_has_a_combat_sprite():
