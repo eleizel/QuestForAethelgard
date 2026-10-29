@@ -45,29 +45,74 @@ MAX_COMBAT_TICKS = 5_000
 ACT_COMPLETION_TARGETS = {1: (0.80, 0.80), 2: (0.50, 0.60), 3: (0.20, 0.30)}
 
 
-def _biome_threat_score(biome_id: str) -> float:
+def _biome_threat_score(biome_id: str, act: int) -> float:
+    """Estimate route danger from generated, act-scaled enemies and their abilities."""
     from src.data.biomes import BIOME_REGISTRY
-    from src.data.enemies import ENEMY_CATALOG
+    from src.entities.enemy import EnemyTier, generate_enemy
+
+    class FixedArchetypeRng:
+        def __init__(self, archetype_id: str) -> None:
+            self.archetype_id = archetype_id
+
+        def choice(self, options: tuple[str, ...]) -> str:
+            return self.archetype_id if self.archetype_id in options else options[0]
+
+        def randint(self, minimum: int, _maximum: int) -> int:
+            return minimum
 
     biome = BIOME_REGISTRY[biome_id]
-    archetypes = [
-        ENEMY_CATALOG[enemy_id]
-        for enemy_id in (*biome.basic_enemies, *biome.elites, *biome.bosses)
-    ]
-    return statistics.mean(
-        enemy.base_hp
-        + 3 * enemy.base_atk
-        + 2 * enemy.base_def
-        + 1.5 * enemy.base_spd
-        + 30 * enemy.base_crit
-        for enemy in archetypes
+    representative_floor = {1: 6, 2: 18, 3: 33}[act]
+    weighted_threat = 0.0
+    total_weight = 0
+    # Approximate the map's encounter mix, with extra weight for the boss
+    # because a wrong route estimate can decide the act-ending fight.
+    encounter_groups = (
+        (EnemyTier.COMMON, biome.basic_enemies, 5),
+        (EnemyTier.ELITE, biome.elites, 2),
+        (EnemyTier.BOSS, biome.bosses, 3),
     )
+
+    for tier, archetype_ids, encounter_weight in encounter_groups:
+        tier_scores = []
+        for archetype_id in archetype_ids:
+            enemy = generate_enemy(
+                tier=tier,
+                floor=representative_floor,
+                biome_id=biome_id,
+                rng=FixedArchetypeRng(archetype_id),
+            )
+            stats = enemy.effective_stats
+            score = (
+                enemy.max_hp
+                + 3 * stats.attack
+                + 2 * stats.defense
+                + 1.5 * stats.speed
+                + 30 * stats.crit_chance
+            )
+            if enemy.on_hit_status:
+                score += 20 * enemy.status_chance
+            for skill in enemy.skills:
+                if skill.kind == "attack":
+                    score += (
+                        3
+                        * stats.attack
+                        * max(0.0, skill.damage_multiplier - 1.0)
+                        / max(1, skill.cooldown)
+                    )
+                elif skill.kind == "heal":
+                    score += enemy.max_hp * skill.heal_fraction / max(1, skill.cooldown)
+            tier_scores.append(score)
+
+        weighted_threat += statistics.mean(tier_scores) * encounter_weight
+        total_weight += encounter_weight
+
+    return weighted_threat / total_weight
 
 
 def _choose_pathfinder_biome(act: int) -> str:
     from src.data.biomes import ACT_BIOMES
 
-    return min(ACT_BIOMES[act], key=_biome_threat_score)
+    return min(ACT_BIOMES[act], key=lambda biome_id: _biome_threat_score(biome_id, act))
 
 
 def _is_biome_choice(options: Any, biome_choice_sets: set[tuple[str, ...]]) -> bool:
