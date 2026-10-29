@@ -655,13 +655,15 @@ def _expected_ability_damage(combat: Any, ability: Any, samples: int = 5) -> flo
             )
             # Forecast an Archmage cast with the stack it grants before dealing damage.
             if (
-                ability.id != "pw_kill"
-                and "archmage" in affinities
+                "archmage" in affinities
                 and any(passive.id == "archmage_focus" for passive in player.all_passives)
             ):
                 scratch.arcane_momentum_stacks = min(
                     5, getattr(combat, "arcane_momentum_stacks", 0) + 1
                 )
+            scratch._berserker_bonus_damage_active = bool(
+                getattr(combat, "berserker_bonus_ready", False)
+            )
         else:
             # Lightweight policy tests use small stand-ins rather than entities.
             scratch = SimpleNamespace(
@@ -705,6 +707,7 @@ def _ability_damage_per_action(combat: Any, ability: Any) -> float:
         combat.enemy.current_hp < combat.enemy.max_hp * 0.40,
         tuple(sorted(passive.id for passive in getattr(combat.player, "all_passives", ()))),
         getattr(combat, "arcane_momentum_stacks", 0),
+        getattr(combat, "berserker_bonus_ready", False),
     )
     cache = getattr(combat, "_mc_ability_damage_cache", None)
     if cache is None:
