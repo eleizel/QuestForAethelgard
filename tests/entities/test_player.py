@@ -345,6 +345,7 @@ def test_promotion_portrait_requires_a_second_tap_to_confirm(monkeypatch):
     assert view.selected_index is None
 
     monkeypatch.setattr(pyxel, "btnp", lambda *_args: False)
+    monkeypatch.setattr(pyxel, "play", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(
         Renderer,
         "is_clicked",
