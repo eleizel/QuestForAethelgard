@@ -65,7 +65,6 @@ class CombatSystem:
         self.berserker_threshold_triggered = False
         self.berserker_bonus_ready = False
         self._berserker_bonus_damage_active = False
-        self.berserker_heal_this_action = 0
         self.duelist_flourish_armed = False
         self._current_player_action_is_basic = False
         self._passives_handled_per_hit = False
@@ -616,7 +615,7 @@ class CombatSystem:
                 damage,
                 is_crit,
                 is_basic_attack=True,
-                skip_ids={"whirlwind_defense"},
+                skip_ids={"whirlwind_defense"} if signature_id == "duelist_precision" else set(),
             )
             weapon = self.player.inventory.get_equipment_in_slot("Main Hand")
             if weapon and getattr(weapon, "on_hit_status", None) and self.rng.random() < getattr(weapon, "on_hit_chance", 0.0):
