@@ -320,6 +320,16 @@ def test_signature_passive_is_applied_but_not_in_regular_slots():
     assert player.effective_stats.defense == player.base_stats.defense + 3
 
 
+def test_every_advanced_class_has_a_combat_sprite():
+    from src.tools.generate_assets import CLASS_SPRITE_COORDS
+
+    advanced_classes = {
+        promoted for class_def in CLASS_REGISTRY.values() for promoted in class_def.promotions
+    }
+    assert advanced_classes
+    assert advanced_classes <= CLASS_SPRITE_COORDS.keys()
+
+
 def test_game_state_can_start_level_ten_promotion_and_restore_return_mode():
     from src.core.game_state import GameMode, GameState
 

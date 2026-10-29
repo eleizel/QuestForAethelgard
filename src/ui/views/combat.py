@@ -33,6 +33,7 @@ from src.entities import Enemy
 from src.data.abilities import get_random_abilities
 from src.systems.combat import ACTION_THRESHOLD
 from src.systems.inventory import MAX_BELT_SLOTS
+from src.tools.generate_assets import CLASS_SPRITE_COORDS
 from src.ui.renderer import Renderer
 from src.ui.views.base import View, CombatPopup, ENEMY_SPRITE_COORDS, SPEED_INTERVALS, SPEED_LABELS
 
@@ -290,12 +291,7 @@ class CombatView(View):
         pyxel.elli(176, 75, 22, 5, COLOR_NAVY)
 
         # Animated Hero Character on Left
-        sprite_map = {
-            "warrior": (0, 0),
-            "rogue": (0, 32),
-            "mage": (16, 32),
-        }
-        pu, pv = sprite_map.get(game_state.player.class_id, (0, 0))
+        pu, pv = CLASS_SPRITE_COORDS.get(game_state.player.class_id, (0, 0))
         hero_x, hero_y = 58, 62
 
         if self.player_flash > 0:
