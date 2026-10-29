@@ -150,8 +150,15 @@ class CombatSystem:
                     if s.id == "burn" and actor is self.enemy and self._has_signature("warlock_pact"):
                         if len(s.stack_tick_counts) < s.stacks:
                             s.stack_tick_counts.extend([0] * (s.stacks - len(s.stack_tick_counts)))
-                        burn_early_stacks = sum(ticks < 2 for ticks in s.stack_tick_counts[:s.stacks])
-                        burn_early_damage = max(1, actor.max_hp * s.potency // 100) * burn_early_stacks
+                        burn_damage_per_stack = max(1, actor.max_hp * s.potency // 100)
+                        burn_early_damage = sum(
+                            min(
+                                burn_damage_per_stack,
+                                max(0, actor.current_hp - index * burn_damage_per_stack),
+                            )
+                            for index, ticks in enumerate(s.stack_tick_counts[:s.stacks])
+                            if ticks < 2
+                        )
                     log_str, dmg = s.on_tick_hook(self, actor, s)
                     self.combat_logs.append(log_str)
                     if s.id == "burn":
