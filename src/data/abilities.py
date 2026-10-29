@@ -784,13 +784,6 @@ EPIC_ABILITIES: list[Ability] = [
             on_damage_taken_hook=hook_phoenix_rebirth),
 ]
 
-def _signature_stats(max_hp: int = 0, attack: int = 0, defense: int = 0,
-                     speed: int = 0, crit_chance: float = 0.0):
-    from src.entities.actor import Stats
-    bonus = Stats(max_hp, attack, defense, speed, crit_chance)
-    return lambda stats: stats.add(bonus)
-
-
 SIGNATURE_ABILITIES: list[Ability] = [
     Ability("paladin_oath", "Consecrated Strikes",
             "Basic attacks add a crit-capable 50% ATK strike that heals for half its damage.",
