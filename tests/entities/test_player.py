@@ -342,12 +342,13 @@ def test_promotion_portrait_requires_a_second_tap_to_confirm(monkeypatch):
     state.player.promotion_due = True
     state.current_mode = GameMode.PROMOTION
     view = PromotionView()
+    assert view.selected_index is None
 
     monkeypatch.setattr(pyxel, "btnp", lambda *_args: False)
     monkeypatch.setattr(
         Renderer,
         "is_clicked",
-        staticmethod(lambda x, _y, _w, _h: x == 7),
+        staticmethod(lambda x, _y, _w, _h: x == 8),
     )
 
     view.update(state)
