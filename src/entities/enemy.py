@@ -27,12 +27,12 @@ TIER_ATK_MULT: dict[EnemyTier, float] = {
     EnemyTier.COMMON:   1.00,
     EnemyTier.UNCOMMON: 1.10,
     EnemyTier.ELITE:    1.25,
-    EnemyTier.BOSS:     1.50,
+    EnemyTier.BOSS:     1.35,
 }
 
 ACT_3_START_FLOOR = 25
-ACT_3_BOSS_ATK_MULT = 1.50
-BOSS_HP_OVER_ELITE_RATIO = 2.00
+ACT_3_BOSS_ATK_MULT = 1.35
+BOSS_HP_OVER_ELITE_RATIO = 1.50
 ENEMY_HP_GROWTH_PER_FLOOR = 0.045
 ENEMY_ATK_GROWTH_PER_FLOOR = 0.050
 ENEMY_DEF_GROWTH_PER_FLOOR = 0.050
@@ -148,9 +148,8 @@ def generate_enemy(
     hp_mult = TIER_HP_MULT[tier]
     atk_mult = TIER_ATK_MULT[tier]
     if tier == EnemyTier.BOSS:
-        # Normalize the biome's average boss against its average Elite so that
-        # the average boss has a modest 10% HP premium. Per-archetype variation
-        # is preserved, so particularly large/small bosses still feel distinct.
+        # Normalize average boss HP against average Elite HP, then apply the
+        # current balance target while preserving each archetype's relative size.
         elite_mean_hp = mean(ENEMY_CATALOG[enemy_id].base_hp for enemy_id in biome.elites)
         boss_mean_hp = mean(ENEMY_CATALOG[enemy_id].base_hp for enemy_id in biome.bosses)
         hp_mult = (
