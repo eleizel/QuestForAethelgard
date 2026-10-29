@@ -26,7 +26,7 @@ from src.entities.enemy import (
 )
 
 
-def test_boss_health_is_normalized_to_double_biome_elite_average() -> None:
+def test_boss_health_is_normalized_to_one_and_a_half_times_biome_elite_average() -> None:
     act_3_boss = generate_enemy(
         tier=EnemyTier.BOSS,
         floor=25,
@@ -45,10 +45,11 @@ def test_boss_health_is_normalized_to_double_biome_elite_average() -> None:
     assert act_3_boss.base_stats.attack == int(
         archetype.base_atk * (1 + (25 - 1) * ENEMY_ATK_GROWTH_PER_FLOOR) * ACT_3_BOSS_ATK_MULT
     )
-    assert BOSS_HP_OVER_ELITE_RATIO == 2.0
+    assert BOSS_HP_OVER_ELITE_RATIO == 1.5
+    assert ACT_3_BOSS_ATK_MULT == 1.35
 
 
-def test_generated_boss_health_averages_double_elites_in_each_biome() -> None:
+def test_generated_boss_health_averages_one_and_a_half_times_elites_in_each_biome() -> None:
     class FixedChoiceRng:
         def __init__(self, selected_id: str) -> None:
             self.selected_id = selected_id
