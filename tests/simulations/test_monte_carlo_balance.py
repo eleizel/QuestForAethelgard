@@ -42,6 +42,7 @@ PLAYABLE_CLASSES = ("warrior", "rogue", "mage")
 ROUTE_MODES = ("FATE", "PATHFINDER")
 DEFAULT_TRIALS = 30
 MAX_COMBAT_TICKS = 5_000
+ACT_COMPLETION_TARGETS = {1: (0.80, 0.80), 2: (0.50, 0.60), 3: (0.20, 0.30)}
 
 
 def _biome_threat_score(biome_id: str) -> float:
@@ -1084,6 +1085,43 @@ def _wilson_interval(successes: int, total: int, z: float = 1.96) -> tuple[float
     return (max(0.0, center - margin), min(1.0, center + margin))
 
 
+def _summarize_act_completion(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Summarize act clears both across all runs and conditional on reaching each act."""
+    total = len(rows)
+    cleared_counts = {
+        act: sum(row["acts_cleared"] >= act for row in rows)
+        for act in (1, 2, 3)
+    }
+    eligible_counts = {
+        1: total,
+        2: cleared_counts[1],
+        3: cleared_counts[2],
+    }
+    conditional_rates = {
+        act: cleared_counts[act] / eligible_counts[act] if eligible_counts[act] else 0.0
+        for act in (1, 2, 3)
+    }
+    conditional_ci = {
+        act: _wilson_interval(cleared_counts[act], eligible_counts[act])
+        for act in (1, 2, 3)
+    }
+    return {
+        "cleared_counts": cleared_counts,
+        "eligible_counts": eligible_counts,
+        "conditional_rates": conditional_rates,
+        "conditional_ci": conditional_ci,
+    }
+
+
+def test_act_completion_targets_use_reached_act_denominators() -> None:
+    rows = [{"acts_cleared": clears} for clears in [0, 0, 1, 1, 1, 1, 2, 2, 2, 3]]
+    summary = _summarize_act_completion(rows)
+
+    assert summary["eligible_counts"] == {1: 10, 2: 8, 3: 4}
+    assert summary["cleared_counts"] == {1: 8, 2: 4, 3: 1}
+    assert summary["conditional_rates"] == {1: 0.8, 2: 0.5, 3: 0.25}
+
+
 def _percentile(values: list[float], percentile: float) -> float:
     ordered = sorted(values)
     if not ordered:
@@ -1106,10 +1144,7 @@ def _paired_delta_interval(deltas: list[float]) -> tuple[float, float, float]:
 def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
     total = len(rows)
     victory_count = sum(row["victory"] for row in rows)
-    act_counts = {
-        act: sum(row["acts_cleared"] >= act for row in rows)
-        for act in (1, 2, 3)
-    }
+    act_completion = _summarize_act_completion(rows)
     levels = [float(row["level"]) for row in rows]
     hp_ratios = [float(row["hp_ratio"]) for row in rows]
     return {
@@ -1117,9 +1152,18 @@ def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "victories": victory_count,
         "victory_rate": victory_count / total,
         "victory_ci": _wilson_interval(victory_count, total),
-        "act_clear_counts": act_counts,
-        "act_clear_rates": {act: count / total for act, count in act_counts.items()},
-        "act_clear_ci": {act: _wilson_interval(count, total) for act, count in act_counts.items()},
+        "act_clear_counts": act_completion["cleared_counts"],
+        "act_clear_rates": {
+            act: count / total for act, count in act_completion["cleared_counts"].items()
+        },
+        "act_clear_ci": {
+            act: _wilson_interval(count, total)
+            for act, count in act_completion["cleared_counts"].items()
+        },
+        "act_conditional_eligible_counts": act_completion["eligible_counts"],
+        "act_conditional_clear_counts": act_completion["cleared_counts"],
+        "act_conditional_clear_rates": act_completion["conditional_rates"],
+        "act_conditional_clear_ci": act_completion["conditional_ci"],
         "timeout_rate": sum(row["timeout"] for row in rows) / total,
         "death_rate": sum(row["death"] is not None for row in rows) / total,
         "stalled_rate": sum(row["final_status"] == "stalled" for row in rows) / total,
@@ -1196,6 +1240,31 @@ def _print_detailed_tables(
             f"{summary['mean_act_reached']:.2f},"
             f"{level_dist},{hp_dist}"
         )
+
+    print("\n=== COMPLETADO CONDICIONAL POR ACTO VS OBJETIVO ===")
+    print("class,route,act,runs_reached_act,act_clears,conditional_clear%,clear_95ci,target,gap_pp")
+    for class_id, route, _rows, summary in summaries:
+        rates = summary["act_conditional_clear_rates"]
+        intervals = summary["act_conditional_clear_ci"]
+        eligible = summary["act_conditional_eligible_counts"]
+        clears = summary["act_conditional_clear_counts"]
+        for act in (1, 2, 3):
+            target_low, target_high = ACT_COMPLETION_TARGETS[act]
+            rate = rates[act]
+            gap = (rate - target_low) * 100 if target_low == target_high else (
+                (rate - target_low) * 100 if rate < target_low else
+                (rate - target_high) * 100 if rate > target_high else 0.0
+            )
+            target = (
+                f"{target_low:.0%}"
+                if target_low == target_high
+                else f"{target_low:.0%}-{target_high:.0%}"
+            )
+            ci = intervals[act]
+            print(
+                f"{class_id},{route},{act},{eligible[act]},{clears[act]},"
+                f"{rate:.1%},{ci[0]:.1%}-{ci[1]:.1%},{target},{gap:+.1f}"
+            )
 
     print("\n=== ECONOMÍA, DAÑO Y ACCIONES (MEDIAS POR PARTIDA) ===")
     print(
