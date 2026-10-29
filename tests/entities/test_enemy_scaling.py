@@ -2,29 +2,31 @@ import random
 import sys
 from math import ceil
 from pathlib import Path
+from statistics import mean
+
+import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.data.enemies import ENEMY_CATALOG
+from src.data.biomes import BIOME_REGISTRY
 from src.entities.enemy import (
     ACT_3_BOSS_ATK_MULT,
-    ACT_3_BOSS_HP_MULT,
+    BOSS_HP_OVER_ELITE_RATIO,
     COMMON_ENEMY_SPEED_BONUS,
+    ENEMY_ATK_GROWTH_PER_FLOOR,
+    ENEMY_DEF_GROWTH_PER_FLOOR,
+    ENEMY_HP_GROWTH_PER_FLOOR,
     MIN_ENEMY_SPEED_RATIO,
+    TIER_HP_MULT,
     EnemyTier,
     generate_enemy,
 )
 
 
-def test_act_3_boss_uses_reduced_scaling_from_floor_25() -> None:
-    before_act_3 = generate_enemy(
-        tier=EnemyTier.BOSS,
-        floor=24,
-        biome_id="observatory",
-        rng=random.Random(11),
-    )
+def test_boss_health_is_normalized_to_ten_percent_above_biome_elites() -> None:
     act_3_boss = generate_enemy(
         tier=EnemyTier.BOSS,
         floor=25,
@@ -32,16 +34,54 @@ def test_act_3_boss_uses_reduced_scaling_from_floor_25() -> None:
         rng=random.Random(11),
     )
     archetype = ENEMY_CATALOG[act_3_boss.archetype_id]
+    biome = BIOME_REGISTRY["observatory"]
+    elite_mean_hp = sum(ENEMY_CATALOG[enemy_id].base_hp for enemy_id in biome.elites) / len(biome.elites)
+    boss_mean_hp = sum(ENEMY_CATALOG[enemy_id].base_hp for enemy_id in biome.bosses) / len(biome.bosses)
+    expected_hp_multiplier = TIER_HP_MULT[EnemyTier.ELITE] * BOSS_HP_OVER_ELITE_RATIO * elite_mean_hp / boss_mean_hp
 
-    assert act_3_boss.archetype_id == before_act_3.archetype_id
     assert act_3_boss.max_hp == int(
-        archetype.base_hp * (1 + (25 - 1) * 0.045) * ACT_3_BOSS_HP_MULT
+        archetype.base_hp * (1 + (25 - 1) * ENEMY_HP_GROWTH_PER_FLOOR) * expected_hp_multiplier
     )
     assert act_3_boss.base_stats.attack == int(
-        archetype.base_atk * (1 + (25 - 1) * 0.030) * ACT_3_BOSS_ATK_MULT
+        archetype.base_atk * (1 + (25 - 1) * ENEMY_ATK_GROWTH_PER_FLOOR) * ACT_3_BOSS_ATK_MULT
     )
-    assert before_act_3.max_hp > act_3_boss.max_hp
-    assert before_act_3.base_stats.attack > act_3_boss.base_stats.attack
+
+
+def test_generated_boss_health_averages_ten_percent_above_elites_in_each_biome() -> None:
+    class FixedChoiceRng:
+        def __init__(self, selected_id: str) -> None:
+            self.selected_id = selected_id
+
+        def choice(self, options: tuple[str, ...]) -> str:
+            assert self.selected_id in options
+            return self.selected_id
+
+        def randint(self, _minimum: int, _maximum: int) -> int:
+            return 10
+
+    for biome in BIOME_REGISTRY.values():
+        elite_health = [
+            generate_enemy(
+                tier=EnemyTier.ELITE,
+                floor=30,
+                biome_id=biome.id,
+                rng=FixedChoiceRng(enemy_id),
+            ).max_hp
+            for enemy_id in biome.elites
+        ]
+        boss_health = [
+            generate_enemy(
+                tier=EnemyTier.BOSS,
+                floor=30,
+                biome_id=biome.id,
+                rng=FixedChoiceRng(enemy_id),
+            ).max_hp
+            for enemy_id in biome.bosses
+        ]
+
+        assert mean(boss_health) / mean(elite_health) == pytest.approx(
+            BOSS_HP_OVER_ELITE_RATIO, abs=0.01
+        )
 
 
 def test_non_boss_act_3_enemies_keep_standard_tier_scaling() -> None:
@@ -53,8 +93,10 @@ def test_non_boss_act_3_enemies_keep_standard_tier_scaling() -> None:
     )
     archetype = ENEMY_CATALOG[enemy.archetype_id]
 
-    assert enemy.max_hp == int(archetype.base_hp * (1 + (25 - 1) * 0.045) * 1.25)
-    assert enemy.base_stats.attack == int(archetype.base_atk * (1 + (25 - 1) * 0.030))
+    assert enemy.max_hp == int(archetype.base_hp * (1 + (25 - 1) * ENEMY_HP_GROWTH_PER_FLOOR) * 1.25)
+    assert enemy.base_stats.attack == int(
+        archetype.base_atk * (1 + (25 - 1) * ENEMY_ATK_GROWTH_PER_FLOOR)
+    )
 
 
 def test_common_enemy_has_25_percent_health_buffer() -> None:
@@ -114,3 +156,20 @@ def test_targeted_act_1_and_act_3_boss_tuning() -> None:
 
     blood_god = ENEMY_CATALOG["blood_god_avatar"]
     assert (blood_god.base_hp, blood_god.base_atk) == (450, 46)
+
+
+def test_enemy_attack_and_defense_keep_scaling_at_high_floors() -> None:
+    enemy = generate_enemy(
+        tier=EnemyTier.ELITE,
+        floor=42,
+        biome_id="observatory",
+        rng=random.Random(11),
+    )
+    archetype = ENEMY_CATALOG[enemy.archetype_id]
+
+    assert enemy.base_stats.attack == int(
+        archetype.base_atk * (1 + (42 - 1) * ENEMY_ATK_GROWTH_PER_FLOOR) * 1.25
+    )
+    assert enemy.base_stats.defense == int(
+        archetype.base_def * (1 + (42 - 1) * ENEMY_DEF_GROWTH_PER_FLOOR)
+    )
