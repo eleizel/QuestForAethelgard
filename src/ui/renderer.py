@@ -98,7 +98,7 @@ class Renderer:
 
         # Hero name, class, and level
         title_text = f"{player.name} ({player.class_name}) Lv.{player.level}"
-        self.draw_text(6, 4, title_text, COLOR_YELLOW)
+        self.draw_text(6, 4, title_text[:25], COLOR_YELLOW)
 
         # EXP bar
         exp_str = t("stat_exp", current=player.experience, max=player.exp_to_next_level)
@@ -108,10 +108,11 @@ class Renderer:
         # Gold & Dungeon Floor
         gold_text = t("hud_gold", gold=player.gold)
         self.draw_text(128, 13, gold_text, COLOR_YELLOW)
-        floor_text = t("hud_floor", floor=floor)
-        self.draw_text(174, 4, floor_text, COLOR_PEACH)
+        floor_text = t("hud_floor_short", floor=floor)
+        self.draw_text(162, 4, floor_text, COLOR_PEACH)
 
-        # Draw Inventory Button
+        # Draw Character and Inventory buttons
+        self.draw_button(188, 3, 30, 16, t("character_button"))
         self.draw_button(222, 3, 30, 16, t("inv_title"))
 
     def draw_stat_panel(
