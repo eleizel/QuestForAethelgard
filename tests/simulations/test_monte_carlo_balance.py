@@ -722,11 +722,25 @@ def _queue_ability_if_ready(combat: Any, rng: random.Random) -> None:
     if projected_player_gauge < 100:
         return
 
+    from src.data.classes import CLASS_REGISTRY
+
+    parent_class = next(
+        (
+            class_id for class_id, class_def in CLASS_REGISTRY.items()
+            if combat.player.class_id in class_def.promotions
+        ),
+        None,
+    )
     ready = [
         ability
         for ability in combat.player.abilities.active
         if ability.id != "pw_kill"
-        and (ability.required_class is None or ability.required_class == combat.player.class_id)
+        and (
+            ability.required_class is None
+            or ability.required_class == combat.player.class_id
+            or ability.required_class == parent_class
+            or combat.player.class_id in getattr(ability, "affinities", ())
+        )
         and combat.is_ability_ready(ability)
     ]
     if not ready:
