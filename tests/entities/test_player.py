@@ -14,7 +14,7 @@ def test_available_promotions_underleveled():
 
 def test_available_promotions_leveled():
     player = Player(class_id="warrior")
-    player.level = 15
+    player.level = 10
     promotions = player.available_promotions()
     assert "paladin" in promotions
     assert "berserker" in promotions
@@ -37,8 +37,8 @@ def test_promote_ineligible_class():
 
 def test_promote_underleveled():
     player = Player(class_id="warrior")
-    player.level = 14
-    # Warrior under level 15 cannot promote
+    player.level = 9
+    # Warrior under level 10 cannot promote
     assert not player.promote("paladin")
     assert player.class_id == "warrior"
 
@@ -56,25 +56,10 @@ def test_promote_success():
 
     assert player.class_id == "paladin"
 
-    # Check stat bonuses applied based on the diff
-    old_base = CLASS_REGISTRY["warrior"].base_stats
-    new_base = CLASS_REGISTRY["paladin"].base_stats
-
-    diff_hp = max(0, new_base.max_hp - old_base.max_hp)
-    diff_atk = max(0, new_base.attack - old_base.attack)
-    diff_def = max(0, new_base.defense - old_base.defense)
-    diff_spd = max(0, new_base.speed - old_base.speed)
-    diff_crit = max(0, new_base.crit_chance - old_base.crit_chance)
-
-    expected_stats = initial_base_stats.add(Stats(diff_hp, diff_atk, diff_def, diff_spd, diff_crit))
-    assert player.base_stats.max_hp == expected_stats.max_hp
-    assert player.base_stats.attack == expected_stats.attack
-    assert player.base_stats.defense == expected_stats.defense
-    assert player.base_stats.speed == expected_stats.speed
-    assert player.base_stats.crit_chance == pytest.approx(expected_stats.crit_chance)
-
-    # HP is restored to max
-    assert player.current_hp == player.max_hp
+    assert player.base_stats == initial_base_stats
+    assert player.signature_passive.id == "paladin_oath"
+    assert len(player.abilities.passive) <= 2
+    assert player.pending_ability_choices[0] == "EPIC"
 
 
 def test_effective_stats_base():
@@ -156,7 +141,7 @@ def test_gain_experience_single_level_up():
     initial_stat_points = player.stat_points
 
     # Damage the player to verify HP restoration
-    player.current_hp = player.max_hp - 10
+    player.current_hp = 1
 
     # Level 1 to 2 requires 50 exp
     assert player.exp_to_next_level == 50
@@ -173,8 +158,8 @@ def test_gain_experience_single_level_up():
     assert player.base_stats.speed == initial_speed + class_def.growth_per_level.speed
     assert player.base_stats.crit_chance == pytest.approx(initial_crit + class_def.growth_per_level.crit_chance)
 
-    # Check HP restoration
-    assert player.current_hp == player.max_hp
+    # Level-up restores half of the new maximum HP.
+    assert player.current_hp == min(player.max_hp, 1 + int(player.max_hp * 0.50))
 
     # Check stat points
     assert player.stat_points == initial_stat_points + 2
@@ -298,3 +283,158 @@ def test_rogue_promotions_and_legacy_assassin_save_alias():
     for legacy_id in ("assassin", "envenomator"):
         legacy_player = Player(class_id=legacy_id)
         assert legacy_player.class_id == "venomancer"
+
+
+def test_level_ten_sets_promotion_due_and_uses_current_class_growth():
+    player = Player(class_id="warrior")
+    player.level = 9
+    from src.core.math_utils import calculate_exp_threshold
+    player.exp_to_next_level = calculate_exp_threshold(9)
+    player.current_hp = 1
+
+    assert player.gain_experience(player.exp_to_next_level)
+
+    assert player.level == 10
+    assert player.promotion_due
+    assert player.pending_ability_choices == ["EPIC"]
+    assert player.current_hp < player.max_hp
+
+    old_attack = player.base_stats.attack
+    assert player.promote("berserker")
+    assert player.base_stats.attack == old_attack
+    assert player.signature_passive.id == "berserker_rage"
+    assert player.current_hp <= player.max_hp
+    assert player.pending_ability_choices == ["EPIC"]
+
+    player.level = 10
+    player._apply_level_up_bonuses()
+    assert player.base_stats.attack == old_attack + CLASS_REGISTRY["berserker"].growth_per_level.attack
+
+
+def test_signature_passive_is_applied_but_not_in_regular_slots():
+    player = Player(class_id="warrior")
+    player.level = 10
+    assert player.promote("paladin")
+    assert len(player.abilities.passive) == 0
+    assert player.signature_passive not in player.abilities.passive
+    assert player.effective_stats.defense == player.base_stats.defense + 3
+
+
+def test_every_advanced_class_has_a_combat_sprite():
+    from src.tools.generate_assets import CLASS_SPRITE_COORDS
+
+    advanced_classes = {
+        promoted for class_def in CLASS_REGISTRY.values() for promoted in class_def.promotions
+    }
+    assert advanced_classes
+    assert advanced_classes <= CLASS_SPRITE_COORDS.keys()
+
+
+def test_promotion_portrait_requires_a_second_tap_to_confirm(monkeypatch):
+    import pyxel
+
+    from src.core.game_state import GameMode, GameState
+    from src.ui.renderer import Renderer
+    from src.ui.views.promotion import PromotionView
+
+    state = GameState()
+    state.player.level = 10
+    state.player.promotion_due = True
+    state.current_mode = GameMode.PROMOTION
+    view = PromotionView()
+
+    monkeypatch.setattr(pyxel, "btnp", lambda *_args: False)
+    monkeypatch.setattr(
+        Renderer,
+        "is_clicked",
+        staticmethod(lambda x, _y, _w, _h: x == 7),
+    )
+
+    view.update(state)
+    assert view.selected_index == 0
+    assert state.current_mode == GameMode.PROMOTION
+    assert state.player.class_id == "warrior"
+
+    view.update(state)
+    assert state.current_mode == GameMode.ABILITY_CHOICE
+    assert state.player.class_id == "paladin"
+
+
+def test_game_state_can_start_level_ten_promotion_and_restore_return_mode():
+    from src.core.game_state import GameMode, GameState
+
+    state = GameState()
+    state.player.level = 10
+    state.player.promotion_due = True
+    state.current_mode = GameMode.EVENTS
+
+    assert state.begin_promotion()
+    assert state.current_mode == GameMode.PROMOTION
+    assert state.promotion_return_mode == GameMode.EVENTS
+
+
+def test_promotion_from_ability_choice_does_not_restore_an_empty_choice_view():
+    from src.core.game_state import GameMode, GameState
+
+    state = GameState()
+    state.player.level = 10
+    state.player.promotion_due = True
+    state.current_mode = GameMode.ABILITY_CHOICE
+
+    assert state.begin_promotion()
+    assert state.promotion_return_mode is None
+
+
+def test_promotion_epic_choice_resumes_after_act_boss_rewards():
+    from types import SimpleNamespace
+
+    from src.core.game_state import GameMode, GameState
+    from src.systems.map_gen import NodeType
+    from src.ui.views.ability_choice import AbilityChoiceView
+
+    state = GameState()
+    state.player.pending_ability_choices = ["EPIC"]
+    state.promotion_return_mode = GameMode.LOOT
+    state.map_graph = SimpleNamespace(current_node=SimpleNamespace(node_type=NodeType.BOSS))
+    state.act = 1
+    state.biome_route_mode = "PATHFINDER"
+
+    AbilityChoiceView()._finish_choice(state)
+
+    assert state.current_mode == GameMode.BIOME_SELECT
+    assert state.act == 2
+
+
+def test_promotion_epic_choice_finishes_act_three_boss_run():
+    from types import SimpleNamespace
+
+    from src.core.game_state import GameMode, GameState
+    from src.systems.map_gen import NodeType
+    from src.ui.views.ability_choice import AbilityChoiceView
+
+    state = GameState()
+    state.player.pending_ability_choices = ["EPIC"]
+    state.promotion_return_mode = GameMode.LOOT
+    state.map_graph = SimpleNamespace(current_node=SimpleNamespace(node_type=NodeType.BOSS))
+    state.act = 3
+
+    AbilityChoiceView()._finish_choice(state)
+
+    assert state.current_mode == GameMode.VICTORY
+
+
+def test_promotion_epic_choice_returns_to_map_for_middle_node():
+    from types import SimpleNamespace
+
+    from src.core.game_state import GameMode, GameState
+    from src.systems.map_gen import NodeType
+    from src.ui.views.ability_choice import AbilityChoiceView
+
+    state = GameState()
+    state.player.pending_ability_choices = ["EPIC"]
+    state.promotion_return_mode = GameMode.LOOT
+    state.map_graph = SimpleNamespace(current_node=SimpleNamespace(node_type=NodeType.COMBAT))
+
+    AbilityChoiceView()._finish_choice(state)
+
+    assert state.current_mode == GameMode.MAP

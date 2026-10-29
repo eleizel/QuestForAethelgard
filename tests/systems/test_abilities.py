@@ -330,20 +330,42 @@ def test_ability_registry_and_retrieval():
     random_all_known = get_random_abilities(AbilityRarity.STANDARD, known)
     assert len(random_all_known) == 0
 
-    # Fallback when not enough available (should return known if nothing else available - wait, let's check code for get_random_abilities)
-    # The code does:
-    # if len(available) < count:
-    #     available = [ab for ab in pool if ab.id not in known_abilities]
-    # It removes class filter. Let's test that fallback.
-
-    # Say we ask for 100 warrior abilities but there aren't that many
+    # Large requests still respect class affinity instead of leaking other classes' abilities.
     random_fallback = get_random_abilities(
         AbilityRarity.STANDARD, [], player_class="warrior", count=100
     )
-    # the pool of all standards is len(STANDARD_ABILITIES)
     from src.data.abilities import STANDARD_ABILITIES
+    eligible_warrior = [
+        ab for ab in STANDARD_ABILITIES
+        if ab.required_class in (None, "warrior") or "warrior" in ab.affinities
+    ]
+    assert len(random_fallback) == len(eligible_warrior)
 
-    assert len(random_fallback) == len(STANDARD_ABILITIES)
+
+def test_advanced_classes_can_draft_parent_class_epic_abilities():
+    from types import SimpleNamespace
+
+    from src.data.abilities import EPIC_ABILITIES, get_random_abilities
+    from src.data.classes import CLASS_REGISTRY
+    from src.entities.player import Player
+    from src.ui.views.ability_choice import AbilityChoiceView
+
+    for parent_id, class_def in CLASS_REGISTRY.items():
+        for advanced_class in class_def.promotions:
+            eligible = [ability for ability in EPIC_ABILITIES if ability.required_class == parent_id]
+            draft = get_random_abilities(AbilityRarity.EPIC, [], player_class=advanced_class, count=2)
+
+            assert len(eligible) >= 2
+            assert len(draft) == 2
+            assert all(ability in eligible for ability in draft)
+
+            player = Player(class_id=parent_id)
+            player.level = 10
+            assert player.promote(advanced_class)
+            view = AbilityChoiceView()
+            view._init_choices(SimpleNamespace(player=player))
+            assert len(view.choices) == 2
+            assert all(ability.rarity == AbilityRarity.EPIC for ability in view.choices)
 
 
 def test_berserker_standard_abilities(monkeypatch):

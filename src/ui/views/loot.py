@@ -26,7 +26,6 @@ from src.config import (
 from src.core.audio import audio
 from src.core.game_state import GameMode
 from src.core.i18n import i18n, t
-from src.systems.map_gen import NodeType
 from src.ui.renderer import Renderer
 from src.ui.views.base import View
 
@@ -77,23 +76,13 @@ class LootView(View):
                 audio.play_sfx(SND_CHEST)
 
     def _exit_loot(self, game_state: GameState) -> None:
+        if game_state.player.promotion_due and game_state.begin_promotion(GameMode.LOOT):
+            return
         if game_state.player.pending_ability_choices:
             game_state.switch_mode(GameMode.ABILITY_CHOICE)
             return
 
-        current_node = game_state.map_graph.current_node
-        if current_node and current_node.node_type == NodeType.BOSS:
-            if game_state.act < 3:
-                game_state.act += 1
-                game_state.floor = 1
-                if game_state.biome_route_mode == "PATHFINDER":
-                    game_state.switch_mode(GameMode.BIOME_SELECT)
-                else:
-                    game_state.advance_act()
-            else:
-                game_state.switch_mode(GameMode.VICTORY)
-        else:
-            game_state.switch_mode(GameMode.MAP)
+        game_state.continue_after_rewards()
 
     def _get_item_icon(self, item) -> tuple[int, int]:
         """Resolve 8x8 Bank 0 tile coordinates for any inventory item."""

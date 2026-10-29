@@ -4,6 +4,7 @@ import random
 from typing import TYPE_CHECKING
 
 from src.entities.actor import Actor, Stats
+from src.data.classes import CLASS_REGISTRY
 from src.systems.abilities import Ability, AbilityType, AbilityRarity
 
 if TYPE_CHECKING:
@@ -204,7 +205,7 @@ def execute_poison_shiv(combat: CombatSystem) -> tuple[str, int, bool]:
     attack = combat.player.effective_stats.attack
     actual_dmg = combat.damage_enemy(int(attack * 1.05))
     if combat.enemy.current_hp > 0:
-        can_stack = any(a.id == "venomous_accumulation" for a in combat.player.abilities.passive)
+        can_stack = any(a.id == "venomous_accumulation" for a in combat.player.all_passives)
         poison = get_status_by_id("poison", duration=5, potency=max(1, int(attack * 0.10)),
                                   max_stacks=3 if can_stack else 1)
         if poison:
@@ -783,9 +784,34 @@ EPIC_ABILITIES: list[Ability] = [
             on_damage_taken_hook=hook_phoenix_rebirth),
 ]
 
-# Complete Catalog
+def _signature_stats(max_hp: int = 0, attack: int = 0, defense: int = 0,
+                     speed: int = 0, crit_chance: float = 0.0):
+    from src.entities.actor import Stats
+    bonus = Stats(max_hp, attack, defense, speed, crit_chance)
+    return lambda stats: stats.add(bonus)
+
+
+SIGNATURE_ABILITIES: list[Ability] = [
+    Ability("paladin_oath", "Paladin Oath", "Gain 10 maximum HP and 3 defense.", AbilityType.PASSIVE,
+            AbilityRarity.EPIC, modify_stats_hook=_signature_stats(max_hp=10, defense=3)),
+    Ability("berserker_rage", "Berserker Rage", "Gain 4 attack.", AbilityType.PASSIVE,
+            AbilityRarity.EPIC, modify_stats_hook=_signature_stats(attack=4)),
+    Ability("venomancer_mastery", "Venomancer Mastery", "Gain 3 attack and 1 defense.", AbilityType.PASSIVE,
+            AbilityRarity.EPIC, modify_stats_hook=_signature_stats(attack=3, defense=1)),
+    Ability("duelist_precision", "Duelist Precision", "Gain 1 attack, 2 speed, and 3% critical chance.",
+            AbilityType.PASSIVE, AbilityRarity.EPIC,
+            modify_stats_hook=_signature_stats(attack=1, speed=2, crit_chance=0.03)),
+    Ability("archmage_focus", "Archmage Focus", "Gain 3 attack and 3% critical chance.", AbilityType.PASSIVE,
+            AbilityRarity.EPIC, modify_stats_hook=_signature_stats(attack=3, crit_chance=0.03)),
+    Ability("warlock_pact", "Warlock Pact", "Gain 5 maximum HP, 2 attack, and 1 defense.",
+            AbilityType.PASSIVE, AbilityRarity.EPIC,
+            modify_stats_hook=_signature_stats(max_hp=5, attack=2, defense=1)),
+]
+
+
+# Complete Catalog. Signature passives are retrievable but excluded from random ability pools.
 ABILITY_REGISTRY: dict[str, Ability] = {
-    ab.id: ab for ab in (STANDARD_ABILITIES + EPIC_ABILITIES + [PW_KILL])
+    ab.id: ab for ab in (STANDARD_ABILITIES + EPIC_ABILITIES + SIGNATURE_ABILITIES + [PW_KILL])
 }
 
 
@@ -802,14 +828,18 @@ def get_random_abilities(
 ) -> list[Ability]:
     """Retrieve random available abilities matching rarity and class criteria."""
     pool = STANDARD_ABILITIES if rarity == AbilityRarity.STANDARD else EPIC_ABILITIES
+    parent_class = next(
+        (class_id for class_id, class_def in CLASS_REGISTRY.items()
+         if player_class in class_def.promotions),
+        None,
+    )
 
     available = [
         ab for ab in pool
         if ab.id not in known_abilities
-           and (ab.required_class is None or player_class is None or ab.required_class == player_class)
+           and (ab.required_class is None or player_class is None
+                or ab.required_class == player_class or player_class in ab.affinities
+                or (rarity == AbilityRarity.EPIC and ab.required_class == parent_class))
     ]
-
-    if len(available) < count:
-        available = [ab for ab in pool if ab.id not in known_abilities]
 
     return random.sample(available, min(count, len(available)))

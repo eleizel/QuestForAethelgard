@@ -333,8 +333,8 @@ class ClassSelectView(View):
 
         # Blit 48x64 Portrait from Bank 0
         from src.tools.generate_assets import get_class_portrait
-        port_u, port_v = get_class_portrait(sel_cls_id)
-        pyxel.blt(port_x, port_y, 0, port_u, port_v, port_w, port_h, 0)
+        port_bank, port_u, port_v = get_class_portrait(sel_cls_id)
+        pyxel.blt(port_x, port_y, port_bank, port_u, port_v, port_w, port_h, 0)
 
         # Hero Plaque below Portrait (y = 188..216)
         plaque_x = frame_x

@@ -101,6 +101,15 @@ CLASS_PORTRAIT_COORDS: Final[dict[str, tuple[int, int]]] = {
     "rogue": (48, 144),
     "mage": (96, 144),
 }
+ADVANCED_PORTRAIT_COORDS: Final[dict[str, tuple[int, int]]] = {
+    "paladin": (0, 0), "berserker": (48, 0), "venomancer": (96, 0),
+    "duelist": (144, 0), "archmage": (192, 0), "warlock": (0, 64),
+}
+CLASS_SPRITE_COORDS: Final[dict[str, tuple[int, int]]] = {
+    "warrior": (0, 0), "rogue": (0, 32), "mage": (16, 32),
+    "paladin": (48, 32), "berserker": (64, 32), "venomancer": (80, 32),
+    "duelist": (96, 32), "archmage": (112, 32), "warlock": (128, 32),
+}
 
 # =============================================================================
 # ABILITY ICON SPRITE COORDINATES (Image Bank 1: 16x16 pixels)
@@ -717,6 +726,48 @@ def build_assets() -> None:
         "0004400440000000", "0004400440000000", "0005500550000000", "0000000000000000",
     ]
     pyxel.images[0].set(32, 32, merchant_sprite)
+
+    # Six promoted-class sprites occupy the unused character row.
+    promoted_sprites = {
+        "paladin": ("a", "6", "7"), "berserker": ("4", "9", "8"),
+        "venomancer": ("3", "a", "c"), "duelist": ("7", "5", "a"),
+        "archmage": ("c", "9", "7"), "warlock": ("2", "8", "a"),
+    }
+    for i, (class_id, (accent, armor, glow)) in enumerate(promoted_sprites.items()):
+        grid = [["0" for _ in range(16)] for _ in range(16)]
+        for y, start, end in [(1, 5, 10), (2, 4, 11), (3, 4, 11), (4, 3, 12),
+                              (5, 3, 12), (6, 2, 13), (7, 1, 14), (8, 2, 13),
+                              (9, 2, 13), (10, 2, 13), (11, 3, 12), (12, 3, 12),
+                              (13, 3, 12), (14, 2, 13)]:
+            for x in range(start, end + 1):
+                grid[y][x] = accent if y < 4 else armor
+        grid[4][6] = glow; grid[4][9] = glow
+        grid[5][6] = "0"; grid[5][9] = "0"
+        grid[9][4] = accent; grid[9][11] = accent
+        rows = ["".join(row) for row in grid]
+        u, v = CLASS_SPRITE_COORDS[class_id]
+        pyxel.images[0].set(u, v, rows)
+
+    # Portraits in bank 2 are kept separate from the existing base-class atlas.
+    portrait_palettes = {
+        "paladin": ("1", "f", "a", "6"), "berserker": ("4", "f", "9", "8"),
+        "venomancer": ("3", "f", "a", "c"), "duelist": ("7", "f", "5", "a"),
+        "archmage": ("c", "f", "9", "7"), "warlock": ("2", "f", "8", "a"),
+    }
+    for class_id, (background, skin, hair, robe) in portrait_palettes.items():
+        pixels = [[background for _ in range(48)] for _ in range(64)]
+        for y in range(64):
+            for x in range(48):
+                if 10 <= x <= 37 and 9 <= y <= 39 and (x - 24) ** 2 / 180 + (y - 24) ** 2 / 260 <= 1:
+                    pixels[y][x] = skin
+                if 9 <= x <= 38 and 8 <= y <= 19 and (x + y) % 4 != 0:
+                    pixels[y][x] = hair
+                if 39 <= y <= 63 and 4 <= x <= 43:
+                    pixels[y][x] = robe
+        pixels[34][17] = "0"; pixels[34][30] = "0"
+        pixels[35][17] = "7"; pixels[35][30] = "7"
+        u, v = ADVANCED_PORTRAIT_COORDS[class_id]
+        pyxel.images[2].set(u, v, ["".join(row) for row in pixels])
 
     # 8x8 Item, Currency & Map Icons
     pyxel.images[0].set(64, 0, ["00044000", "00077000", "00766700", "07888870", "07878870", "07888870", "00788700",
@@ -1719,9 +1770,13 @@ def get_enemy_sprite(archetype_id: str) -> tuple[int, int]:
     return ENEMY_SPRITE_COORDS.get(archetype_id, (16, 0))
 
 
-def get_class_portrait(class_id: str) -> tuple[int, int]:
-    """Retrieve Bank 0 (u, v) tile coordinates for a class portrait (48x64)."""
-    return CLASS_PORTRAIT_COORDS.get(class_id, (0, 144))
+def get_class_portrait(class_id: str) -> tuple[int, int, int]:
+    """Retrieve (image bank, u, v) for a class portrait (48x64)."""
+    if class_id in ADVANCED_PORTRAIT_COORDS:
+        u, v = ADVANCED_PORTRAIT_COORDS[class_id]
+        return 2, u, v
+    u, v = CLASS_PORTRAIT_COORDS.get(class_id, (0, 144))
+    return 0, u, v
 
 
 def get_ability_icon(ability_id: str) -> tuple[int, int, int]:

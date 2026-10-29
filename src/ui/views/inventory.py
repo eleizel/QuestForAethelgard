@@ -333,7 +333,8 @@ class InventoryView(View):
         pyxel.elli(shadow_x, shadow_y, 32, 7, COLOR_NAVY)
 
         # Hero Sprite standing
-        sprite_coords = {"warrior": (0, 0), "rogue": (0, 32), "mage": (16, 32)}
+        from src.tools.generate_assets import CLASS_SPRITE_COORDS
+        sprite_coords = CLASS_SPRITE_COORDS
         pu, pv = sprite_coords.get(game_state.player.class_id, (0, 0))
         hx, hy = arch_x + 11, arch_y + 38
         pyxel.blt(hx, hy, 0, pu, pv, 16, 16, 0)

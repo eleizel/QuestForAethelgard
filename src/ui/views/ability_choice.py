@@ -26,7 +26,6 @@ from src.core.game_state import GameMode
 from src.core.i18n import i18n, t
 from src.data.abilities import get_random_abilities
 from src.systems.abilities import Ability, AbilityRarity, AbilityType
-from src.systems.map_gen import NodeType
 from src.tools.generate_assets import get_ability_icon
 from src.ui.renderer import Renderer
 from src.ui.views.base import View
@@ -50,7 +49,7 @@ class AbilityChoiceView(View):
 
         self.pending_rarity = game_state.player.pending_ability_choices[0]
         rarity_enum = AbilityRarity.STANDARD if self.pending_rarity == "STANDARD" else AbilityRarity.EPIC
-        known = [a.id for a in game_state.player.abilities.active + game_state.player.abilities.passive]
+        known = [a.id for a in game_state.player.all_passives + game_state.player.abilities.active]
         self.choices = get_random_abilities(
             rarity_enum,
             known,
@@ -59,7 +58,9 @@ class AbilityChoiceView(View):
         )
 
     def update(self, game_state: GameState) -> None:
-        if not self.choices and game_state.player.pending_ability_choices:
+        if game_state.player.pending_ability_choices and (
+            not self.choices or self.pending_rarity != game_state.player.pending_ability_choices[0]
+        ):
             self._init_choices(game_state)
 
         card_w, card_h = 216, 48
@@ -111,20 +112,15 @@ class AbilityChoiceView(View):
 
         if game_state.player.pending_ability_choices:
             self._init_choices(game_state)
-        else:
-            current_node = game_state.map_graph.current_node
-            if current_node and current_node.node_type == NodeType.BOSS:
-                if game_state.act < 3:
-                    game_state.act += 1
-                    game_state.floor = 1
-                    if game_state.biome_route_mode == "PATHFINDER":
-                        game_state.switch_mode(GameMode.BIOME_SELECT)
-                    else:
-                        game_state.advance_act()
-                else:
-                    game_state.switch_mode(GameMode.VICTORY)
+        elif game_state.promotion_return_mode is not None:
+            return_mode = game_state.promotion_return_mode
+            game_state.promotion_return_mode = None
+            if return_mode == GameMode.LOOT:
+                game_state.continue_after_rewards()
             else:
-                game_state.switch_mode(GameMode.MAP)
+                game_state.switch_mode(return_mode)
+        else:
+            game_state.continue_after_rewards()
 
     def draw(self, game_state: GameState, renderer: Renderer) -> None:
         renderer.draw_hud(game_state.player, game_state.floor)
