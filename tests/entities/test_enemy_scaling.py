@@ -48,11 +48,13 @@ def test_boss_health_is_normalized_to_one_and_a_half_times_biome_elite_average()
         * ACT_3_BOSS_HP_OVER_ELITE_RATIO
         * elite_mean_hp
         / boss_mean_hp
-        * ACT_3_ENEMY_HP_MULT
     )
 
     assert act_3_boss.max_hp == int(
-        archetype.base_hp * (1 + (25 - 1) * ENEMY_HP_GROWTH_PER_FLOOR) * expected_hp_multiplier
+        archetype.base_hp
+        * (1 + (25 - 1) * ENEMY_HP_GROWTH_PER_FLOOR)
+        * expected_hp_multiplier
+        * ACT_3_ENEMY_HP_MULT
     )
     assert act_3_boss.base_stats.attack == int(
         archetype.base_atk
