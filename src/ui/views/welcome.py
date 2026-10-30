@@ -50,11 +50,11 @@ class WelcomeView(View):
         elif pyxel.btnp(pyxel.KEY_1) or Renderer.is_clicked(36, 158, 184, 16):
             audio.play_sfx(SND_CLICK)
             game_state.switch_mode(GameMode.CLASS_SELECT)
-        elif pyxel.btnp(pyxel.KEY_1) or Renderer.is_clicked(36, 158, 184, 16):
-            audio.play_sfx( SND_CLICK)
-            game_state.switch_mode(GameMode.CLASS_SELECT)
         elif pyxel.btnp(pyxel.KEY_2) or Renderer.is_clicked(36, 178, 184, 16):
-            pass
+            from src.core.save_manager import save_manager
+            if save_manager.has_save():
+                if save_manager.load_game(game_state):
+                    audio.play_sfx(SND_CLICK)
         elif pyxel.btnp(pyxel.KEY_3) or Renderer.is_clicked(36, 198, 184, 16):
             audio.play_sfx( 3)
             game_state.switch_mode(GameMode.CREDITS)
@@ -180,8 +180,21 @@ class WelcomeView(View):
         pyxel.blt(48 + cursor_pulse, 162, 1, 200, 0, 8, 8, 0)
 
         renderer.draw_button(46, 158, 164, 16, t("menu_new_game"), bg_col=COLOR_NAVY)
-        renderer.draw_button(46, 178, 164, 16, t("menu_load_game"), bg_col=COLOR_NAVY, text_col=COLOR_GRAY)
+
+        from src.core.save_manager import save_manager
+        has_save = save_manager.has_save()
+        load_col = COLOR_WHITE if has_save else COLOR_GRAY
+        load_border = COLOR_YELLOW if has_save else COLOR_NAVY
+        renderer.draw_button(46, 178, 164, 16, t("menu_load_game"), bg_col=COLOR_NAVY, border_col=load_border, text_col=load_col)
         renderer.draw_button(46, 198, 164, 16, t("menu_credits"), bg_col=COLOR_NAVY, text_col=COLOR_WHITE)
+
+        if has_save:
+            summary = save_manager.get_save_summary()
+            if summary:
+                class_name = t(f"class_{summary['class_id']}_name")
+                info_str = f"[{class_name} Lv.{summary['level']} - Act {summary['act']}]"
+                tw = renderer.get_text_width(info_str)
+                renderer.draw_text((w - tw) // 2, 226, info_str, COLOR_YELLOW)
 
         if (fc // 15) % 2 == 0:
             prompt = t("menu_prompt")

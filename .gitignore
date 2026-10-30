@@ -2,3 +2,7 @@
 __pycache__/
 *.pyc
 /assets/game.pyxres
+QuestForAethelgard.html
+QuestForAethelgard.pyxapp
+saves/
+*.tmp

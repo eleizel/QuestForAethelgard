@@ -90,6 +90,8 @@ class GameState:
             self.current_biome = random.choice(ACT_BIOMES[1])
             self.map_graph = generate_spire_map(num_floors=12, width_lanes=4)
             self.switch_mode(GameMode.MAP)
+            from src.core.save_manager import save_manager
+            save_manager.save_game(self)
         elif self.biome_route_mode == "PATHFINDER":
             self.switch_mode(GameMode.BIOME_SELECT)
 
@@ -106,6 +108,8 @@ class GameState:
         num_floors = 18 if self.act == 3 else 12
         self.map_graph = generate_spire_map(num_floors=num_floors, width_lanes=4)
         self.switch_mode(GameMode.MAP)
+        from src.core.save_manager import save_manager
+        save_manager.save_game(self)
 
     def begin_promotion(self, return_mode: GameMode | None = None) -> bool:
         if not self.player.promotion_due or not self.player.available_promotions():
@@ -133,9 +137,13 @@ class GameState:
                 else:
                     self.advance_act()
             else:
+                from src.core.save_manager import save_manager
+                save_manager.delete_save()
                 self.switch_mode(GameMode.VICTORY)
         else:
             self.switch_mode(GameMode.MAP)
+            from src.core.save_manager import save_manager
+            save_manager.save_game(self)
 
     def switch_mode(self, new_mode: GameMode) -> None:
         """Transition the active game mode."""
@@ -147,6 +155,9 @@ class GameState:
         if self.current_mode == target:
             destination = self.overlay_return_modes.pop() if self.overlay_return_modes else self.previous_mode
             self.switch_mode(destination)
+            if destination == GameMode.MAP:
+                from src.core.save_manager import save_manager
+                save_manager.save_game(self)
             return
 
         self.overlay_return_modes.append(self.current_mode)
@@ -256,4 +267,6 @@ class GameState:
             self.switch_mode(GameMode.LOOT)
 
         elif result == CombatResult.PLAYER_DEFEAT:
+            from src.core.save_manager import save_manager
+            save_manager.delete_save()
             self.switch_mode(GameMode.GAME_OVER)
