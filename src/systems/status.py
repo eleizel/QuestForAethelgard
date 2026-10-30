@@ -111,11 +111,12 @@ def create_poison(duration: int = 5, potency: int = 2, max_stacks: int = 1) -> S
     )
 
 
-def create_bleed(duration: int = 6, potency: int = 3) -> StatusEffect:
+def create_bleed(duration: int = 6, potency: int = 3, max_stacks: int = 1) -> StatusEffect:
     return StatusEffect(
         id="bleed", name="Bleed", badge="BLD", color=8,  # COLOR_RED
         status_type=StatusType.DEBUFF, trigger=StatusTrigger.ON_TICK,
         duration=duration, potency=potency, on_tick_hook=_hook_bleed,
+        stacks=1, max_stacks=max_stacks,
     )
 
 

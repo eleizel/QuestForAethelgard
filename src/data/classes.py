@@ -37,7 +37,7 @@ CLASS_REGISTRY: Final[dict[str, ClassDefinition]] = {
         growth_per_level=Stats(max_hp=15, attack=2, defense=3, speed=1, crit_chance=0.005),
         promotions=["paladin", "berserker"],
         description="A resilient fighter focused on martial combat.",
-        starting_abilities=["cross_cut", "pw_kill"]
+        starting_abilities=["cross_cut","mend_wound"]
     ),
     "rogue": ClassDefinition(
         id="rogue",
@@ -47,7 +47,7 @@ CLASS_REGISTRY: Final[dict[str, ClassDefinition]] = {
         growth_per_level=Stats(max_hp=12, attack=3, defense=2, speed=1, crit_chance=0.01),
         promotions=["venomancer", "duelist"],
         description="A nimble and deadly striking expert.",
-        starting_abilities=["shadow_strike", "pw_kill"]
+        starting_abilities=["shadow_strike","mend_wound"]
     ),
     "mage": ClassDefinition(
         id="mage",
@@ -57,7 +57,7 @@ CLASS_REGISTRY: Final[dict[str, ClassDefinition]] = {
         growth_per_level=Stats(max_hp=10, attack=4, defense=2, speed=1, crit_chance=0.005),
         promotions=["archmage", "warlock"],
         description="A fragile but destructive spellcaster.",
-        starting_abilities=["arcane_bolt", "pw_kill"]
+        starting_abilities=["arcane_bolt","mend_wound"]
     ),
     "paladin": ClassDefinition(
         id="paladin",

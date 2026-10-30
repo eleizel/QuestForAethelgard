@@ -14,17 +14,43 @@ if TYPE_CHECKING:
 # =============================================================================
 # 1. STARTER ACTIVE ABILITIES (1 Per Class + Debug)
 # =============================================================================
+# --- Common Starter: Mend Wound
+def execute_mend_wound (combat: CombatSystem) -> tuple[str, int, bool]:
+    from src.core.i18n import t
+    heal = combat.player.effective_stats.max_hp * 0.10
+    combat.player.heal(int(heal))
+    return t("log_mend_wound", player=combat.player.name, heal=heal), heal, False
 
+MEND_WOUND = Ability(
+    id="mend_wound",
+    name="Mend Wound",
+    description="Heals for 10% max HP",
+    ability_type=AbilityType.ACTIVE,
+    rarity=AbilityRarity.STANDARD,
+    execute_hook=execute_mend_wound,
+    on_attack_dealt_hook=None,
+    cooldown=1,
+)
 # --- Warrior Starter: Cross Cut ---
 def execute_cross_cut(combat: CombatSystem) -> tuple[str, int, bool]:
     from src.core.i18n import t
+    from src.systems.status import get_status_by_id
+    attack = combat.player.effective_stats.attack
     raw_dmg1, crit1 = combat.player.calculate_attack(combat.rng)
     raw_dmg2, crit2 = combat.player.calculate_attack(combat.rng)
     dmg1 = int(raw_dmg1 * 0.90)
     dmg2 = int(raw_dmg2 * 0.90)
     total_dmg = combat.damage_enemy(dmg1) + combat.damage_enemy(dmg2)
     any_crit = crit1 or crit2
-    return t("log_cross_cut", player=combat.player.name, dmg=total_dmg), total_dmg, any_crit
+    if combat.enemy.current_hp > 0:
+        can_stack = any(a.id == "thousand_cuts" for a in combat.player.all_passives)
+
+        bleed = get_status_by_id("bleed", duration=5, potency=max(1, int(attack * 0.20)),
+                                  max_stacks=3 if can_stack else 1)
+        if bleed:
+            combat.enemy.apply_status(bleed)
+    combat.enemy_gauge = max(0, combat.enemy_gauge - 30)
+    return t("log_cross_cut", player=combat.player.name, dmg1=dmg1, dmg2=dmg2), total_dmg, any_crit
 
 
 CROSS_CUT = Ability(
@@ -35,6 +61,7 @@ CROSS_CUT = Ability(
     rarity=AbilityRarity.STANDARD,
     required_class="warrior",
     execute_hook=execute_cross_cut,
+    on_attack_dealt_hook=None,
     cooldown=1,
 )
 
@@ -595,6 +622,7 @@ def hook_phoenix_rebirth(actor: Actor, raw_damage: int) -> int:
 
 STANDARD_ABILITIES: list[Ability] = [
     # Starters
+    MEND_WOUND,
     CROSS_CUT,
     SHADOW_STRIKE,
     ARCANE_BOLT,

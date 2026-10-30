@@ -471,9 +471,10 @@ TRANSLATIONS_ES = {
     "ability_pw_kill_desc": "Elimina al instante al objetivo para pruebas.",
 
     # Ability Combat Execution Logs
+    "log_mend_wound": "¡{player} se cura {heal} PV!",
     "log_shieldbreaker_strike": "¡{player} rompe la guardia enemiga e inflige {dmg} de dano!",
     "log_reckless_assault": "¡{player} ejecuta un Asalto Temerario e inflige {dmg} de dano!",
-    "log_cross_cut": "¡{player} usa Corte Cruzado! Asesta {dmg} de dano en 2 tajos.",
+    "log_cross_cut": "¡{player} usa Corte Cruzado! Asesta {dmg1} y {dmg2} de dano.",
     "log_shadow_strike": "¡{player} se abalanza con Golpe Sombrio por {dmg} de dano{crit}!",
     "log_arcane_bolt": "¡{player} dispara una Saeta Arcana por {dmg} dano magico{crit}!",
     "log_pw_kill": "¡{player} pronuncia la Palabra de Poder! ¡El rival sufre {dmg} de dano!",

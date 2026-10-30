@@ -471,9 +471,10 @@ TRANSLATIONS_EN = {
     "ability_pw_kill_desc": "Insta-kill enemy for testing.",
 
     # Ability Combat Execution Logs
+    "log_mend_wound": "{player} heals for {heal} HP!",
     "log_shieldbreaker_strike": "{player} strikes through the enemy's guard for {dmg} damage!",
     "log_reckless_assault": "{player} launches Reckless Assault for {dmg} damage!",
-    "log_cross_cut": "{player} uses Cross Cut! Deals {dmg} damage across 2 strikes.",
+    "log_cross_cut": "{player} uses Cross Cut! Deals {dmg1} and {dmg2} damage.",
     "log_shadow_strike": "{player} lunges with Shadow Strike for {dmg} damage{crit}!",
     "log_arcane_bolt": "{player} hurls an Arcane Bolt for {dmg} magic damage{crit}!",
     "log_pw_kill": "{player} casts PW: Kill! Enemy obliterated for {dmg} damage!",
