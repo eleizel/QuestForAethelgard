@@ -515,7 +515,16 @@ class CombatSystem:
                                                                                                      "on_hit_chance",
                                                                                                      0.0):
                     from src.systems.status import get_status_by_id
-                    effect = get_status_by_id(weapon.on_hit_status)
+                    status_options = {}
+                    if (
+                        weapon.on_hit_status == "poison"
+                        and any(
+                            passive.id == "venomous_accumulation"
+                            for passive in self.player.all_passives
+                        )
+                    ):
+                        status_options["max_stacks"] = 3
+                    effect = get_status_by_id(weapon.on_hit_status, **status_options)
                     if effect:
                         self.enemy.apply_status(effect)
                         self.combat_logs.append(
