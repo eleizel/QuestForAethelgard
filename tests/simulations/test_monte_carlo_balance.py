@@ -42,31 +42,77 @@ PLAYABLE_CLASSES = ("warrior", "rogue", "mage")
 ROUTE_MODES = ("FATE", "PATHFINDER")
 DEFAULT_TRIALS = 30
 MAX_COMBAT_TICKS = 5_000
+ACT_COMPLETION_TARGETS = {1: (0.80, 0.80), 2: (0.50, 0.60), 3: (0.20, 0.30)}
 
 
-def _biome_threat_score(biome_id: str) -> float:
+def _biome_threat_score(biome_id: str, act: int) -> float:
+    """Estimate route danger from generated, act-scaled enemies and their abilities."""
     from src.data.biomes import BIOME_REGISTRY
-    from src.data.enemies import ENEMY_CATALOG
+    from src.entities.enemy import EnemyTier, generate_enemy
+
+    class FixedArchetypeRng:
+        def __init__(self, archetype_id: str) -> None:
+            self.archetype_id = archetype_id
+
+        def choice(self, options: tuple[str, ...]) -> str:
+            return self.archetype_id if self.archetype_id in options else options[0]
+
+        def randint(self, minimum: int, _maximum: int) -> int:
+            return minimum
 
     biome = BIOME_REGISTRY[biome_id]
-    archetypes = [
-        ENEMY_CATALOG[enemy_id]
-        for enemy_id in (*biome.basic_enemies, *biome.elites, *biome.bosses)
-    ]
-    return statistics.mean(
-        enemy.base_hp
-        + 3 * enemy.base_atk
-        + 2 * enemy.base_def
-        + 1.5 * enemy.base_spd
-        + 30 * enemy.base_crit
-        for enemy in archetypes
+    representative_floor = {1: 6, 2: 18, 3: 33}[act]
+    weighted_threat = 0.0
+    total_weight = 0
+    # Approximate the map's encounter mix, with extra weight for the boss
+    # because a wrong route estimate can decide the act-ending fight.
+    encounter_groups = (
+        (EnemyTier.COMMON, biome.basic_enemies, 5),
+        (EnemyTier.ELITE, biome.elites, 2),
+        (EnemyTier.BOSS, biome.bosses, 3),
     )
+
+    for tier, archetype_ids, encounter_weight in encounter_groups:
+        tier_scores = []
+        for archetype_id in archetype_ids:
+            enemy = generate_enemy(
+                tier=tier,
+                floor=representative_floor,
+                biome_id=biome_id,
+                rng=FixedArchetypeRng(archetype_id),
+            )
+            stats = enemy.effective_stats
+            score = (
+                enemy.max_hp
+                + 3 * stats.attack
+                + 2 * stats.defense
+                + 1.5 * stats.speed
+                + 30 * stats.crit_chance
+            )
+            if enemy.on_hit_status:
+                score += 20 * enemy.status_chance
+            for skill in enemy.skills:
+                if skill.kind == "attack":
+                    score += (
+                        3
+                        * stats.attack
+                        * max(0.0, skill.damage_multiplier - 1.0)
+                        / max(1, skill.cooldown)
+                    )
+                elif skill.kind == "heal":
+                    score += enemy.max_hp * skill.heal_fraction / max(1, skill.cooldown)
+            tier_scores.append(score)
+
+        weighted_threat += statistics.mean(tier_scores) * encounter_weight
+        total_weight += encounter_weight
+
+    return weighted_threat / total_weight
 
 
 def _choose_pathfinder_biome(act: int) -> str:
     from src.data.biomes import ACT_BIOMES
 
-    return min(ACT_BIOMES[act], key=_biome_threat_score)
+    return min(ACT_BIOMES[act], key=lambda biome_id: _biome_threat_score(biome_id, act))
 
 
 def _is_biome_choice(options: Any, biome_choice_sets: set[tuple[str, ...]]) -> bool:
@@ -493,6 +539,7 @@ def _instrument_combat(combat: Any, run: dict[str, Any], act: dict[str, Any], en
 
     def status_ticks(actor: Any) -> None:
         hp_before = actor.current_hp
+        player_hp_before = combat.player.current_hp
         original_status_ticks(actor)
         hp_lost = max(0, hp_before - actor.current_hp)
         if actor is combat.player:
@@ -501,6 +548,11 @@ def _instrument_combat(combat: Any, run: dict[str, Any], act: dict[str, Any], en
         elif actor is combat.enemy:
             _increment((run, act, encounter), "status_damage_dealt", hp_lost)
             _record_max((run, act, encounter), "largest_status_tick_dealt", hp_lost)
+        _increment(
+            (run, act, encounter),
+            "hp_restored_in_combat",
+            max(0, combat.player.current_hp - player_hp_before),
+        )
 
     def distribute_rewards() -> None:
         hp_before = combat.player.current_hp
@@ -599,7 +651,18 @@ def _expected_ability_damage(combat: Any, ability: Any, samples: int = 5) -> flo
             scratch._current_player_action_is_basic = False
             scratch._pact_of_pain_active = (
                 "warlock" in affinities
-                and any(passive.id == "pact_of_pain" for passive in player.abilities.passive)
+                and any(passive.id == "pact_of_pain" for passive in player.all_passives)
+            )
+            # Forecast an Archmage cast with the stack it grants before dealing damage.
+            if (
+                "archmage" in affinities
+                and any(passive.id == "archmage_focus" for passive in player.all_passives)
+            ):
+                scratch.arcane_momentum_stacks = min(
+                    5, getattr(combat, "arcane_momentum_stacks", 0) + 1
+                )
+            scratch._berserker_bonus_damage_active = bool(
+                getattr(combat, "berserker_bonus_ready", False)
             )
         else:
             # Lightweight policy tests use small stand-ins rather than entities.
@@ -642,6 +705,9 @@ def _ability_damage_per_action(combat: Any, ability: Any) -> float:
         status_key,
         int(4 * combat.enemy.current_hp / max(1, combat.enemy.max_hp)),
         combat.enemy.current_hp < combat.enemy.max_hp * 0.40,
+        tuple(sorted(passive.id for passive in getattr(combat.player, "all_passives", ()))),
+        getattr(combat, "arcane_momentum_stacks", 0),
+        getattr(combat, "berserker_bonus_ready", False),
     )
     cache = getattr(combat, "_mc_ability_damage_cache", None)
     if cache is None:
@@ -659,11 +725,30 @@ def _queue_ability_if_ready(combat: Any, rng: random.Random) -> None:
     if projected_player_gauge < 100:
         return
 
+    parent_class = None
+    if combat.player.class_id not in PLAYABLE_CLASSES:
+        # Only import the registry for promoted classes. The policy unit test uses
+        # lightweight stand-ins, and importing classes while src.entities.actor is
+        # still initializing can otherwise create an import cycle.
+        from src.data.classes import CLASS_REGISTRY
+
+        parent_class = next(
+            (
+                class_id for class_id, class_def in CLASS_REGISTRY.items()
+                if combat.player.class_id in class_def.promotions
+            ),
+            None,
+        )
     ready = [
         ability
         for ability in combat.player.abilities.active
         if ability.id != "pw_kill"
-        and (ability.required_class is None or ability.required_class == combat.player.class_id)
+        and (
+            ability.required_class is None
+            or ability.required_class == combat.player.class_id
+            or ability.required_class == parent_class
+            or combat.player.class_id in getattr(ability, "affinities", ())
+        )
         and combat.is_ability_ready(ability)
     ]
     if not ready:
@@ -760,6 +845,7 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
         "ability_uses": {},
         "ability_effectiveness": {},
         "abilities_selected": {},
+        "signature_procs": {},
         "equipment_selected": {},
         "nodes": {},
         "loot_items": 0,
@@ -975,6 +1061,15 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
                             flush=True,
                         )
 
+                    encounter_signature_procs = dict(
+                        getattr(state.combat, "signature_proc_counts", {})
+                    )
+                    encounter["signature_procs"] = encounter_signature_procs
+                    for signature_id, proc_count in encounter_signature_procs.items():
+                        metrics["signature_procs"][signature_id] = (
+                            metrics["signature_procs"].get(signature_id, 0) + proc_count
+                        )
+
                     if state.current_mode == GameMode.GAME_OVER:
                         encounter["won"] = False
                         encounter["player_hp_end"] = state.player.current_hp
@@ -1059,6 +1154,11 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
                 experience=state.player.experience,
                 act_reached=state.act,
                 final_floor=state.floor,
+                signature_id=(
+                    state.player.signature_passive.id
+                    if state.player.signature_passive is not None
+                    else None
+                ),
                 final_status=(
                     "victory"
                     if metrics["victory"]
@@ -1084,6 +1184,43 @@ def _wilson_interval(successes: int, total: int, z: float = 1.96) -> tuple[float
     return (max(0.0, center - margin), min(1.0, center + margin))
 
 
+def _summarize_act_completion(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Summarize act clears both across all runs and conditional on reaching each act."""
+    total = len(rows)
+    cleared_counts = {
+        act: sum(row["acts_cleared"] >= act for row in rows)
+        for act in (1, 2, 3)
+    }
+    eligible_counts = {
+        1: total,
+        2: cleared_counts[1],
+        3: cleared_counts[2],
+    }
+    conditional_rates = {
+        act: cleared_counts[act] / eligible_counts[act] if eligible_counts[act] else 0.0
+        for act in (1, 2, 3)
+    }
+    conditional_ci = {
+        act: _wilson_interval(cleared_counts[act], eligible_counts[act])
+        for act in (1, 2, 3)
+    }
+    return {
+        "cleared_counts": cleared_counts,
+        "eligible_counts": eligible_counts,
+        "conditional_rates": conditional_rates,
+        "conditional_ci": conditional_ci,
+    }
+
+
+def test_act_completion_targets_use_reached_act_denominators() -> None:
+    rows = [{"acts_cleared": clears} for clears in [0, 0, 1, 1, 1, 1, 2, 2, 2, 3]]
+    summary = _summarize_act_completion(rows)
+
+    assert summary["eligible_counts"] == {1: 10, 2: 8, 3: 4}
+    assert summary["cleared_counts"] == {1: 8, 2: 4, 3: 1}
+    assert summary["conditional_rates"] == {1: 0.8, 2: 0.5, 3: 0.25}
+
+
 def _percentile(values: list[float], percentile: float) -> float:
     ordered = sorted(values)
     if not ordered:
@@ -1106,10 +1243,7 @@ def _paired_delta_interval(deltas: list[float]) -> tuple[float, float, float]:
 def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
     total = len(rows)
     victory_count = sum(row["victory"] for row in rows)
-    act_counts = {
-        act: sum(row["acts_cleared"] >= act for row in rows)
-        for act in (1, 2, 3)
-    }
+    act_completion = _summarize_act_completion(rows)
     levels = [float(row["level"]) for row in rows]
     hp_ratios = [float(row["hp_ratio"]) for row in rows]
     return {
@@ -1117,9 +1251,18 @@ def _summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "victories": victory_count,
         "victory_rate": victory_count / total,
         "victory_ci": _wilson_interval(victory_count, total),
-        "act_clear_counts": act_counts,
-        "act_clear_rates": {act: count / total for act, count in act_counts.items()},
-        "act_clear_ci": {act: _wilson_interval(count, total) for act, count in act_counts.items()},
+        "act_clear_counts": act_completion["cleared_counts"],
+        "act_clear_rates": {
+            act: count / total for act, count in act_completion["cleared_counts"].items()
+        },
+        "act_clear_ci": {
+            act: _wilson_interval(count, total)
+            for act, count in act_completion["cleared_counts"].items()
+        },
+        "act_conditional_eligible_counts": act_completion["eligible_counts"],
+        "act_conditional_clear_counts": act_completion["cleared_counts"],
+        "act_conditional_clear_rates": act_completion["conditional_rates"],
+        "act_conditional_clear_ci": act_completion["conditional_ci"],
         "timeout_rate": sum(row["timeout"] for row in rows) / total,
         "death_rate": sum(row["death"] is not None for row in rows) / total,
         "stalled_rate": sum(row["final_status"] == "stalled" for row in rows) / total,
@@ -1196,6 +1339,31 @@ def _print_detailed_tables(
             f"{summary['mean_act_reached']:.2f},"
             f"{level_dist},{hp_dist}"
         )
+
+    print("\n=== COMPLETADO CONDICIONAL POR ACTO VS OBJETIVO ===")
+    print("class,route,act,runs_reached_act,act_clears,conditional_clear%,clear_95ci,target,gap_pp")
+    for class_id, route, _rows, summary in summaries:
+        rates = summary["act_conditional_clear_rates"]
+        intervals = summary["act_conditional_clear_ci"]
+        eligible = summary["act_conditional_eligible_counts"]
+        clears = summary["act_conditional_clear_counts"]
+        for act in (1, 2, 3):
+            target_low, target_high = ACT_COMPLETION_TARGETS[act]
+            rate = rates[act]
+            gap = (rate - target_low) * 100 if target_low == target_high else (
+                (rate - target_low) * 100 if rate < target_low else
+                (rate - target_high) * 100 if rate > target_high else 0.0
+            )
+            target = (
+                f"{target_low:.0%}"
+                if target_low == target_high
+                else f"{target_low:.0%}-{target_high:.0%}"
+            )
+            ci = intervals[act]
+            print(
+                f"{class_id},{route},{act},{eligible[act]},{clears[act]},"
+                f"{rate:.1%},{ci[0]:.1%}-{ci[1]:.1%},{target},{gap:+.1f}"
+            )
 
     print("\n=== ECONOMÍA, DAÑO Y ACCIONES (MEDIAS POR PARTIDA) ===")
     print(
@@ -1512,6 +1680,26 @@ def _print_detailed_tables(
                 selected_counts[item_id] = selected_counts.get(item_id, 0) + count
         for item_id, count in sorted(selected_counts.items(), key=lambda item: (-item[1], item[0])):
             print(f"{class_id},{route},{item_id},{count}")
+
+    print("\n=== ACTIVACIÓN DE HABILIDADES DE FIRMA ===")
+    print("class,route,signature_id,promoted_runs,runs_with_proc,total_procs,procs_per_promoted_run")
+    for class_id, route, rows, _summary in summaries:
+        by_signature: dict[str, list[dict[str, Any]]] = {}
+        for row in rows:
+            signature_id = row.get("signature_id")
+            if signature_id:
+                by_signature.setdefault(signature_id, []).append(row)
+        for signature_id, promoted_rows in sorted(by_signature.items()):
+            total_procs = sum(
+                sum(row.get("signature_procs", {}).values()) for row in promoted_rows
+            )
+            runs_with_proc = sum(
+                sum(row.get("signature_procs", {}).values()) > 0 for row in promoted_rows
+            )
+            print(
+                f"{class_id},{route},{signature_id},{len(promoted_rows)},{runs_with_proc},"
+                f"{total_procs},{total_procs / len(promoted_rows):.2f}"
+            )
 
     print("\n=== DIFERENCIA PAREADA DE RUTA (PATHFINDER - FATE) ===")
     print("class,metric,n,fate_mean,pathfinder_mean,delta,delta_95ci,pathfinder_better,tie,fate_better")

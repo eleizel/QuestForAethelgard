@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Callable
 
@@ -36,6 +36,11 @@ class StatusEffect:
     on_tick_hook: Callable[[CombatSystem, Actor, StatusEffect], tuple[str, int]] | None = None
     stacks: int = 1
     max_stacks: int = 1
+    stack_tick_counts: list[int] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        if self.id == "burn":
+            self.stack_tick_counts = (self.stack_tick_counts + [0] * self.stacks)[:self.stacks]
 
     @property
     def localized_name(self) -> str:
@@ -55,6 +60,7 @@ class StatusEffect:
             on_tick_hook=self.on_tick_hook,
             stacks=self.stacks,
             max_stacks=self.max_stacks,
+            stack_tick_counts=list(self.stack_tick_counts),
         )
 
 
