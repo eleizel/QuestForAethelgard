@@ -725,15 +725,20 @@ def _queue_ability_if_ready(combat: Any, rng: random.Random) -> None:
     if projected_player_gauge < 100:
         return
 
-    from src.data.classes import CLASS_REGISTRY
+    parent_class = None
+    if combat.player.class_id not in PLAYABLE_CLASSES:
+        # Only import the registry for promoted classes. The policy unit test uses
+        # lightweight stand-ins, and importing classes while src.entities.actor is
+        # still initializing can otherwise create an import cycle.
+        from src.data.classes import CLASS_REGISTRY
 
-    parent_class = next(
-        (
-            class_id for class_id, class_def in CLASS_REGISTRY.items()
-            if combat.player.class_id in class_def.promotions
-        ),
-        None,
-    )
+        parent_class = next(
+            (
+                class_id for class_id, class_def in CLASS_REGISTRY.items()
+                if combat.player.class_id in class_def.promotions
+            ),
+            None,
+        )
     ready = [
         ability
         for ability in combat.player.abilities.active
