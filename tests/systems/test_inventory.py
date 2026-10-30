@@ -1,5 +1,8 @@
 """Tests for the inventory system, focusing on equipment management."""
 
+import pytest
+
+from src.entities.player import Player
 from src.entities.actor import Actor, Stats
 from src.systems.inventory import Inventory, ConsumableItem, EquipmentItem, EquipSlot, Item, MAX_POUCH_SLOTS
 
@@ -359,3 +362,59 @@ def test_consumable_use_no_effect():
     used = item.use(target)
 
     assert used is False
+
+
+@pytest.mark.parametrize(
+    ("parent_class", "advanced_class"),
+    [
+        ("warrior", "paladin"),
+        ("warrior", "berserker"),
+        ("rogue", "venomancer"),
+        ("rogue", "duelist"),
+        ("mage", "archmage"),
+        ("mage", "warlock"),
+    ],
+)
+def test_promoted_class_can_equip_parent_class_gear(parent_class, advanced_class):
+    player = Player(class_id=advanced_class)
+    inventory = Inventory()
+    parent_gear = EquipmentItem(
+        id=f"{parent_class}_gear",
+        name="Parent Class Gear",
+        description="",
+        slot=EquipSlot.MAIN_HAND,
+        required_class=parent_class,
+    )
+    inventory.add_to_pouch(parent_gear)
+
+    success, _message = inventory.equip_from_pouch(0, player)
+
+    assert success is True
+    assert inventory.equipment[EquipSlot.MAIN_HAND] is parent_gear
+
+
+@pytest.mark.parametrize(
+    ("advanced_class", "unrelated_class"),
+    [
+        ("paladin", "rogue"),
+        ("berserker", "mage"),
+        ("venomancer", "warrior"),
+        ("duelist", "mage"),
+        ("archmage", "rogue"),
+        ("warlock", "warrior"),
+    ],
+)
+def test_promoted_class_cannot_equip_unrelated_class_gear(advanced_class, unrelated_class):
+    player = Player(class_id=advanced_class)
+    inventory = Inventory()
+    unrelated_gear = EquipmentItem(
+        id=f"{unrelated_class}_gear",
+        name="Unrelated Class Gear",
+        description="",
+        slot=EquipSlot.MAIN_HAND,
+        required_class=unrelated_class,
+    )
+
+    can_equip, _message = inventory.can_equip(unrelated_gear, player)
+
+    assert can_equip is False
