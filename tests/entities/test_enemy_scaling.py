@@ -230,10 +230,15 @@ def test_enemy_attack_and_defense_keep_scaling_at_high_floors() -> None:
     archetype = ENEMY_CATALOG[enemy.archetype_id]
 
     assert enemy.base_stats.attack == int(
-        archetype.base_atk * (1 + (42 - 1) * ENEMY_ATK_GROWTH_PER_FLOOR) * 1.25
+        archetype.base_atk
+        * (1 + (42 - 1) * ENEMY_ATK_GROWTH_PER_FLOOR)
+        * 1.25
+        * ACT_3_ENEMY_ATK_MULT
     )
     assert enemy.base_stats.defense == int(
-        archetype.base_def * (1 + (42 - 1) * ENEMY_DEF_GROWTH_PER_FLOOR)
+        archetype.base_def
+        * (1 + (42 - 1) * ENEMY_DEF_GROWTH_PER_FLOOR)
+        * ACT_3_ENEMY_DEF_MULT
     )
     assert ENEMY_ATK_GROWTH_PER_FLOOR == 0.05
     assert ENEMY_DEF_GROWTH_PER_FLOOR == 0.05

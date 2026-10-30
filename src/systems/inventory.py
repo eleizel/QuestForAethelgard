@@ -113,8 +113,22 @@ class Inventory:
     def can_equip(self, item: EquipmentItem, player: Actor | None = None) -> tuple[bool, str]:
         from src.core.i18n import t
         if item.required_class is not None and player is not None:
-            if getattr(player, "class_id", None) != item.required_class:
-                return (False, t("msg_req_class", cls=item.required_class.capitalize()))
+            player_class_id = getattr(player, "class_id", None)
+            if player_class_id != item.required_class:
+                # Promotion changes class_id, but should not revoke access to
+                # equipment restricted to the character's parent class.
+                from src.data.classes import CLASS_REGISTRY
+
+                parent_class_id = next(
+                    (
+                        class_def.id
+                        for class_def in CLASS_REGISTRY.values()
+                        if player_class_id in class_def.promotions
+                    ),
+                    None,
+                )
+                if parent_class_id != item.required_class:
+                    return (False, t("msg_req_class", cls=item.required_class.capitalize()))
 
         if item.weapon_type == WeaponType.TWO_HANDED and self.equipment[EquipSlot.OFF_HAND] is not None:
             if len(self.pouch) >= MAX_POUCH_SLOTS:
