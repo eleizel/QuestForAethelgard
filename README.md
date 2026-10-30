@@ -13,6 +13,7 @@ The game runs locally as a Python application. It has English and Spanish locali
   - [Start a run](#start-a-run)
   - [Explore the map](#explore-the-map)
   - [Fight enemies](#fight-enemies)
+  - [Promote your class](#promote-your-class)
   - [Manage equipment and items](#manage-equipment-and-items)
   - [Events, shops, and rewards](#events-shops-and-rewards)
   - [Controls](#controls)
@@ -24,7 +25,7 @@ The game runs locally as a Python application. It has English and Spanish locali
 
 ## Features
 
-- Three starting classes: Warrior, Rogue, and Mage.
+- Three starting classes—Warrior, Rogue, and Mage—with six advanced classes to unlock through promotion.
 - Three acts, each with a choice of two themed biomes when using Pathfinder routes.
 - Randomized, branching dungeon maps with combat, elite, rest, treasure, event, shop, and boss nodes.
 - Automatic battles driven by speed-based action gauges, with active and passive abilities.
@@ -73,6 +74,18 @@ python main.py
 4. Press `Enter` or `Space` to begin. In Pathfinder mode, choose a biome with the left/right arrows and confirm with `1` or `2`.
 
 The three classes begin with different stats, equipment, and abilities. Your hero also starts with a health potion in belt slot 1.
+
+### Promote your class
+
+At level 10, each starting class can promote to one of two advanced classes:
+
+| Starting class | Promotions |
+| --- | --- |
+| Warrior | Paladin or Berserker |
+| Rogue | Venomancer or Duelist |
+| Mage | Archmage or Warlock |
+
+Promotion becomes available when you reach level 10. Choose one of the two classes with `1` or `2`, then confirm with `Enter` or `Space` (or select the card again). Promoting grants a permanent signature passive, restores half your maximum HP, and gives you an epic ability choice. Future level-ups use your promoted class's stat growth. Gear restricted to your starting class remains usable after promotion.
 
 ### Explore the map
 
@@ -134,6 +147,7 @@ Use the arrow keys or `W`/`A`/`S`/`D` to navigate inventory panes. Press `Tab` t
 | Combat: cycle automatic speed | `Z` |
 | Combat: use belt slots | `1`-`3` |
 | Combat: queue active abilities | `4`-`5` |
+| Promotion: select / confirm class | `1`-`2`; `Enter` or `Space` |
 | Inventory: navigate / switch panes | Arrow keys or `W`/`A`/`S`/`D`; `Tab` |
 | Inventory: equip, assign, or use selected item | `E` |
 | Inventory: discard selected item | `D` |
