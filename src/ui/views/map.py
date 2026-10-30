@@ -55,6 +55,13 @@ class MapView(View):
         return base_x + offset_x, y_pos
 
     def update(self, game_state: GameState) -> None:
+        from src.core.save_manager import save_manager
+        if pyxel.btnp(pyxel.KEY_ESCAPE) or pyxel.btnp(pyxel.KEY_Q) or Renderer.is_clicked(196, 28, 52, 13):
+            audio.play_sfx(SND_CLICK)
+            save_manager.save_game(game_state)
+            game_state.switch_mode(GameMode.WELCOME)
+            return
+
         available = game_state.map_graph.available_nodes
         floors = game_state.map_graph.floors
         total_floors = len(floors)
@@ -209,6 +216,9 @@ class MapView(View):
         renderer.draw_text(30, 31, act_title, COLOR_YELLOW)
         subtitle = "Elige un camino [1-4]" if i18n.locale == "es" else "Select a path [1-4]"
         renderer.draw_text(30, 40, subtitle, COLOR_WHITE)
+
+        from src.core.i18n import t
+        renderer.draw_button(196, 28, 52, 13, t("map_save_quit"), bg_col=COLOR_NAVY, border_col=COLOR_WHITE, text_col=COLOR_YELLOW)
 
         floors = game_state.map_graph.floors
         available_ids = {n.id for n in game_state.map_graph.available_nodes}

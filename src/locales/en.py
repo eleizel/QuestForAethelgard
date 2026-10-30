@@ -18,6 +18,7 @@ TRANSLATIONS_EN = {
     "btn_buy": "[BUY]",
     "btn_sell": "[SELL]",
     "btn_leave_shop": "[LEAVE SHOP]",
+    "map_save_quit": "SAVE",
     "route_fate": "ROUTE: FATE",
     "route_pathfinder": "ROUTE: PATHFINDER",
     "inv_title": "[INV]",
