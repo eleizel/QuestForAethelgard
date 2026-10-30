@@ -45,7 +45,7 @@ MAX_COMBAT_TICKS = 5_000
 ACT_COMPLETION_TARGETS = {1: (0.80, 0.80), 2: (0.50, 0.60), 3: (0.20, 0.30)}
 
 
-def _biome_threat_score(biome_id: str, act: int) -> float:
+def _biome_threat_score(biome_id: str, act: int, class_id: str = "warrior") -> float:
     """Estimate route danger from generated, act-scaled enemies and their abilities."""
     from src.data.biomes import BIOME_REGISTRY
     from src.entities.enemy import EnemyTier, generate_enemy
@@ -72,6 +72,9 @@ def _biome_threat_score(biome_id: str, act: int) -> float:
         (EnemyTier.BOSS, biome.bosses, 3),
     )
 
+    atk_weight = 3.0 if class_id == "warrior" else 4.5
+    hp_weight = 1.0 if class_id == "warrior" else 0.75
+
     for tier, archetype_ids, encounter_weight in encounter_groups:
         tier_scores = []
         for archetype_id in archetype_ids:
@@ -83,8 +86,8 @@ def _biome_threat_score(biome_id: str, act: int) -> float:
             )
             stats = enemy.effective_stats
             score = (
-                enemy.max_hp
-                + 3 * stats.attack
+                enemy.max_hp * hp_weight
+                + atk_weight * stats.attack
                 + 2 * stats.defense
                 + 1.5 * stats.speed
                 + 30 * stats.crit_chance
@@ -94,7 +97,7 @@ def _biome_threat_score(biome_id: str, act: int) -> float:
             for skill in enemy.skills:
                 if skill.kind == "attack":
                     score += (
-                        3
+                        atk_weight
                         * stats.attack
                         * max(0.0, skill.damage_multiplier - 1.0)
                         / max(1, skill.cooldown)
@@ -109,10 +112,10 @@ def _biome_threat_score(biome_id: str, act: int) -> float:
     return weighted_threat / total_weight
 
 
-def _choose_pathfinder_biome(act: int) -> str:
+def _choose_pathfinder_biome(act: int, class_id: str = "warrior") -> str:
     from src.data.biomes import ACT_BIOMES
 
-    return min(ACT_BIOMES[act], key=lambda biome_id: _biome_threat_score(biome_id, act))
+    return min(ACT_BIOMES[act], key=lambda biome_id: _biome_threat_score(biome_id, act, class_id))
 
 
 def _is_biome_choice(options: Any, biome_choice_sets: set[tuple[str, ...]]) -> bool:
@@ -126,6 +129,38 @@ def test_biome_rng_filter_ignores_unhashable_loot_items() -> None:
 
     assert _is_biome_choice(["arboretum", "crypt"], biome_choices)
     assert not _is_biome_choice([["healing potion"]], biome_choices)
+
+
+def test_class_aware_pathfinder_biome_choice() -> None:
+    # Warrior with high defense prefers Cathedral; squishier Rogue/Mage prefer Arboretum
+    assert _choose_pathfinder_biome(1, "warrior") == "cathedral"
+    assert _choose_pathfinder_biome(1, "rogue") == "arboretum"
+    assert _choose_pathfinder_biome(1, "mage") == "arboretum"
+
+
+def test_belt_restocks_from_pouch() -> None:
+    from src.entities.item import ConsumableItem
+    from src.entities.player import Player
+
+    player = Player("TestHero", "rogue")
+    potion = ConsumableItem(id="healing_potion", name="Healing Potion", description="Heals 30 HP", heal_amount=30)
+    player.inventory.pouch.append(potion)
+    assert player.inventory.belt[0] is None
+
+    restocked = _restock_belt_from_pouch(player)
+    assert restocked == 1
+    assert player.inventory.belt[0] == potion
+    assert len(player.inventory.pouch) == 0
+
+
+def test_ability_draft_synergy_and_healing_protection() -> None:
+    from src.data.abilities import get_ability_by_id
+    from src.entities.player import Player
+
+    player = Player("TestHero", "rogue")
+    rogue_ab = get_ability_by_id("flurry_of_daggers")
+    warrior_ab = get_ability_by_id("shield_bash")
+    assert _score_ability_draft(rogue_ab, player) > _score_ability_draft(warrior_ab, player)
 
 
 def _choose_map_node(available: list[Any], state: Any, rng: random.Random) -> Any:
@@ -318,6 +353,69 @@ def _purchase_simulated_shop_items(state: Any) -> tuple[int, int, list[str]]:
     return bought, gold_spent, stat_potions_used
 
 
+def _restock_belt_from_pouch(player: Any) -> int:
+    """Move healing consumables from pouch to empty belt slots."""
+    inventory = player.inventory
+    restocked = 0
+    for belt_index in range(len(inventory.belt)):
+        if inventory.belt[belt_index] is None:
+            for pouch_index, item in enumerate(inventory.pouch):
+                if getattr(item, "heal_amount", 0) > 0:
+                    inventory.belt[belt_index] = item
+                    inventory.pouch.pop(pouch_index)
+                    restocked += 1
+                    break
+    return restocked
+
+
+def _score_ability_draft(ability: Any, player: Any) -> float:
+    """Score draft options based on class affinity, synergies, and active/passive balance."""
+    score = 10.0
+    rarity_bonus = {"STANDARD": 0.0, "RARE": 6.0, "EPIC": 14.0}
+    rarity_name = getattr(getattr(ability, "rarity", None), "name", "")
+    score += rarity_bonus.get(rarity_name, 0.0)
+
+    affinities = tuple(getattr(ability, "affinities", ()))
+    player_class = player.class_id
+    promotions = getattr(player, "promotions", ())
+    if not promotions and hasattr(player, "available_promotions"):
+        try:
+            promotions = player.available_promotions()
+        except Exception:
+            promotions = ()
+
+    if ability.required_class == player_class or player_class in affinities:
+        score += 15.0
+    elif any(promo in affinities for promo in promotions):
+        score += 10.0
+
+    is_passive = getattr(ability, "ability_type", None) is not None and ability.ability_type.name == "PASSIVE"
+    num_passives = len(player.abilities.passive)
+
+    if is_passive:
+        if num_passives < 2:
+            score += 20.0
+        else:
+            score += 8.0
+    else:
+        if ability.id in ("rallying_cry", "mend_wound", "soul_siphon"):
+            score += 14.0
+        if getattr(ability, "cooldown", 0) <= 2:
+            score += 6.0
+
+    if player_class in ("rogue", "venomancer", "duelist"):
+        if any(keyword in ability.id for keyword in ("shiv", "dagger", "fan", "shadow", "assassin", "venom", "crit", "reflex")):
+            score += 8.0
+    elif player_class in ("mage", "archmage", "warlock"):
+        if any(keyword in ability.id for keyword in ("arcane", "fire", "meteor", "soul", "spell", "echo", "time", "pact", "barrier")):
+            score += 8.0
+    elif player_class in ("warrior", "paladin", "berserker"):
+        if any(keyword in ability.id for keyword in ("cleave", "blade", "shield", "blood", "executioner", "paladin", "guard", "iron")):
+            score += 8.0
+
+    return score
+
+
 def _collect_loot_and_ability_drafts(
     state: Any, rng: random.Random
 ) -> tuple[int, int, int, list[str], list[str], list[str]]:
@@ -346,10 +444,15 @@ def _collect_loot_and_ability_drafts(
         elif isinstance(item, ConsumableItem):
             if not inventory.add_to_pouch(item):
                 continue
-            if item.heal_amount > 0 and inventory.belt[0] is None:
-                inventory.belt[0] = item
-                inventory.pouch.remove(item)
+            if item.heal_amount > 0:
+                empty_slot = next(
+                    (i for i, belt_item in enumerate(inventory.belt) if belt_item is None), None
+                )
+                if empty_slot is not None:
+                    inventory.belt[empty_slot] = item
+                    inventory.pouch.remove(item)
     state.pending_loot.clear()
+    _restock_belt_from_pouch(state.player)
 
     # Model the level-10 promotion and its separate ability reward in each run.
     if state.player.promotion_due:
@@ -377,17 +480,40 @@ def _collect_loot_and_ability_drafts(
         if not draft:
             continue
         ability_drafts += 1
-        selected = rng.choice(draft)
+        selected = max(draft, key=lambda ab: _score_ability_draft(ab, state.player) + rng.random() * 0.01)
         abilities_selected.append(selected.id)
+        is_passive = selected.ability_type.name == "PASSIVE"
         target = (
-            state.player.abilities.active
-            if selected.ability_type.name == "ACTIVE"
-            else state.player.abilities.passive
+            state.player.abilities.passive
+            if is_passive
+            else state.player.abilities.active
         )
         if len(target) < 2:
             state.player.abilities.add_ability(selected)
         else:
-            state.player.abilities.replace_ability(selected, 1)
+            if is_passive:
+                scored_existing = [
+                    (_score_ability_draft(existing, state.player), idx)
+                    for idx, existing in enumerate(target)
+                ]
+                worst_score, worst_idx = min(scored_existing, key=lambda x: x[0])
+                if _score_ability_draft(selected, state.player) > worst_score:
+                    state.player.abilities.replace_ability(selected, worst_idx)
+            else:
+                has_other_heal = selected.id in ("rallying_cry", "soul_siphon") or any(
+                    ab.id in ("rallying_cry", "soul_siphon") for ab in target if ab.id != "mend_wound"
+                )
+                replaceable_indices = []
+                for idx, existing in enumerate(target):
+                    if existing.id == "mend_wound" and not has_other_heal:
+                        continue
+                    replaceable_indices.append(
+                        (_score_ability_draft(existing, state.player), idx)
+                    )
+                if replaceable_indices:
+                    worst_score, worst_idx = min(replaceable_indices, key=lambda x: x[0])
+                    if _score_ability_draft(selected, state.player) > worst_score:
+                        state.player.abilities.replace_ability(selected, worst_idx)
 
     return (
         loot_count,
@@ -920,7 +1046,7 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
                 ability for ability in state.player.abilities.active if ability.id != "pw_kill"
             ]
             if route_mode == "PATHFINDER":
-                state.advance_act(target_biome_id=_choose_pathfinder_biome(1))
+                state.advance_act(target_biome_id=_choose_pathfinder_biome(1, class_id))
 
             while state.act <= 3 and state.player.is_alive:
                 act_record = metrics["acts"].setdefault(str(state.act), _new_act_record())
@@ -978,6 +1104,7 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
                     if state.combat is None or state.current_mode != GameMode.COMBAT:
                         continue
 
+                    _restock_belt_from_pouch(state.player)
                     current_node = state.map_graph.current_node
                     metrics["fights"] += 1
                     enemy = state.combat.enemy
@@ -1021,8 +1148,14 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
                     level_before_fight = state.player.level
 
                     while state.combat.is_active() and state.combat.current_tick < MAX_COMBAT_TICKS:
+                        potion_threshold = 0.55 if tier in ("BOSS", "ELITE") else 0.40
+                        lethal_threat = enemy.base_stats.attack * (1.5 if tier == "BOSS" else 1.25)
+                        should_heal = (
+                            state.player.current_hp <= state.player.max_hp * potion_threshold
+                            or state.player.current_hp <= lethal_threat
+                        )
                         if (
-                            state.player.current_hp <= state.player.max_hp * 0.40
+                            should_heal
                             and any(state.player.inventory.belt)
                         ):
                             for belt_index, item in enumerate(state.player.inventory.belt):
@@ -1132,7 +1265,7 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
                         state.act += 1
                         state.floor = 1
                         if route_mode == "PATHFINDER":
-                            state.advance_act(target_biome_id=_choose_pathfinder_biome(state.act))
+                            state.advance_act(target_biome_id=_choose_pathfinder_biome(state.act, class_id))
                         else:
                             state.advance_act()
                         transition_healing = max(0, state.player.current_hp - hp_before_transition)
