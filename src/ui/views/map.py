@@ -27,6 +27,7 @@ from src.config import (
 )
 from src.core.audio import audio
 from src.config import SND_CLICK
+from src.core.game_state import GameMode
 from src.core.i18n import i18n
 from src.systems.map_gen import NodeType
 from src.ui.renderer import Renderer

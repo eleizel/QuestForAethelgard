@@ -268,3 +268,29 @@ def test_full_game_lifecycle_auto_save_and_death(tmp_path):
     assert not save_manager.has_save()
 
 
+def test_map_view_save_and_quit(tmp_path, monkeypatch):
+    import pyxel
+    from src.core.audio import audio
+    from src.core.save_manager import save_manager
+    from src.ui.views.map import MapView
+
+    backend = FileStorageBackend(save_dir=str(tmp_path))
+    save_manager.set_storage(backend)
+
+    state = GameState()
+    state.start_new_game(class_id="warrior", route_mode="FATE")
+    assert state.current_mode == GameMode.MAP
+
+    # Mock audio and keypress
+    monkeypatch.setattr(audio, "play_sfx", lambda sfx_id: None)
+    monkeypatch.setattr(pyxel, "btnp", lambda key: key == pyxel.KEY_ESCAPE)
+
+    map_view = MapView()
+    map_view.update(state)
+
+    # State should have switched to WELCOME and save file exists
+    assert state.current_mode == GameMode.WELCOME
+    assert save_manager.has_save()
+
+
+
