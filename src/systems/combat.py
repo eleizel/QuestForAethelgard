@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Final
 
@@ -12,6 +11,15 @@ import pyxel
 from src.core.audio import audio
 from src.config import SND_HIT, SND_CRIT, SND_VICTORY, SND_DEFEAT, SND_HEAL, TARGET_COMBAT_SPEED
 from src.systems.abilities import Ability
+from src.systems.qte import (
+    QTESequence,
+    QTETarget,
+    advance_sequence_after_feedback,
+    classify_qte_tier,
+    finalize_qte_sequence,
+    generate_qte_sequence,
+    resolve_target,
+)
 from src.data.enemies import ENEMY_SKILLS, EnemySkill
 
 if TYPE_CHECKING:
@@ -33,67 +41,6 @@ class CombatResult(Enum):
     IN_PROGRESS = auto()
     PLAYER_VICTORY = auto()
     PLAYER_DEFEAT = auto()
-
-
-def classify_qte_tier(score: int) -> str:
-    """Classify a 0..100 QTE accuracy score into one of the five resolution tiers."""
-    if score <= 20:
-        return "failed"
-    if score <= 40:
-        return "good"
-    if score <= 60:
-        return "nice"
-    if score <= 80:
-        return "amazing"
-    return "perfect"
-
-
-@dataclass
-class QTETarget:
-    """One shrinking-circle QTE button inside a multi-button QTE sequence."""
-
-    x: int
-    y: int
-    number: int
-    button_radius: int = 10
-    start_radius: float = 32.0
-    current_radius: float = 32.0
-    shrink_speed: float = 0.6
-    resolved: bool = False
-    score: int = 0
-    tier: str = ""
-    feedback_frames: int = 0
-
-    def current_accuracy(self) -> int:
-        """Return 0% at start_radius and 100% when current_radius meets button_radius."""
-        span = self.start_radius - self.button_radius
-        if span <= 0:
-            return 100
-        if self.current_radius >= self.start_radius:
-            return 0
-        if self.current_radius <= self.button_radius:
-            return 100
-        pct = 100.0 * (self.start_radius - self.current_radius) / span
-        return max(0, min(100, int(round(pct))))
-
-
-@dataclass
-class QTESequence:
-    """Tracks a sequence of 3 to 5 consecutive QTE buttons and their final average resolution."""
-
-    targets: list[QTETarget]
-    current_index: int = 0
-    summary_active: bool = False
-    summary_frames: int = 0
-    final_score: int = 0
-    final_tier: str = ""
-    bonuses_applied: list[str] = field(default_factory=list)
-
-    @property
-    def current_target(self) -> QTETarget | None:
-        if 0 <= self.current_index < len(self.targets):
-            return self.targets[self.current_index]
-        return None
 
 
 class CombatSystem:
@@ -183,6 +130,24 @@ class CombatSystem:
         else:
             self.player.shield = 0
 
+        if self._has_signature("venomancer_mastery") and self.enemy.is_alive:
+            from src.systems.status import get_status_by_id
+
+            can_stack = any(a.id == "venomous_accumulation" for a in self.player.all_passives)
+            attack = self.player.effective_stats.attack
+            poison = get_status_by_id(
+                "poison",
+                duration=5,
+                potency=max(1, int(attack * 0.10)),
+                max_stacks=3 if can_stack else 1,
+            )
+            if poison:
+                poison.stacks = 2
+                self.enemy.apply_status(poison)
+                self.combat_logs.append(
+                    _t("combat_status_applied", target=self.enemy.name, effect=poison.localized_name)
+                )
+
         if normalize_speeds:
             self.normalize_speeds()
 
@@ -217,97 +182,21 @@ class CombatSystem:
             self._queued_qte_count += 1
             return self.active_qte
 
-        num_targets = count if count is not None else self.qte_rng.randint(3, 5)
-        targets: list[QTETarget] = []
-        for _ in range(num_targets):
-            x = self.qte_rng.randint(44, 212)
-            y = self.qte_rng.randint(62, 174)
-            number = self.qte_rng.randint(1, 3)
-            shrink_speed = round(self.qte_rng.uniform(0.45, 0.85), 3)
-            targets.append(
-                QTETarget(
-                    x=x,
-                    y=y,
-                    number=number,
-                    button_radius=10,
-                    start_radius=32.0,
-                    current_radius=32.0,
-                    shrink_speed=shrink_speed,
-                )
-            )
-        self.active_qte = QTESequence(targets=targets)
+        self.active_qte = generate_qte_sequence(self.qte_rng, count=count)
         self._qte_triggered_this_tick = True
         return self.active_qte
 
     def resolve_qte_target(self, score: int) -> str:
         """Resolve the current QTE button with the given 0..100 score and enter its feedback pause."""
-        if self.active_qte is None or self.active_qte.summary_active:
-            return "failed"
-        target = self.active_qte.current_target
-        if target is None or target.resolved:
-            return "failed"
-        clamped = max(0, min(100, int(score)))
-        target.resolved = True
-        target.score = clamped
-        target.tier = classify_qte_tier(clamped)
-        target.feedback_frames = 24
-        if clamped >= 61:
-            audio.play_sfx(SND_CRIT)
-        elif clamped >= 21:
-            audio.play_sfx(SND_HIT)
-        return target.tier
+        return resolve_target(self.active_qte, score)
 
     def advance_qte_after_feedback(self) -> bool:
         """Advance to the next QTE button, or finalize the sequence if all buttons are resolved."""
-        if self.active_qte is None or self.active_qte.summary_active:
-            return False
-        self.active_qte.current_index += 1
-        if self.active_qte.current_index >= len(self.active_qte.targets):
-            self.resolve_qte_sequence()
-            return True
-        return False
+        return advance_sequence_after_feedback(self)
 
     def resolve_qte_sequence(self) -> dict[str, object]:
         """Calculate the average QTE score and apply cumulative tier rewards."""
-        if self.active_qte is None:
-            return {"score": 0, "tier": "failed", "bonuses": []}
-
-        qte = self.active_qte
-        scores = [t.score for t in qte.targets]
-        final_score = int(round(sum(scores) / len(scores))) if scores else 0
-        final_tier = classify_qte_tier(final_score)
-        qte.final_score = final_score
-        qte.final_tier = final_tier
-        qte.summary_active = True
-        qte.summary_frames = 50
-
-        bonuses: list[str] = []
-        if final_score <= 20:
-            bonuses.append(_t("qte_bonus_none"))
-        if final_score >= 21:
-            self.qte_next_damage_mitigation = final_score / 100.0
-            bonuses.append(_t("qte_bonus_mitigation", pct=final_score))
-        if final_score >= 41:
-            def_gain = max(1, int(round(self.player.effective_stats.defense * 0.10)))
-            self.player.combat_def_buff += def_gain
-            bonuses.append(_t("qte_bonus_def_up"))
-        if final_score >= 61:
-            atk_loss = max(1, int(round(self.enemy.base_stats.attack * 0.10)))
-            self.enemy.base_stats.attack = max(1, self.enemy.base_stats.attack - atk_loss)
-            bonuses.append(_t("qte_bonus_atk_down"))
-        if final_score >= 81 and self.enemy.is_alive and self.player.is_alive:
-            counter_raw = max(1, int(self.player.effective_stats.attack * 0.50))
-            dealt = self.damage_enemy(counter_raw)
-            healed = self.player.heal(max(1, dealt // 2)) if dealt > 0 else 0
-            bonuses.append(_t("qte_bonus_counter", dmg=dealt, heal=healed))
-            audio.play_sfx(SND_CRIT)
-            self._evaluate_battle_outcome()
-
-        qte.bonuses_applied = bonuses
-        self.combat_logs.append(
-            _t("combat_qte_resolved", tier=_t(f"qte_tier_{final_tier}"), score=final_score)
-        )
-        return {"score": final_score, "tier": final_tier, "bonuses": bonuses}
+        return finalize_qte_sequence(self)
 
     def dismiss_qte_summary(self) -> None:
         """Clear the completed QTE sequence and start any queued follow-up threshold QTE."""
@@ -323,6 +212,16 @@ class CombatSystem:
 
     def _record_signature_proc(self, signature_id: str, count: int = 1) -> None:
         self.signature_proc_counts[signature_id] = self.signature_proc_counts.get(signature_id, 0) + count
+
+    def get_player_parry_chance(self) -> float:
+        """Return total Parry probability from Riposte, Whirlwind Defense, and Flowing Steel."""
+        has_riposte = any(ability.id == "riposte" for ability in self.player.all_passives)
+        has_whirlwind = any(ability.id == "whirlwind_defense" for ability in self.player.all_passives)
+        parry_chance = (0.20 if has_riposte else 0.0) + (0.20 if has_whirlwind else 0.0)
+        if self._has_signature("duelist_precision"):
+            sig_parry = 0.15 - (0.05 if has_riposte else 0.0) - (0.05 if has_whirlwind else 0.0)
+            parry_chance += max(0.0, sig_parry)
+        return parry_chance
 
     def on_player_stance_consumed(self, stance_id: str) -> None:
         if self._has_signature("duelist_precision"):
@@ -397,7 +296,9 @@ class CombatSystem:
                                 self._record_signature_proc("warlock_pact")
                     if s.id == "poison" and actor is self.enemy and self._has_signature("venomancer_mastery"):
                         self.venom_poison_ticks += 1
-                        if self.venom_poison_ticks % 4 == 0 and dmg > 0 and actor.is_alive:
+                        app_ticks = s.stack_tick_counts[0] if s.stack_tick_counts else 0
+                        s.stack_tick_counts = [app_ticks + 1]
+                        if app_ticks == 0 and dmg > 0 and actor.is_alive:
                             detonation = min(actor.current_hp, max(0, dmg * 2))
                             actor.current_hp -= detonation
                             dmg += detonation
@@ -813,9 +714,13 @@ class CombatSystem:
                             _t("combat_summon_imp_burn", target=self.enemy.name)
                         )
 
+        primary_crit = is_crit and dmg_dealt > 0
+        if primary_crit and self._has_signature("duelist_precision"):
+            self.duelist_flourish_armed = True
+
         if whirlwind_ready and dmg_dealt > 0 and self.enemy.is_alive:
             extra_crit = self.rng.random() < self.player.effective_stats.crit_chance
-            extra_raw = int(self.player.effective_stats.attack * 0.25)
+            extra_raw = int(self.player.effective_stats.attack * 0.50)
             if extra_crit:
                 extra_raw = int(extra_raw * 1.5)
             extra_damage = self.damage_enemy(extra_raw)
@@ -825,12 +730,9 @@ class CombatSystem:
             self.combat_logs.append(_t(log_key, actor=self.player.name, target=self.enemy.name, damage=extra_damage))
 
         if duelist_flourish_ready and dmg_dealt > 0:
-            # The extra strikes apply weapon on-hit effects but do not trigger stances.
-            self._record_signature_proc("duelist_precision")
-            for _ in range(2):
-                if not self.enemy.is_alive:
-                    break
-                extra_damage, extra_crit = self._signature_bonus_hit(0.50, "duelist_precision")
+            # The extra strike applies weapon on-hit effects, heals 10%, and grants +5 gauge.
+            if self.enemy.is_alive:
+                extra_damage, extra_crit = self._signature_bonus_hit(0.75, "duelist_precision")
                 dmg_dealt += extra_damage
                 is_crit = is_crit or extra_crit
         elif duelist_flourish_ready:
@@ -841,7 +743,7 @@ class CombatSystem:
         # restricted to basic attacks; other passives may still react to abilities.
         if dmg_dealt > 0 and not self._passives_handled_per_hit:
             self.trigger_player_attack_passives(
-                dmg_dealt, is_crit, is_basic_attack=is_basic_attack
+                dmg_dealt, primary_crit, is_basic_attack=is_basic_attack
             )
         self._passives_handled_per_hit = False
         self._current_player_action_is_basic = False
@@ -886,7 +788,10 @@ class CombatSystem:
                         _t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name)
                     )
             if signature_id == "paladin_oath":
-                self.player.heal(max(1, damage // 4))
+                self.player.heal(max(1, int(damage * 0.15)))
+            elif signature_id == "duelist_precision":
+                self.player.heal(max(1, int(damage * 0.10)))
+                self.player_gauge = min(100, self.player_gauge + 5)
             self._record_signature_proc(signature_id)
         log_key = "combat_signature_hit_crit" if is_crit else "combat_signature_hit"
         self.combat_logs.append(
@@ -923,12 +828,6 @@ class CombatSystem:
         if self.enemy.has_status("blind") and self.rng.random() < 0.50:
             self.combat_logs.append(_t("combat_blind_miss", actor=self.enemy.name))
             return
-
-        if any(ability.id == "riposte" for ability in self.player.all_passives):
-            if self.rng.random() < 0.25:
-                self.player.activate_stance("riposte")
-                self.combat_logs.append(_t("combat_riposte_block", actor=self.player.name))
-                return
 
         if skill is None:
             skill = self._choose_enemy_skill()
@@ -972,11 +871,26 @@ class CombatSystem:
             # Preserve the legacy 30% Vulnerable effect when no potency is supplied.
             vulnerability = vulnerable.potency if vulnerable.potency > 0 else 30
             raw_dmg = int(raw_dmg * (1 + vulnerability / 100))
+
+        parried = False
+        parry_chance = self.get_player_parry_chance()
+        if parry_chance > 0.0 and self.rng.random() < parry_chance:
+            parried = True
+            raw_dmg = max(1, raw_dmg // 2)
+            self.combat_logs.append(_t("combat_riposte_block", actor=self.player.name))
+
         self._in_enemy_attack = True
         try:
             dmg_dealt = self.player.take_damage(raw_dmg)
         finally:
             self._in_enemy_attack = False
+
+        if parried and self.player.is_alive:
+            if any(ability.id == "riposte" for ability in self.player.all_passives):
+                self.player.activate_stance("riposte")
+            if self._has_signature("duelist_precision"):
+                self.duelist_flourish_armed = True
+                self._record_signature_proc("duelist_precision")
 
         # Audio feedback: Sound 1 (Crit) or Sound 0 (Hit)
         audio.play_sfx(SND_CRIT if is_crit else SND_HIT)

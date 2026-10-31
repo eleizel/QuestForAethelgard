@@ -29,7 +29,7 @@ MEND_WOUND = Ability(
     rarity=AbilityRarity.STANDARD,
     execute_hook=execute_mend_wound,
     on_attack_dealt_hook=None,
-    cooldown=1,
+    cooldown=2,
 )
 # --- Warrior Starter: Cross Cut ---
 def execute_cross_cut(combat: CombatSystem) -> tuple[str, int, bool]:
@@ -152,7 +152,7 @@ def execute_rallying_cry(combat: CombatSystem) -> tuple[str, int, bool]:
     from src.core.i18n import t
     heal_amount = int(combat.player.max_hp * 0.15)
     actual_heal = combat.player.heal(heal_amount)
-    combat.player.combat_def_buff += 4
+    combat.player.combat_def_buff += 3
     return t("log_rallying_cry", player=combat.player.name, heal=actual_heal), 0, False
 
 
@@ -312,8 +312,13 @@ def hook_exposed_weakness(actor: Actor, target: Actor, damage: int, is_crit: boo
         setattr(actor, "_next_strike_bonus", True)
 
 
+def modify_riposte(stats: Stats) -> Stats:
+    added = stats.attack * 0.05
+    return stats.add(type(stats)(max_hp=0, attack=added, defense=0, speed=0, crit_chance=0.0))
+
+
 def modify_whirlwind_defense(stats: Stats) -> Stats:
-    added = stats.defense * 0.10
+    added = stats.defense * 0.05
     return stats.add(type(stats)(max_hp=0, attack=0, defense=added, speed=0, crit_chance=0.0))
 
 
@@ -631,9 +636,9 @@ STANDARD_ABILITIES: list[Ability] = [
     Ability(id="shield_bash", name="Shield Bash", description="Deals 85% ATK, delays enemy gauge by 35.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
             execute_hook=execute_shield_bash,cooldown=3, affinities=("paladin",)),
-    Ability(id="rallying_cry", name="Rallying Cry", description="Restores 15% Max HP, +4 DEF for battle.",
+    Ability(id="rallying_cry", name="Rallying Cry", description="Restores 15% Max HP, +3 DEF for battle.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
-            execute_hook=execute_rallying_cry,cooldown=2, affinities=("paladin",)),
+            execute_hook=execute_rallying_cry,cooldown=3, affinities=("paladin",)),
     Ability(id="cleave", name="Cleave", description="Heavy cleave dealing 160% ATK damage.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="warrior",
             execute_hook=execute_cleave,cooldown=3, affinities=("berserker",)),
@@ -706,11 +711,11 @@ STANDARD_ABILITIES: list[Ability] = [
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
             execute_hook=execute_venomous_extraction, cooldown=4, affinities=("venomancer",)),
     Ability(id="riposte", name="Riposte",
-            description="25% chance to block an attack. A block prepares a 50% ATK counter on the next damage taken.",
+            description="+5% ATK, 20% Parry chance (halves incoming hit damage). A Parry prepares a 40% ATK counter (+5 gauge) on the next damage taken.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
-            affinities=("duelist",), is_stance=True),
+            modify_stats_hook=modify_riposte, affinities=("duelist",), is_stance=True),
     Ability(id="whirlwind_defense", name="Whirlwind Defense",
-            description="+10% DEF. A critical hit prepares a stance: the next basic attack adds a 25% ATK strike that can crit.",
+            description="+5% DEF, 20% Parry chance (halves incoming hit damage). A primary-hit crit prepares a stance: the next basic attack adds a 50% ATK strike that can crit.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
             modify_stats_hook=modify_whirlwind_defense, on_attack_dealt_hook=hook_whirlwind_defense,
             affinities=("duelist",), is_stance=True),
@@ -814,16 +819,16 @@ EPIC_ABILITIES: list[Ability] = [
 
 SIGNATURE_ABILITIES: list[Ability] = [
     Ability("paladin_oath", "Consecrated Strikes",
-            "Basic attacks add a crit-capable 50% ATK strike that heals for half its damage.",
+            "Basic attacks add a crit-capable 50% ATK strike that heals for 15% of its damage.",
             AbilityType.PASSIVE, AbilityRarity.EPIC),
     Ability("berserker_rage", "Deathless Onslaught",
             "Once per combat below 30% HP, gain a bonus action. Your next damaging action deals double damage and heals for half, up to 25% max HP.",
             AbilityType.PASSIVE, AbilityRarity.EPIC),
     Ability("venomancer_mastery", "Perfect Toxin",
-            "Every fourth Poison tick detonates for an additional 200% of that tick's damage, ignoring defense.",
+            "Enemies start combat with 2 stacks of Poison. The first Poison tick of each application detonates for an additional 200% damage, ignoring defense.",
             AbilityType.PASSIVE, AbilityRarity.EPIC),
     Ability("duelist_precision", "Flowing Steel",
-            "Consuming a stance empowers your next basic attack with two crit-capable 50% ATK hits.",
+            "15% innate Parry chance (-5% per equipped Parry stance). Parrying, consuming a stance, or landing a primary-hit Crit arms Flowing Steel: your next basic attack adds a 75% ATK crit-capable hit that heals 10% of damage dealt and grants +5 gauge.",
             AbilityType.PASSIVE, AbilityRarity.EPIC),
     Ability("archmage_focus", "Arcane Momentum",
             "Archmage and hybrid active skills gain 10% damage per cast, stacking up to 50% for the combat.",

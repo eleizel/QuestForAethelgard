@@ -1008,6 +1008,11 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
         "combat_ticks": 0,
         "player_actions_skipped_by_stun": 0,
         "enemy_actions_skipped_by_stun": 0,
+        "qtes_resolved": 0,
+        "qte_scores": [],
+        "qte_tiers": {},
+        "qte_counter_damage": 0,
+        "qte_counter_heal": 0,
     }
 
     try:
@@ -1174,6 +1179,33 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
 
                         _queue_ability_if_ready(state.combat, rng)
                         state.update_combat()
+                        while state.combat is not None and state.combat.is_qte_active():
+                            qte = state.combat.active_qte
+                            if qte is None:
+                                break
+                            p_hp_before_qte = state.player.current_hp
+                            e_hp_before_qte = state.combat.enemy.current_hp
+                            for _ in range(len(qte.targets)):
+                                simulated_score = int(
+                                    round(max(0.0, min(100.0, state.combat.qte_rng.gauss(77.5, 8.5))))
+                                )
+                                state.combat.resolve_qte_target(simulated_score)
+                                state.combat.advance_qte_after_feedback()
+                            qte_dmg = max(0, e_hp_before_qte - state.combat.enemy.current_hp)
+                            qte_heal = max(0, state.player.current_hp - p_hp_before_qte)
+                            metrics["qtes_resolved"] += 1
+                            metrics["qte_scores"].append(qte.final_score)
+                            metrics["qte_tiers"][qte.final_tier] = (
+                                metrics["qte_tiers"].get(qte.final_tier, 0) + 1
+                            )
+                            metrics["qte_counter_damage"] += qte_dmg
+                            metrics["qte_counter_heal"] += qte_heal
+                            _increment((metrics, act_record, encounter), "damage_dealt", qte_dmg)
+                            _record_max((metrics, act_record, encounter), "largest_hit_dealt", qte_dmg)
+                            _increment((metrics, act_record, encounter), "hp_restored_in_combat", qte_heal)
+                            state.combat.dismiss_qte_summary()
+                            if not state.combat.is_qte_active() and not state.combat.is_active():
+                                state.update_combat()
                         encounter["ticks"] += 1
                         metrics["combat_ticks"] += 1
                         act_record["combat_ticks"] += 1
@@ -1835,6 +1867,24 @@ def _print_detailed_tables(
                 f"{class_id},{route},{signature_id},{len(promoted_rows)},{runs_with_proc},"
                 f"{total_procs},{total_procs / len(promoted_rows):.2f}"
             )
+
+    print("\n=== RESOLUCIÓN DE QTE (ELITES Y JEFES) ===")
+    print("class,route,qtes_resolved,mean_score,failed,good,nice,amazing,perfect,counter_dmg,counter_heal")
+    for class_id, route, rows, _summary in summaries:
+        total_qtes = sum(row.get("qtes_resolved", 0) for row in rows)
+        all_scores = [s for row in rows for s in row.get("qte_scores", [])]
+        mean_score = statistics.mean(all_scores) if all_scores else 0.0
+        tiers: dict[str, int] = {}
+        for row in rows:
+            for t_name, t_count in row.get("qte_tiers", {}).items():
+                tiers[t_name] = tiers.get(t_name, 0) + t_count
+        c_dmg = sum(row.get("qte_counter_damage", 0) for row in rows)
+        c_heal = sum(row.get("qte_counter_heal", 0) for row in rows)
+        print(
+            f"{class_id},{route},{total_qtes},{mean_score:.1f}%,"
+            f"{tiers.get('failed', 0)},{tiers.get('good', 0)},{tiers.get('nice', 0)},"
+            f"{tiers.get('amazing', 0)},{tiers.get('perfect', 0)},{c_dmg},{c_heal}"
+        )
 
     print("\n=== DIFERENCIA PAREADA DE RUTA (PATHFINDER - FATE) ===")
     print("class,metric,n,fate_mean,pathfinder_mean,delta,delta_95ci,pathfinder_better,tie,fate_better")

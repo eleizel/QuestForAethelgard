@@ -51,7 +51,7 @@ class Renderer:
 
     def get_text_width(self, text: str) -> int:
         """Return pixel width of text based on current font."""
-        char_w = 6 if self.font else 4
+        char_w = 5 if self.font else 4
         return len(text) * char_w
 
     def draw_button(

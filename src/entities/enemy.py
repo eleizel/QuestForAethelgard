@@ -37,9 +37,12 @@ ACT_2_BOSS_ATK_MULT = 1.20
 ACT_3_BOSS_HP_OVER_ELITE_RATIO = 1.25
 ACT_3_BOSS_ATK_MULT = 1.20
 BOSS_HP_OVER_ELITE_RATIO = 1.50
-ACT_3_ENEMY_HP_MULT = 0.90
-ACT_3_ENEMY_ATK_MULT = 0.90
-ACT_3_ENEMY_DEF_MULT = 0.90
+ACT_2_ENEMY_HP_MULT = 1.10
+ACT_2_ENEMY_ATK_MULT = 1.10
+ACT_2_ENEMY_DEF_MULT = 1.10
+ACT_3_ENEMY_HP_MULT = 1.035
+ACT_3_ENEMY_ATK_MULT = 1.035
+ACT_3_ENEMY_DEF_MULT = 1.035
 ENEMY_HP_GROWTH_PER_FLOOR = 0.045
 ENEMY_ATK_GROWTH_PER_FLOOR = 0.050
 ENEMY_DEF_GROWTH_PER_FLOOR = 0.050
@@ -154,13 +157,17 @@ def generate_enemy(
 
     hp_mult = TIER_HP_MULT[tier]
     atk_mult = TIER_ATK_MULT[tier]
-    act_3_hp_mult = 1.0
-    act_3_atk_mult = 1.0
-    act_3_def_mult = 1.0
+    act_hp_mult = 1.0
+    act_atk_mult = 1.0
+    act_def_mult = 1.0
     if floor >= ACT_3_START_FLOOR:
-        act_3_hp_mult = ACT_3_ENEMY_HP_MULT
-        act_3_atk_mult = ACT_3_ENEMY_ATK_MULT
-        act_3_def_mult = ACT_3_ENEMY_DEF_MULT
+        act_hp_mult = ACT_3_ENEMY_HP_MULT
+        act_atk_mult = ACT_3_ENEMY_ATK_MULT
+        act_def_mult = ACT_3_ENEMY_DEF_MULT
+    elif floor >= ACT_2_START_FLOOR:
+        act_hp_mult = ACT_2_ENEMY_HP_MULT
+        act_atk_mult = ACT_2_ENEMY_ATK_MULT
+        act_def_mult = ACT_2_ENEMY_DEF_MULT
     if tier == EnemyTier.BOSS:
         # Normalize average boss HP against average Elite HP, then apply an
         # act-specific premium while preserving each archetype's relative size.
@@ -192,9 +199,9 @@ def generate_enemy(
         enemy_speed = max(enemy_speed, ceil(max(1, player_speed) * MIN_ENEMY_SPEED_RATIO))
 
     scaled_stats = Stats(
-        max_hp=max(1, int(template.base_hp * (1 + floor_offset * ENEMY_HP_GROWTH_PER_FLOOR) * hp_mult * act_3_hp_mult)),
-        attack=max(1, int(template.base_atk * (1 + floor_offset * ENEMY_ATK_GROWTH_PER_FLOOR) * atk_mult * act_3_atk_mult)),
-        defense=max(0, int(template.base_def * (1 + floor_offset * ENEMY_DEF_GROWTH_PER_FLOOR) * act_3_def_mult)),
+        max_hp=max(1, int(template.base_hp * (1 + floor_offset * ENEMY_HP_GROWTH_PER_FLOOR) * hp_mult * act_hp_mult)),
+        attack=max(1, int(template.base_atk * (1 + floor_offset * ENEMY_ATK_GROWTH_PER_FLOOR) * atk_mult * act_atk_mult)),
+        defense=max(0, int(template.base_def * (1 + floor_offset * ENEMY_DEF_GROWTH_PER_FLOOR) * act_def_mult)),
         speed=enemy_speed,
         crit_chance=template.base_crit,
     )

@@ -641,15 +641,20 @@ def test_riposte_blocks_then_counters_on_next_damage(monkeypatch):
     riposte = get_ability_by_id("riposte")
     assert riposte and riposte.is_stance
     player.abilities.add_ability(riposte)
+    assert player.effective_stats.attack == pytest.approx(42)  # +5% ATK
     class BlockRNG:
         def random(self): return 0.0
         def uniform(self, a, b): return 1.0
     combat.rng = BlockRNG()
     hp = player.current_hp
     combat._execute_enemy_attack()
-    assert player.current_hp == hp and player.has_stance("riposte")
+    # Parry halves the incoming 10 damage to 5 and prepares Riposte stance
+    assert player.current_hp == hp - 5 and player.has_stance("riposte")
+    combat.player_gauge = 10
     player.take_damage(10)
-    assert enemy.current_hp == 80 and not player.has_stance("riposte")
+    # 40% of 42 ATK = 16 counter damage, +5 player gauge
+    assert enemy.current_hp == 84 and not player.has_stance("riposte")
+    assert combat.player_gauge == 15
 
 
 def test_whirlwind_stance_adds_critical_hit_to_next_basic_attack(monkeypatch):
@@ -665,7 +670,7 @@ def test_whirlwind_stance_adds_critical_hit_to_next_basic_attack(monkeypatch):
     whirlwind = get_ability_by_id("whirlwind_defense")
     assert whirlwind and whirlwind.is_stance
     player.abilities.add_ability(whirlwind)
-    assert player.effective_stats.defense == pytest.approx(11)
+    assert player.effective_stats.defense == pytest.approx(10.5)  # +5% DEF
     class CritRNG:
         def random(self): return 0.0
         def uniform(self, a, b): return 1.0
@@ -675,8 +680,50 @@ def test_whirlwind_stance_adds_critical_hit_to_next_basic_attack(monkeypatch):
     assert player.has_stance("whirlwind_defense")
     combat.player_gauge = 100
     combat._execute_player_attack()
-    assert enemy.current_hp == 663
+    # Turn 1: 150 dmg. Turn 2: 150 base crit + 75 whirlwind crit (50% ATK * 1.5) = 225 -> 1000 - 375 = 625
+    assert enemy.current_hp == 625
     assert player.has_stance("whirlwind_defense")
+
+
+def test_duelist_precision_parry_diminishing_returns_and_flowing_steel(monkeypatch):
+    from src.data.abilities import get_ability_by_id
+    from src.entities.enemy import EnemyTier
+    player = Player(name="DuelistTest", class_id="rogue")
+    player.base_stats = Stats(100, 100, 0, 10, 0.0)
+    player.current_hp = 50
+    player.signature_passive = get_ability_by_id("duelist_precision")
+    enemy = Enemy(name="DuelistTarget", stats=Stats(500, 20, 0, 10, 0.0),
+                  tier=EnemyTier.COMMON, floor_level=1, exp_reward=1, gold_reward=1)
+    enemy.current_hp = 500
+    combat = CombatSystem(player, enemy)
+    monkeypatch.setattr("src.systems.combat.pyxel.play", lambda *args: None)
+
+    # Signature alone = 15% Parry
+    assert combat.get_player_parry_chance() == pytest.approx(0.15)
+    # + Riposte (20%) -> Signature drops to 10% -> 30% total
+    player.abilities.add_ability(get_ability_by_id("riposte"))
+    assert combat.get_player_parry_chance() == pytest.approx(0.30)
+    # + Whirlwind Defense (20%) -> Signature drops to 5% -> 45% total
+    player.abilities.add_ability(get_ability_by_id("whirlwind_defense"))
+    assert combat.get_player_parry_chance() == pytest.approx(0.45)
+
+    # Parrying an attack halves damage and arms Flowing Steel
+    player.abilities.passive.clear()
+    class ParryNoCritRNG:
+        vals = iter([0.99, 0.05, 0.99, 0.99])  # enemy no-crit, parry (<0.15), player no-crit, bonus hit no-crit
+        def random(self): return next(self.vals, 0.99)
+        def uniform(self, a, b): return 1.0
+    combat.rng = ParryNoCritRNG()
+    combat._execute_enemy_attack()
+    assert player.current_hp == 40  # 20 dmg halved to 10
+    assert combat.duelist_flourish_armed is True
+
+    # Next basic attack fires 100 base + 75 Flowing Steel (heals 10% = 7 HP, +5 gauge)
+    combat.player_gauge = 100
+    combat._execute_player_attack()
+    assert enemy.current_hp == 325
+    assert player.current_hp == 47
+    assert combat.player_gauge == 5
 
 
 

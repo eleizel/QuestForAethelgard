@@ -15,6 +15,9 @@ from src.data.biomes import BIOME_REGISTRY
 from src.entities.enemy import (
     ACT_2_BOSS_ATK_MULT,
     ACT_2_BOSS_HP_OVER_ELITE_RATIO,
+    ACT_2_ENEMY_ATK_MULT,
+    ACT_2_ENEMY_DEF_MULT,
+    ACT_2_ENEMY_HP_MULT,
     ACT_3_BOSS_ATK_MULT,
     ACT_3_BOSS_HP_OVER_ELITE_RATIO,
     ACT_3_ENEMY_ATK_MULT,
@@ -67,10 +70,15 @@ def test_boss_health_is_normalized_to_one_and_a_half_times_biome_elite_average()
     assert ACT_2_BOSS_ATK_MULT == 1.20
     assert ACT_3_BOSS_HP_OVER_ELITE_RATIO == 1.25
     assert ACT_3_BOSS_ATK_MULT == 1.20
+    assert (ACT_2_ENEMY_HP_MULT, ACT_2_ENEMY_ATK_MULT, ACT_2_ENEMY_DEF_MULT) == (
+        1.10,
+        1.10,
+        1.10,
+    )
     assert (ACT_3_ENEMY_HP_MULT, ACT_3_ENEMY_ATK_MULT, ACT_3_ENEMY_DEF_MULT) == (
-        0.90,
-        0.90,
-        0.90,
+        1.035,
+        1.035,
+        1.035,
     )
 
 
@@ -212,11 +220,13 @@ def test_targeted_act_1_and_act_3_boss_tuning() -> None:
             mean(ENEMY_CATALOG[enemy_id].base_hp for enemy_id in BIOME_REGISTRY["ossuary"].elites)
             / mean(ENEMY_CATALOG[enemy_id].base_hp for enemy_id in BIOME_REGISTRY["ossuary"].bosses)
         )
+        * ACT_2_ENEMY_HP_MULT
     )
     assert act_2_boss.base_stats.attack == int(
         act_2_boss_archetype.base_atk
         * (1 + (13 - 1) * ENEMY_ATK_GROWTH_PER_FLOOR)
         * ACT_2_BOSS_ATK_MULT
+        * ACT_2_ENEMY_ATK_MULT
     )
 
 
