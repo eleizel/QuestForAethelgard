@@ -463,7 +463,7 @@ TRANSLATIONS_EN = {
     "ability_reckless_assault_name": "Reckless Assault",
     "ability_reckless_assault_desc": "Deals 150% ATK, ignores 25% DEF, but you take 10% more damage until your next action.",
     "ability_cross_cut_name": "Cross Cut",
-    "ability_cross_cut_desc": "Strikes 2 times at 90% ATK each.",
+    "ability_cross_cut_desc": "Strikes 2 times at 65% ATK each.",
     "ability_shadow_strike_name": "Shadow Strike",
     "ability_shadow_strike_desc": "Deals 115% ATK (+15% Crit). Crits refund 15 gauge.",
     "ability_arcane_bolt_name": "Arcane Bolt",
@@ -724,7 +724,7 @@ TRANSLATIONS_EN = {
     "item_ring_of_mild_disappointment_desc": "It glows with a magnificent celestial aura, but only gives +1 HP.",
 
     "ability_paladin_oath_name": "Consecrated Strikes",
-    "ability_paladin_oath_desc": "Basic attacks add a separate 50% ATK strike that can critically hit and heals you for 15% of its damage.",
+    "ability_paladin_oath_desc": "Basic attacks add a separate 50% ATK strike that can critically hit and heals you for 10% of its damage.",
     "ability_berserker_rage_name": "Deathless Onslaught",
     "ability_berserker_rage_desc": "Once per combat, dropping below 50% Max HP grants a bonus action. Your next damaging action deals double damage and heals for half the damage dealt, up to 30% Max HP.",
     "ability_venomancer_mastery_name": "Perfect Toxin",

@@ -38,8 +38,8 @@ def execute_cross_cut(combat: CombatSystem) -> tuple[str, int, bool]:
     attack = combat.player.effective_stats.attack
     raw_dmg1, crit1 = combat.player.calculate_attack(combat.rng)
     raw_dmg2, crit2 = combat.player.calculate_attack(combat.rng)
-    dmg1 = int(raw_dmg1 * 0.90)
-    dmg2 = int(raw_dmg2 * 0.90)
+    dmg1 = int(raw_dmg1 * 0.65)
+    dmg2 = int(raw_dmg2 * 0.65)
     total_dmg = combat.damage_enemy(dmg1) + combat.damage_enemy(dmg2)
     any_crit = crit1 or crit2
     if combat.enemy.current_hp > 0:
@@ -49,14 +49,14 @@ def execute_cross_cut(combat: CombatSystem) -> tuple[str, int, bool]:
                                   max_stacks=3 if can_stack else 1)
         if bleed:
             combat.enemy.apply_status(bleed)
-    combat.enemy_gauge = max(0, combat.enemy_gauge - 30)
+    combat.player_gauge = min(100, combat.player_gauge + 10)
     return t("log_cross_cut", player=combat.player.name, dmg1=dmg1, dmg2=dmg2), total_dmg, any_crit
 
 
 CROSS_CUT = Ability(
     id="cross_cut",
     name="Cross Cut",
-    description="Strikes 2 times at 90% ATK each.",
+    description="Strikes 2 times at 65% ATK each.",
     ability_type=AbilityType.ACTIVE,
     rarity=AbilityRarity.STANDARD,
     required_class="warrior",
@@ -819,7 +819,7 @@ EPIC_ABILITIES: list[Ability] = [
 
 SIGNATURE_ABILITIES: list[Ability] = [
     Ability("paladin_oath", "Consecrated Strikes",
-            "Basic attacks add a crit-capable 50% ATK strike that heals for 15% of its damage.",
+            "Basic attacks add a crit-capable 50% ATK strike that heals for 10% of its damage.",
             AbilityType.PASSIVE, AbilityRarity.EPIC),
     Ability("berserker_rage", "Deathless Onslaught",
             "Once per combat below 30% HP, gain a bonus action. Your next damaging action deals double damage and heals for half, up to 25% max HP.",

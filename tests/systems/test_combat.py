@@ -281,7 +281,7 @@ def test_paladin_oath_heal_quarter(base_player, base_enemy, monkeypatch):
     # Base hit deals 20 damage. Signature hit deals 50% ATK = 10 damage.
     # Total damage to enemy: 30
     assert base_enemy.current_hp == 70
-    # Paladin heal is 15% of signature damage: max(1, int(10 * 0.15)) = 1 HP
+    # Paladin heal is 10% of signature damage: max(1, int(10 * 0.10)) = 1 HP
     assert base_player.current_hp == 51
 
 

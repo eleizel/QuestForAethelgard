@@ -33,7 +33,7 @@ CLASS_REGISTRY: Final[dict[str, ClassDefinition]] = {
         id="warrior",
         name="Warrior",
         tier=1,
-        base_stats=Stats(max_hp=120, attack=12, defense=12, speed=10, crit_chance=0.05),
+        base_stats=Stats(max_hp=120, attack=12, defense=10, speed=10, crit_chance=0.05),
         growth_per_level=Stats(max_hp=15, attack=2, defense=3, speed=1, crit_chance=0.005),
         promotions=["paladin", "berserker"],
         description="A resilient fighter focused on martial combat.",
@@ -64,7 +64,7 @@ CLASS_REGISTRY: Final[dict[str, ClassDefinition]] = {
         name="Paladin",
         tier=2,
         base_stats=Stats(max_hp=160, attack=22, defense=16, speed=12, crit_chance=0.08),
-        growth_per_level=Stats(max_hp=20, attack=3, defense=5, speed=1, crit_chance=0.005),
+        growth_per_level=Stats(max_hp=18, attack=3, defense=3, speed=1, crit_chance=0.005),
         promotions=[],
         description="A holy knight blending high defense and healing.",
         signature_passive="paladin_oath"

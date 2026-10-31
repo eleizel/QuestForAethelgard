@@ -463,7 +463,7 @@ TRANSLATIONS_ES = {
     "ability_reckless_assault_name": "Asalto Temerario",
     "ability_reckless_assault_desc": "Inflige 150% ATQ, ignora 25% DEF, pero recibes un 10% mas de dano hasta tu siguiente accion.",
     "ability_cross_cut_name": "Corte Cruzado",
-    "ability_cross_cut_desc": "Dos impactos rápidos que infligen 90% ATQ cada uno.",
+    "ability_cross_cut_desc": "Dos impactos rápidos que infligen 65% ATQ cada uno.",
     "ability_shadow_strike_name": "Golpe Sombrio",
     "ability_shadow_strike_desc": "Inflige 115% ATQ (+15% prob. de crítico). Los críticos devuelven 15 de medidor.",
     "ability_arcane_bolt_name": "Saeta Arcana",
@@ -724,7 +724,7 @@ TRANSLATIONS_ES = {
     "item_ring_of_mild_disappointment_desc": "Brilla con aura celestial deslumbrante, pero solo da +1 PV.",
 
     "ability_paladin_oath_name": "Golpes Consagrados",
-    "ability_paladin_oath_desc": "Los ataques básicos añaden un golpe separado de 50% ATQ que puede ser crítico y te cura un 15% de su daño.",
+    "ability_paladin_oath_desc": "Los ataques básicos añaden un golpe separado de 50% ATQ que puede ser crítico y te cura un 10% de su daño.",
     "ability_berserker_rage_name": "Arremetida Inmortal",
     "ability_berserker_rage_desc": "Una vez por combate, bajar del 50% de PV máximos otorga una acción adicional. Tu siguiente acción dañina inflige el doble y te cura la mitad del daño, hasta un 30% de PV máximos.",
     "ability_venomancer_mastery_name": "Toxina Perfecta",
