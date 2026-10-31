@@ -168,7 +168,7 @@ def test_active_abilities(monkeypatch):
 
     combat.rng = MockRNG()
 
-    # CROSS_CUT (warrior): 2 strikes at 90% ATK each
+    # CROSS_CUT (warrior): 2 strikes at 65% ATK each
     # take_damage reduces by defense if it's an attack, but abilities deal raw damage to take_damage which does its own mitigation
     # Oh wait, take_damage uses defense. Let's see how take_damage works.
 
@@ -181,9 +181,10 @@ def test_active_abilities(monkeypatch):
 
     # CROSS_CUT
     log, dmg, crit = CROSS_CUT.execute(combat)
-    # player attack 100 -> 90% = 90. Two strikes = 180
-    assert dmg == 180
+    # player attack 100 -> 65% = 65. Two strikes = 130
+    assert dmg == 130
     assert crit == False
+    assert combat.player_gauge == 10
 
     # SHADOW_STRIKE (rogue): 115% ATK and +15 percentage points of crit chance
     log, dmg, crit = SHADOW_STRIKE.execute(combat)

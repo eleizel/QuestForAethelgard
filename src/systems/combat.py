@@ -788,7 +788,7 @@ class CombatSystem:
                         _t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name)
                     )
             if signature_id == "paladin_oath":
-                self.player.heal(max(1, int(damage * 0.15)))
+                self.player.heal(max(1, int(damage * 0.10)))
             elif signature_id == "duelist_precision":
                 self.player.heal(max(1, int(damage * 0.10)))
                 self.player_gauge = min(100, self.player_gauge + 5)
