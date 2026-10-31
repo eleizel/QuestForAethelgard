@@ -64,6 +64,7 @@ class EquipmentItem(Item):
     on_hit_status: str | None = None
     on_hit_chance: float = 0.0
     immune_statuses: list[str] = field(default_factory=list)
+    tier: int = 1
 
 
 @dataclass

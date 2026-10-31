@@ -37,12 +37,15 @@ ACT_2_BOSS_ATK_MULT = 1.20
 ACT_3_BOSS_HP_OVER_ELITE_RATIO = 1.25
 ACT_3_BOSS_ATK_MULT = 1.20
 BOSS_HP_OVER_ELITE_RATIO = 1.50
-ACT_2_ENEMY_HP_MULT = 1.10
-ACT_2_ENEMY_ATK_MULT = 1.10
-ACT_2_ENEMY_DEF_MULT = 1.10
-ACT_3_ENEMY_HP_MULT = 1.035
-ACT_3_ENEMY_ATK_MULT = 1.035
-ACT_3_ENEMY_DEF_MULT = 1.035
+ACT_1_ENEMY_HP_MULT = 1.15
+ACT_1_ENEMY_ATK_MULT = 1.15
+ACT_1_ENEMY_DEF_MULT = 1.15
+ACT_2_ENEMY_HP_MULT = 1.20
+ACT_2_ENEMY_ATK_MULT = 1.20
+ACT_2_ENEMY_DEF_MULT = 1.20
+ACT_3_ENEMY_HP_MULT = 1.20
+ACT_3_ENEMY_ATK_MULT = 1.20
+ACT_3_ENEMY_DEF_MULT = 1.20
 ENEMY_HP_GROWTH_PER_FLOOR = 0.045
 ENEMY_ATK_GROWTH_PER_FLOOR = 0.050
 ENEMY_DEF_GROWTH_PER_FLOOR = 0.050
@@ -168,6 +171,10 @@ def generate_enemy(
         act_hp_mult = ACT_2_ENEMY_HP_MULT
         act_atk_mult = ACT_2_ENEMY_ATK_MULT
         act_def_mult = ACT_2_ENEMY_DEF_MULT
+    else:
+        act_hp_mult = ACT_1_ENEMY_HP_MULT
+        act_atk_mult = ACT_1_ENEMY_ATK_MULT
+        act_def_mult = ACT_1_ENEMY_DEF_MULT
     if tier == EnemyTier.BOSS:
         # Normalize average boss HP against average Elite HP, then apply an
         # act-specific premium while preserving each archetype's relative size.
