@@ -227,3 +227,88 @@ def test_enemy_attacks_player(base_player, base_enemy, monkeypatch):
     assert combat.player_gauge == 10
     # Player takes damage: enemy attack (5) - player def (0) = 5
     assert base_player.current_hp == 95
+from src.data.abilities import get_ability_by_id
+
+def test_archmage_barrier_mechanics(base_player, base_enemy, monkeypatch):
+    import pyxel
+    monkeypatch.setattr(pyxel, "play", lambda *args, **kwargs: None)
+
+    # Attach archmage_focus signature passive
+    base_player.signature_passive = get_ability_by_id("archmage_focus")
+    base_player.base_stats.hp = 100
+    base_player.current_hp = 100
+
+    combat = CombatSystem(player=base_player, enemy=base_enemy)
+    # 20% barrier of 100 max HP = 20 shield
+    assert base_player.shield == 20
+
+    # Enemy hits player for 15 damage
+    combat.rng = MockRNG(random_val=0.5, uniform_val=1.0)
+    base_player.take_damage(15)
+    assert base_player.shield == 5
+    assert base_player.current_hp == 100
+
+    # Another hit for 10 damage: 5 absorbed by shield, 5 applied to HP
+    base_player.take_damage(10)
+    assert base_player.shield == 0
+    assert base_player.current_hp == 95
+
+    # Combat ends with victory -> shield reset to 0
+    base_enemy.current_hp = 0
+    combat._evaluate_battle_outcome()
+    assert base_player.shield == 0
+
+
+def test_paladin_oath_heal_quarter(base_player, base_enemy, monkeypatch):
+    import pyxel
+    monkeypatch.setattr(pyxel, "play", lambda *args, **kwargs: None)
+
+    base_player.signature_passive = get_ability_by_id("paladin_oath")
+    base_player.base_stats.speed = 100
+    base_player.base_stats.attack = 20
+    base_player.base_stats.crit_chance = 0.0
+    base_enemy.base_stats.speed = 10
+    base_enemy.base_stats.defense = 0
+    base_enemy.base_stats.hp = 100
+    base_enemy.current_hp = 100
+
+    base_player.current_hp = 50  # Missing 50 HP
+
+    combat = CombatSystem(player=base_player, enemy=base_enemy)
+    combat.rng = MockRNG(random_val=0.5, uniform_val=1.0)
+    combat.step()
+
+    # Base hit deals 20 damage. Signature hit deals 50% ATK = 10 damage.
+    # Total damage to enemy: 30
+    assert base_enemy.current_hp == 70
+    # Paladin heal is quarter of signature damage: 10 // 4 = 2 HP
+    assert base_player.current_hp == 52
+
+
+def test_berserker_rage_threshold_and_heal(base_player, base_enemy, monkeypatch):
+    import pyxel
+    monkeypatch.setattr(pyxel, "play", lambda *args, **kwargs: None)
+
+    base_player.signature_passive = get_ability_by_id("berserker_rage")
+    base_player.base_stats.hp = 100
+    base_player.current_hp = 45  # Under 50% max HP at start of combat
+    base_player.base_stats.speed = 100
+    base_player.base_stats.attack = 50
+    base_enemy.base_stats.speed = 10
+    base_enemy.base_stats.defense = 0
+    base_enemy.base_stats.hp = 200
+    base_enemy.current_hp = 200
+
+    combat = CombatSystem(player=base_player, enemy=base_enemy)
+    # Starts armed because HP <= 50%
+    assert combat.berserker_threshold_triggered is True
+    assert combat.berserker_bonus_ready is True
+
+    combat.rng = MockRNG(random_val=0.5, uniform_val=1.0)
+    combat.step()
+
+    # Berserker double damage: 50 * 2 = 100 damage
+    assert base_enemy.current_hp == 100
+    # Heal is half damage (50), but capped at 30% max HP (30 HP)
+    # 45 + 30 = 75 HP
+    assert base_player.current_hp == 75

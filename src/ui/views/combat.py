@@ -362,7 +362,11 @@ class CombatView(View):
 
         # Numeric Stats
         p_stats = game_state.player.effective_stats
-        renderer.draw_text(pc_x + 27, pc_y + 20, f"HP:  {game_state.player.current_hp}/{game_state.player.max_hp}",
+        p_shield = getattr(game_state.player, "shield", 0)
+        hp_text = f"HP:  {game_state.player.current_hp}/{game_state.player.max_hp}"
+        if p_shield > 0:
+            hp_text += f" (+{p_shield})"
+        renderer.draw_text(pc_x + 27, pc_y + 20, hp_text,
                            COLOR_WHITE)
         renderer.draw_text(pc_x + 27, pc_y + 28, f"ATK: {p_stats.attack:<3} DEF: {p_stats.defense}", COLOR_WHITE)
         crit_pct = int(p_stats.crit_chance * 100)
