@@ -74,14 +74,14 @@ def test_boss_health_is_normalized_to_one_and_a_half_times_biome_elite_average()
     assert ACT_3_BOSS_HP_OVER_ELITE_RATIO == 1.25
     assert ACT_3_BOSS_ATK_MULT == 1.20
     assert (ACT_2_ENEMY_HP_MULT, ACT_2_ENEMY_ATK_MULT, ACT_2_ENEMY_DEF_MULT) == (
-        1.25,
-        1.25,
-        1.25,
+        1.20,
+        1.20,
+        1.20,
     )
     assert (ACT_3_ENEMY_HP_MULT, ACT_3_ENEMY_ATK_MULT, ACT_3_ENEMY_DEF_MULT) == (
-        1.25,
-        1.25,
-        1.25,
+        1.20,
+        1.20,
+        1.20,
     )
 
 

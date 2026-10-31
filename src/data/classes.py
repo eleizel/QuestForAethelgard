@@ -53,8 +53,8 @@ CLASS_REGISTRY: Final[dict[str, ClassDefinition]] = {
         id="mage",
         name="Mage",
         tier=1,
-        base_stats=Stats(max_hp=100, attack=18, defense=8, speed=10, crit_chance=0.05),
-        growth_per_level=Stats(max_hp=10, attack=4, defense=2, speed=1, crit_chance=0.005),
+        base_stats=Stats(max_hp=105, attack=18, defense=8, speed=10, crit_chance=0.05),
+        growth_per_level=Stats(max_hp=12, attack=4, defense=2, speed=1, crit_chance=0.005),
         promotions=["archmage", "warlock"],
         description="A fragile but destructive spellcaster.",
         starting_abilities=["arcane_bolt","mend_wound"]
@@ -103,8 +103,8 @@ CLASS_REGISTRY: Final[dict[str, ClassDefinition]] = {
         id="archmage",
         name="Archmage",
         tier=2,
-        base_stats=Stats(max_hp=95, attack=42, defense=4, speed=12, crit_chance=0.13),
-        growth_per_level=Stats(max_hp=10, attack=5, defense=1, speed=2, crit_chance=0.01),
+        base_stats=Stats(max_hp=110, attack=42, defense=8, speed=12, crit_chance=0.13),
+        growth_per_level=Stats(max_hp=14, attack=5, defense=2, speed=2, crit_chance=0.01),
         promotions=[],
         description="An unparalleled master of arcane forces.",
         signature_passive="archmage_focus"
@@ -113,8 +113,8 @@ CLASS_REGISTRY: Final[dict[str, ClassDefinition]] = {
         id="warlock",
         name="Warlock",
         tier=2,
-        base_stats=Stats(max_hp=110, attack=35, defense=8, speed=10, crit_chance=0.10),
-        growth_per_level=Stats(max_hp=15, attack=5, defense=3, speed=1, crit_chance=0.005),
+        base_stats=Stats(max_hp=120, attack=35, defense=8, speed=10, crit_chance=0.10),
+        growth_per_level=Stats(max_hp=16, attack=5, defense=3, speed=1, crit_chance=0.005),
         promotions=[],
         description="A dark spellcaster who draws power from their own life force.",
         signature_passive="warlock_pact"
