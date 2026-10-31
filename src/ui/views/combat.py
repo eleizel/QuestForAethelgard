@@ -577,8 +577,7 @@ class CombatView(View):
             return
 
         # Advance shrinking outer circle
-        target.current_radius -= target.shrink_speed
-        if target.current_radius < target.button_radius - 2.0:
+        if target.step_shrink():
             combat.resolve_qte_target(0)
 
     @staticmethod

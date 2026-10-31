@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Final
 
@@ -12,6 +11,15 @@ import pyxel
 from src.core.audio import audio
 from src.config import SND_HIT, SND_CRIT, SND_VICTORY, SND_DEFEAT, SND_HEAL, TARGET_COMBAT_SPEED
 from src.systems.abilities import Ability
+from src.systems.qte import (
+    QTESequence,
+    QTETarget,
+    advance_sequence_after_feedback,
+    classify_qte_tier,
+    finalize_qte_sequence,
+    generate_qte_sequence,
+    resolve_target,
+)
 from src.data.enemies import ENEMY_SKILLS, EnemySkill
 
 if TYPE_CHECKING:
@@ -33,67 +41,6 @@ class CombatResult(Enum):
     IN_PROGRESS = auto()
     PLAYER_VICTORY = auto()
     PLAYER_DEFEAT = auto()
-
-
-def classify_qte_tier(score: int) -> str:
-    """Classify a 0..100 QTE accuracy score into one of the five resolution tiers."""
-    if score <= 20:
-        return "failed"
-    if score <= 40:
-        return "good"
-    if score <= 60:
-        return "nice"
-    if score <= 80:
-        return "amazing"
-    return "perfect"
-
-
-@dataclass
-class QTETarget:
-    """One shrinking-circle QTE button inside a multi-button QTE sequence."""
-
-    x: int
-    y: int
-    number: int
-    button_radius: int = 10
-    start_radius: float = 32.0
-    current_radius: float = 32.0
-    shrink_speed: float = 0.6
-    resolved: bool = False
-    score: int = 0
-    tier: str = ""
-    feedback_frames: int = 0
-
-    def current_accuracy(self) -> int:
-        """Return 0% at start_radius and 100% when current_radius meets button_radius."""
-        span = self.start_radius - self.button_radius
-        if span <= 0:
-            return 100
-        if self.current_radius >= self.start_radius:
-            return 0
-        if self.current_radius <= self.button_radius:
-            return 100
-        pct = 100.0 * (self.start_radius - self.current_radius) / span
-        return max(0, min(100, int(round(pct))))
-
-
-@dataclass
-class QTESequence:
-    """Tracks a sequence of 3 to 5 consecutive QTE buttons and their final average resolution."""
-
-    targets: list[QTETarget]
-    current_index: int = 0
-    summary_active: bool = False
-    summary_frames: int = 0
-    final_score: int = 0
-    final_tier: str = ""
-    bonuses_applied: list[str] = field(default_factory=list)
-
-    @property
-    def current_target(self) -> QTETarget | None:
-        if 0 <= self.current_index < len(self.targets):
-            return self.targets[self.current_index]
-        return None
 
 
 class CombatSystem:
@@ -217,97 +164,21 @@ class CombatSystem:
             self._queued_qte_count += 1
             return self.active_qte
 
-        num_targets = count if count is not None else self.qte_rng.randint(3, 5)
-        targets: list[QTETarget] = []
-        for _ in range(num_targets):
-            x = self.qte_rng.randint(44, 212)
-            y = self.qte_rng.randint(62, 174)
-            number = self.qte_rng.randint(1, 3)
-            shrink_speed = round(self.qte_rng.uniform(0.45, 0.85), 3)
-            targets.append(
-                QTETarget(
-                    x=x,
-                    y=y,
-                    number=number,
-                    button_radius=10,
-                    start_radius=32.0,
-                    current_radius=32.0,
-                    shrink_speed=shrink_speed,
-                )
-            )
-        self.active_qte = QTESequence(targets=targets)
+        self.active_qte = generate_qte_sequence(self.qte_rng, count=count)
         self._qte_triggered_this_tick = True
         return self.active_qte
 
     def resolve_qte_target(self, score: int) -> str:
         """Resolve the current QTE button with the given 0..100 score and enter its feedback pause."""
-        if self.active_qte is None or self.active_qte.summary_active:
-            return "failed"
-        target = self.active_qte.current_target
-        if target is None or target.resolved:
-            return "failed"
-        clamped = max(0, min(100, int(score)))
-        target.resolved = True
-        target.score = clamped
-        target.tier = classify_qte_tier(clamped)
-        target.feedback_frames = 24
-        if clamped >= 61:
-            audio.play_sfx(SND_CRIT)
-        elif clamped >= 21:
-            audio.play_sfx(SND_HIT)
-        return target.tier
+        return resolve_target(self.active_qte, score)
 
     def advance_qte_after_feedback(self) -> bool:
         """Advance to the next QTE button, or finalize the sequence if all buttons are resolved."""
-        if self.active_qte is None or self.active_qte.summary_active:
-            return False
-        self.active_qte.current_index += 1
-        if self.active_qte.current_index >= len(self.active_qte.targets):
-            self.resolve_qte_sequence()
-            return True
-        return False
+        return advance_sequence_after_feedback(self)
 
     def resolve_qte_sequence(self) -> dict[str, object]:
         """Calculate the average QTE score and apply cumulative tier rewards."""
-        if self.active_qte is None:
-            return {"score": 0, "tier": "failed", "bonuses": []}
-
-        qte = self.active_qte
-        scores = [t.score for t in qte.targets]
-        final_score = int(round(sum(scores) / len(scores))) if scores else 0
-        final_tier = classify_qte_tier(final_score)
-        qte.final_score = final_score
-        qte.final_tier = final_tier
-        qte.summary_active = True
-        qte.summary_frames = 50
-
-        bonuses: list[str] = []
-        if final_score <= 20:
-            bonuses.append(_t("qte_bonus_none"))
-        if final_score >= 21:
-            self.qte_next_damage_mitigation = final_score / 100.0
-            bonuses.append(_t("qte_bonus_mitigation", pct=final_score))
-        if final_score >= 41:
-            def_gain = max(1, int(round(self.player.effective_stats.defense * 0.10)))
-            self.player.combat_def_buff += def_gain
-            bonuses.append(_t("qte_bonus_def_up"))
-        if final_score >= 61:
-            atk_loss = max(1, int(round(self.enemy.base_stats.attack * 0.10)))
-            self.enemy.base_stats.attack = max(1, self.enemy.base_stats.attack - atk_loss)
-            bonuses.append(_t("qte_bonus_atk_down"))
-        if final_score >= 81 and self.enemy.is_alive and self.player.is_alive:
-            counter_raw = max(1, int(self.player.effective_stats.attack * 0.50))
-            dealt = self.damage_enemy(counter_raw)
-            healed = self.player.heal(max(1, dealt // 2)) if dealt > 0 else 0
-            bonuses.append(_t("qte_bonus_counter", dmg=dealt, heal=healed))
-            audio.play_sfx(SND_CRIT)
-            self._evaluate_battle_outcome()
-
-        qte.bonuses_applied = bonuses
-        self.combat_logs.append(
-            _t("combat_qte_resolved", tier=_t(f"qte_tier_{final_tier}"), score=final_score)
-        )
-        return {"score": final_score, "tier": final_tier, "bonuses": bonuses}
+        return finalize_qte_sequence(self)
 
     def dismiss_qte_summary(self) -> None:
         """Clear the completed QTE sequence and start any queued follow-up threshold QTE."""
