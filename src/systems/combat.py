@@ -643,26 +643,24 @@ class CombatSystem:
                         _t("combat_hit", actor=self.player.name, target=self.enemy.name, damage=dmg_dealt))
                 audio.play_sfx(SND_CRIT if is_crit else SND_HIT)
 
-                # Check on_hit_status for player weapons
-                weapon = self.player.inventory.get_equipment_in_slot("Main Hand")
-                if weapon and getattr(weapon, "on_hit_status", None) and self.rng.random() < getattr(weapon,
-                                                                                                     "on_hit_chance",
-                                                                                                     0.0):
-                    from src.systems.status import get_status_by_id
-                    status_options = {}
-                    if (
-                        weapon.on_hit_status == "poison"
-                        and any(
-                            passive.id == "venomous_accumulation"
-                            for passive in self.player.all_passives
-                        )
-                    ):
-                        status_options["max_stacks"] = 3
-                    effect = get_status_by_id(weapon.on_hit_status, **status_options)
-                    if effect:
-                        self.enemy.apply_status(effect)
-                        self.combat_logs.append(
-                            _t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name))
+                # Check on_hit_status for all equipped gear (weapons and armor)
+                for eq in self.player.inventory.equipment.values():
+                    if eq and getattr(eq, "on_hit_status", None) and self.rng.random() < getattr(eq, "on_hit_chance", 0.0):
+                        from src.systems.status import get_status_by_id
+                        status_options = {}
+                        if (
+                            eq.on_hit_status == "poison"
+                            and any(
+                                passive.id == "venomous_accumulation"
+                                for passive in self.player.all_passives
+                            )
+                        ):
+                            status_options["max_stacks"] = 3
+                        effect = get_status_by_id(eq.on_hit_status, **status_options)
+                        if effect:
+                            self.enemy.apply_status(effect)
+                            self.combat_logs.append(
+                                _t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name))
 
                 if (
                     dmg_dealt > 0
@@ -777,16 +775,16 @@ class CombatSystem:
                 is_basic_attack=True,
                 skip_ids={"whirlwind_defense"} if signature_id == "duelist_precision" else set(),
             )
-            weapon = self.player.inventory.get_equipment_in_slot("Main Hand")
-            if weapon and getattr(weapon, "on_hit_status", None) and self.rng.random() < getattr(weapon, "on_hit_chance", 0.0):
-                from src.systems.status import get_status_by_id
+            for eq in self.player.inventory.equipment.values():
+                if eq and getattr(eq, "on_hit_status", None) and self.rng.random() < getattr(eq, "on_hit_chance", 0.0):
+                    from src.systems.status import get_status_by_id
 
-                effect = get_status_by_id(weapon.on_hit_status)
-                if effect:
-                    self.enemy.apply_status(effect)
-                    self.combat_logs.append(
-                        _t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name)
-                    )
+                    effect = get_status_by_id(eq.on_hit_status)
+                    if effect:
+                        self.enemy.apply_status(effect)
+                        self.combat_logs.append(
+                            _t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name)
+                        )
             if signature_id == "paladin_oath":
                 self.player.heal(max(1, int(damage * 0.10)))
             elif signature_id == "duelist_precision":
@@ -930,7 +928,7 @@ class CombatSystem:
 
         if dmg_dealt > 0:
             chest = self.player.inventory.get_equipment_in_slot("Chest")
-            if chest and chest.id == "spiked_carapace":
+            if chest and chest.id in ("spiked_carapace", "spiked_dragon_carapace"):
                 from src.systems.status import get_status_by_id
                 effect = get_status_by_id("bleed")
                 if effect:

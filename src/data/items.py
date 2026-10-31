@@ -3,10 +3,8 @@
 Includes:
 - Starter kits for Warrior, Rogue, and Mage
 - Permanent stat-enhancing elixirs (+1/+3 stats, +10/+25 HP)
-- Curated progression tiers (Common, Uncommon, Rare, Epic, Legendary)
-- Exactly two Legendaries per archetype (1 weapon + 1 armor piece)
-- Class-restricted gear for Warrior, Rogue, and Mage
-- Universal/Generic gear and humorous dungeon oddities
+- 3 Curated progression tiers (Tier 1 = Act 1, Tier 2 = Act 2, Tier 3 = Act 3)
+- Exactly 2 class-specific and 2 universal pieces per slot per tier (192 equipment items)
 """
 
 from __future__ import annotations
@@ -37,6 +35,9 @@ class StatPotion(ConsumableItem):
 
 
 ITEM_CATALOG: Final[dict[str, Item]] = {
+    # =========================================================================
+    # CONSUMABLES & ELIXIRS
+    # =========================================================================
     "cleansing_flask": ConsumableItem(
         id="cleansing_flask", name="Cleanse P.", description="Cleanses all debuffs.",
         heal_amount=15, cleanses_debuffs=True
@@ -49,557 +50,1424 @@ ITEM_CATALOG: Final[dict[str, Item]] = {
         id="stoneskin_draught", name="Stoneskin P.", description="Grants fortify for 15 ticks.",
         heal_amount=0, applied_status="fortify", status_duration=15, status_potency=6
     ),
-    "flame_tongue": EquipmentItem(
-        id="flame_tongue", name="Flame Tongue", description="Sword that burns enemies.",
-        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.ONE_HANDED,
-        stats_bonus=Stats(max_hp=0, attack=8, defense=0, speed=0, crit_chance=0.0),
-        on_hit_status="burn", on_hit_chance=0.40
-    ),
-    "viper_fang": EquipmentItem(
-        id="viper_fang", name="Viper Fang", description="Dagger dripping with venom.",
-        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.ONE_HANDED,
-        stats_bonus=Stats(max_hp=0, attack=6, defense=0, speed=3, crit_chance=0.0),
-        on_hit_status="poison", on_hit_chance=0.45
-    ),
-    "serrated_cleaver": EquipmentItem(
-        id="serrated_cleaver", name="Serrated Cleaver", description="Axe causing severe bleeding.",
-        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.TWO_HANDED,
-        stats_bonus=Stats(max_hp=0, attack=11, defense=0, speed=0, crit_chance=0.0),
-        on_hit_status="bleed", on_hit_chance=0.35
-    ),
-    "storm_wand": EquipmentItem(
-        id="storm_wand", name="Storm Wand", description="Wand that occasionally stuns.",
-        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.WAND,
-        stats_bonus=Stats(max_hp=0, attack=9, defense=0, speed=0, crit_chance=0.0),
-        on_hit_status="stun", on_hit_chance=0.20
-    ),
-    "purifying_vest": EquipmentItem(
-        id="purifying_vest", name="Purifying Vest", description="Vest that prevents statuses.",
-        slot=EquipSlot.CHEST,
-        stats_bonus=Stats(max_hp=0, attack=0, defense=5, speed=0, crit_chance=0.0),
-        immune_statuses=["burn", "poison", "bleed", "stun", "blind", "weaken", "vulnerable"]
-    ),
-    "spiked_carapace": EquipmentItem(
-        id="spiked_carapace", name="Spiked Carapace", description="Carapace reflecting damage.",
-        slot=EquipSlot.CHEST,
-        stats_bonus=Stats(max_hp=20, attack=0, defense=7, speed=0, crit_chance=0.0)
-    ),
-    "cinder_boots": EquipmentItem(
-        id="cinder_boots", name="Cinder Boots", description="Boots granting burn immunity.",
-        slot=EquipSlot.LEGS,
-        stats_bonus=Stats(max_hp=0, attack=0, defense=3, speed=2, crit_chance=0.0),
-        immune_statuses=["burn"]
-    ),
-
-    # =========================================================================
-    # 1. WARRIOR STARTER KIT (Preserved)
-    # =========================================================================
-    "bronze_sword": EquipmentItem(
-        id="bronze_sword", name="Bronze Blade", description="A dependable starting sword.",
-        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.ONE_HANDED,
-        stats_bonus=Stats(max_hp=0, attack=1, defense=0, speed=0, crit_chance=0.05),
-    ),
-    "bronze_shield": EquipmentItem(
-        id="bronze_shield", name="Bronze Shield", description="A dependable starting shield.",
-        slot=EquipSlot.OFF_HAND, weapon_type=WeaponType.SHIELD,
-        stats_bonus=Stats(max_hp=1, attack=0, defense=1, speed=0, crit_chance=0.0),
-    ),
-    "bronze_helmet": EquipmentItem(
-        id="bronze_helmet", name="Bronze Helmet", description="A dependable starting helmet.",
-        slot=EquipSlot.HEAD, stats_bonus=Stats(max_hp=0, attack=0, defense=1, speed=0, crit_chance=0.05),
-    ),
-    "bronze_chestplate": EquipmentItem(
-        id="bronze_chestplate", name="Bronze Chestplate", description="A dependable starting chestplate.",
-        slot=EquipSlot.CHEST, stats_bonus=Stats(max_hp=1, attack=0, defense=1, speed=0, crit_chance=0.0),
-    ),
-    "leather_gloves": EquipmentItem(
-        id="leather_gloves", name="Leather Gloves", description="A pair of dependable starting gloves.",
-        slot=EquipSlot.HANDS, stats_bonus=Stats(max_hp=0, attack=0, defense=0, speed=0, crit_chance=0.05),
-    ),
-    "leather_pants": EquipmentItem(
-        id="leather_pants", name="Leather Pants", description="A pair of dependable starting pants.",
-        slot=EquipSlot.LEGS, stats_bonus=Stats(max_hp=0, attack=0, defense=0, speed=1, crit_chance=0.0),
-    ),
-
-    # =========================================================================
-    # 2. ROGUE STARTER KIT
-    # =========================================================================
-    "worn_dagger": EquipmentItem(
-        id="worn_dagger", name="Worn Dagger", description="A light, well-balanced blade showing signs of frequent use.",
-        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.ONE_HANDED, required_class="rogue",
-        stats_bonus=Stats(max_hp=0, attack=2, defense=0, speed=1, crit_chance=0.06),
-    ),
-    "rusty_parrying_dirk": EquipmentItem(
-        id="rusty_parrying_dirk", name="Parrying Dirk",
-        description="A notched off-hand dagger meant to deflect thrusts and riposte.",
-        slot=EquipSlot.OFF_HAND, weapon_type=WeaponType.ONE_HANDED, required_class="rogue",
-        stats_bonus=Stats(max_hp=0, attack=1, defense=1, speed=1, crit_chance=0.04),
-    ),
-    "shadow_cowl": EquipmentItem(
-        id="shadow_cowl", name="Rogue's Cowl", description="A simple dark linen hood that obscures facial features.",
-        slot=EquipSlot.HEAD, required_class="rogue",
-        stats_bonus=Stats(max_hp=1, attack=0, defense=1, speed=1, crit_chance=0.03),
-    ),
-    "padded_leather_vest": EquipmentItem(
-        id="padded_leather_vest", name="Padded Leather Vest",
-        description="Light cuirass made of boiled leather with quiet stitching.",
-        slot=EquipSlot.CHEST, required_class="rogue",
-        stats_bonus=Stats(max_hp=2, attack=0, defense=1, speed=1, crit_chance=0.02),
-    ),
-    "cutpurse_gloves": EquipmentItem(
-        id="cutpurse_gloves", name="Cutpurse Gloves",
-        description="Fingerless suede gloves granting nimble finger dexterity.",
-        slot=EquipSlot.HANDS, required_class="rogue",
-        stats_bonus=Stats(max_hp=0, attack=1, defense=0, speed=1, crit_chance=0.05),
-    ),
-    "rogue_breeches": EquipmentItem(
-        id="rogue_breeches", name="Stalker Breeches",
-        description="Flexible trousers allowing for silent and low movement.",
-        slot=EquipSlot.LEGS, required_class="rogue",
-        stats_bonus=Stats(max_hp=0, attack=0, defense=0, speed=2, crit_chance=0.03),
-    ),
-
-    # =========================================================================
-    # 3. MAGE STARTER KIT
-    # =========================================================================
-    "gnarled_wand": EquipmentItem(
-        id="gnarled_wand", name="Gnarled Wand",
-        description="A simple yew branch vibrating faintly with ambient arcane hum.",
-        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.ONE_HANDED, required_class="mage",
-        stats_bonus=Stats(max_hp=0, attack=3, defense=0, speed=1, crit_chance=0.02),
-    ),
-    "tattered_grimoire": EquipmentItem(
-        id="tattered_grimoire", name="Tattered Grimoire",
-        description="A battered parchment notebook filled with handwritten basic cantrips.",
-        slot=EquipSlot.OFF_HAND, weapon_type=WeaponType.FOCUS, required_class="mage",
-        stats_bonus=Stats(max_hp=1, attack=1, defense=1, speed=0, crit_chance=0.03),
-    ),
-    "apprentice_cowl": EquipmentItem(
-        id="apprentice_cowl", name="Novice Cowl",
-        description="A soft felt hood steeped in the scent of candle wax and brimstone.",
-        slot=EquipSlot.HEAD, required_class="mage",
-        stats_bonus=Stats(max_hp=2, attack=1, defense=0, speed=0, crit_chance=0.03),
-    ),
-    "apprentice_robes": EquipmentItem(
-        id="apprentice_robes", name="Apprentice Robes",
-        description="Simple indigo academy vestments hemmed with protective silver thread.",
-        slot=EquipSlot.CHEST, required_class="mage",
-        stats_bonus=Stats(max_hp=3, attack=1, defense=1, speed=0, crit_chance=0.0),
-    ),
-    "cloth_handwraps": EquipmentItem(
-        id="cloth_handwraps", name="Mana Wraps",
-        description="Linen bandages inscribed with runic seals to prevent magical backlash.",
-        slot=EquipSlot.HANDS, required_class="mage",
-        stats_bonus=Stats(max_hp=0, attack=1, defense=0, speed=1, crit_chance=0.02),
-    ),
-    "woven_pantaloons": EquipmentItem(
-        id="woven_pantaloons", name="Woven Pantaloons",
-        description="Comfortable scholar breeches designed for long hours of dungeon study.",
-        slot=EquipSlot.LEGS, required_class="mage",
-        stats_bonus=Stats(max_hp=1, attack=0, defense=1, speed=1, crit_chance=0.0),
-    ),
-
-    # =========================================================================
-    # 4. RESTORATIVE & STAT-BOOSTING CONSUMABLES
-    # =========================================================================
     "health_potion": ConsumableItem(
-        id="health_potion", name="Health P. S", description="Restores 35 hit points.", heal_amount=35,
+        id="health_potion", name="Health Pot", description="Heals for 35 HP.",
+        heal_amount=35
     ),
     "major_health_flask": ConsumableItem(
-        id="major_health_flask", name="Health P. M", description="Restores 80 hit points.", heal_amount=80,
+        id="major_health_flask", name="Health Flask", description="Heals for 75 HP.",
+        heal_amount=75
     ),
     "divine_nectar": ConsumableItem(
-        id="divine_nectar", name="Health P. L", description="Restores 180 hit points.", heal_amount=180,
+        id="divine_nectar", name="Divine Nectar", description="Restores 150 HP and cleanses debuffs.",
+        heal_amount=150, cleanses_debuffs=True
     ),
-
-    # --- Minor Permanent Elixirs (+1 Stat / +10 HP) ---
     "elixir_vitality_minor": StatPotion(
-        id="elixir_vitality_minor", name="HP Elixir S",
-        description="Permanently grants +10 Max HP.", heal_amount=10,
-        stat_bonus=Stats(max_hp=10, attack=0, defense=0, speed=0, crit_chance=0.0),
+        id="elixir_vitality_minor", name="HP Elixir S", description="Permanently grants +10 Max HP.",
+        heal_amount=10, stat_bonus=Stats(max_hp=10, attack=0, defense=0, speed=0, crit_chance=0.0)
     ),
     "elixir_strength_minor": StatPotion(
-        id="elixir_strength_minor", name="ATK Elixir S",
-        description="Permanently grants +1 Attack.", heal_amount=0,
-        stat_bonus=Stats(max_hp=0, attack=1, defense=0, speed=0, crit_chance=0.0),
+        id="elixir_strength_minor", name="ATK Elixir S", description="Permanently grants +1 Attack.",
+        heal_amount=0, stat_bonus=Stats(max_hp=0, attack=1, defense=0, speed=0, crit_chance=0.0)
     ),
     "elixir_iron_minor": StatPotion(
-        id="elixir_iron_minor", name="DEF Elixir S",
-        description="Permanently grants +1 Defense.", heal_amount=0,
-        stat_bonus=Stats(max_hp=0, attack=0, defense=1, speed=0, crit_chance=0.0),
+        id="elixir_iron_minor", name="DEF Elixir S", description="Permanently grants +1 Defense.",
+        heal_amount=0, stat_bonus=Stats(max_hp=0, attack=0, defense=1, speed=0, crit_chance=0.0)
     ),
     "elixir_celerity_minor": StatPotion(
-        id="elixir_celerity_minor", name="SPD Elixir S",
-        description="Permanently grants +1 Speed.", heal_amount=0,
-        stat_bonus=Stats(max_hp=0, attack=0, defense=0, speed=1, crit_chance=0.0),
+        id="elixir_celerity_minor", name="SPD Elixir S", description="Permanently grants +1 Speed.",
+        heal_amount=0, stat_bonus=Stats(max_hp=0, attack=0, defense=0, speed=1, crit_chance=0.0)
     ),
     "elixir_precision_minor": StatPotion(
-        id="elixir_precision_minor", name="CRIT Elixir S",
-        description="Permanently grants +1% Crit Chance.", heal_amount=0,
-        stat_bonus=Stats(max_hp=0, attack=0, defense=0, speed=0, crit_chance=0.01),
+        id="elixir_precision_minor", name="CRIT Elixir S", description="Permanently grants +2% Crit Chance.",
+        heal_amount=0, stat_bonus=Stats(max_hp=0, attack=0, defense=0, speed=0, crit_chance=0.02)
     ),
-
-    # --- Greater Permanent Elixirs (+3 Stats / +25 HP) ---
     "elixir_vitality_greater": StatPotion(
-        id="elixir_vitality_greater", name="HP Elixir M",
-        description="Permanently grants +25 Max HP.", heal_amount=25,
-        stat_bonus=Stats(max_hp=25, attack=0, defense=0, speed=0, crit_chance=0.0),
+        id="elixir_vitality_greater", name="HP Elixir M", description="Permanently grants +25 Max HP.",
+        heal_amount=25, stat_bonus=Stats(max_hp=25, attack=0, defense=0, speed=0, crit_chance=0.0)
     ),
     "elixir_strength_greater": StatPotion(
-        id="elixir_strength_greater", name="ATK Elixir M",
-        description="Permanently grants +3 Attack.", heal_amount=0,
-        stat_bonus=Stats(max_hp=0, attack=3, defense=0, speed=0, crit_chance=0.0),
+        id="elixir_strength_greater", name="ATK Elixir M", description="Permanently grants +3 Attack.",
+        heal_amount=0, stat_bonus=Stats(max_hp=0, attack=3, defense=0, speed=0, crit_chance=0.0)
     ),
     "elixir_iron_greater": StatPotion(
-        id="elixir_iron_greater", name="DEF Elixir M",
-        description="Permanently grants +3 Defense.", heal_amount=0,
-        stat_bonus=Stats(max_hp=0, attack=0, defense=3, speed=0, crit_chance=0.0),
+        id="elixir_iron_greater", name="DEF Elixir M", description="Permanently grants +3 Defense.",
+        heal_amount=0, stat_bonus=Stats(max_hp=0, attack=0, defense=3, speed=0, crit_chance=0.0)
     ),
     "elixir_celerity_greater": StatPotion(
-        id="elixir_celerity_greater", name="SPD Elixir M",
-        description="Permanently grants +3 Speed.", heal_amount=0,
-        stat_bonus=Stats(max_hp=0, attack=0, defense=0, speed=3, crit_chance=0.0),
+        id="elixir_celerity_greater", name="SPD Elixir M", description="Permanently grants +3 Speed.",
+        heal_amount=0, stat_bonus=Stats(max_hp=0, attack=0, defense=0, speed=3, crit_chance=0.0)
     ),
     "elixir_precision_greater": StatPotion(
-        id="elixir_precision_greater", name="CRIT Elixir M",
-        description="Permanently grants +3% Crit Chance.", heal_amount=0,
-        stat_bonus=Stats(max_hp=0, attack=0, defense=0, speed=0, crit_chance=0.03),
+        id="elixir_precision_greater", name="CRIT Elixir M", description="Permanently grants +5% Crit Chance.",
+        heal_amount=0, stat_bonus=Stats(max_hp=0, attack=0, defense=0, speed=0, crit_chance=0.05)
     ),
     "elixir_of_quickness": StatPotion(
-        id="elixir_of_quickness", name="Speed Potion",
-        description="Heals 10 HP and permanently grants +3 SPD.", heal_amount=10,
-        stat_bonus=Stats(max_hp=0, attack=0, defense=0, speed=3, crit_chance=0.0),
+        id="elixir_of_quickness", name="Elixir of Quickness", description="Permanently grants +2 Speed and +2% Crit.",
+        heal_amount=0, stat_bonus=Stats(max_hp=0, attack=0, defense=0, speed=2, crit_chance=0.02)
     ),
-
-    # =========================================================================
-    # 5. WARRIOR ARSENAL & ARMOR
-    # =========================================================================
-    # Common / Uncommon
-    "iron_broadsword": EquipmentItem(
-        id="iron_broadsword", name="Iron Broadsword", description="A solid iron martial blade.",
-        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.ONE_HANDED, required_class="warrior",
-        stats_bonus=Stats(max_hp=0, attack=5, defense=1, speed=0, crit_chance=0.04),
-    ),
-    "iron_claymore": EquipmentItem(
-        id="iron_claymore", name="Iron Claymore", description="A massive two-handed sword.",
-        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.TWO_HANDED, required_class="warrior",
-        stats_bonus=Stats(max_hp=0, attack=10, defense=0, speed=0, crit_chance=0.0),
-    ),
-    "iron_tower_shield": EquipmentItem(
-        id="iron_tower_shield", name="Iron Tower Shield", description="Thick iron slab that blocks crushing blows.",
-        slot=EquipSlot.OFF_HAND, weapon_type=WeaponType.SHIELD, required_class="warrior",
-        stats_bonus=Stats(max_hp=15, attack=0, defense=6, speed=-1, crit_chance=0.0),
-    ),
-    "bronze_pauldrons": EquipmentItem(
-        id="bronze_pauldrons", name="Bronze Pauldrons", description="Heavy shoulder guards.",
-        slot=EquipSlot.SHOULDERS, stats_bonus=Stats(max_hp=10, attack=0, defense=3, speed=0, crit_chance=0.0),
-    ),
-    "iron_girdle": EquipmentItem(
-        id="iron_girdle", name="Iron Girdle", description="A sturdy iron waist guard.",
-        slot=EquipSlot.WAIST, stats_bonus=Stats(max_hp=15, attack=0, defense=4, speed=0, crit_chance=0.0),
-    ),
-    "iron_plate_greaves": EquipmentItem(
-        id="iron_plate_greaves", name="Iron Greaves", description="Articulated iron leg armor.",
-        slot=EquipSlot.LEGS, required_class="warrior",
-        stats_bonus=Stats(max_hp=10, attack=0, defense=5, speed=0, crit_chance=0.0),
-    ),
-
-    # Rare / Epic
-    "dwarven_warhammer": EquipmentItem(
-        id="dwarven_warhammer", name="Dwarven Warhammer",
-        description="Heavy anvil-headed mallet built to shatter bone.",
-        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.TWO_HANDED, required_class="warrior",
-        stats_bonus=Stats(max_hp=0, attack=18, defense=3, speed=-2, crit_chance=0.08),
-    ),
-    "knights_bastion": EquipmentItem(
-        id="knights_bastion", name="Knight's Bastion",
-        description="Polished steel kite shield emblazoned with a griffon.",
-        slot=EquipSlot.OFF_HAND, weapon_type=WeaponType.SHIELD, required_class="warrior",
-        stats_bonus=Stats(max_hp=25, attack=1, defense=10, speed=0, crit_chance=0.02),
-    ),
-    "spiked_steel_pauldrons": EquipmentItem(
-        id="spiked_steel_pauldrons", name="Spiked Pauldrons",
-        description="Fierce shoulder plates equipped with counter-spikes.",
-        slot=EquipSlot.SHOULDERS, required_class="warrior",
-        stats_bonus=Stats(max_hp=15, attack=3, defense=6, speed=0, crit_chance=0.03),
-    ),
-    "blacksteel_harness": EquipmentItem(
-        id="blacksteel_harness", name="Blacksteel Harness", description="Tempered blackened plate cuirass.",
-        slot=EquipSlot.CHEST, required_class="warrior",
-        stats_bonus=Stats(max_hp=40, attack=0, defense=14, speed=-1, crit_chance=0.0),
-    ),
-    "warlords_visage": EquipmentItem(
-        id="warlords_visage", name="Warlord's Visage", description="Menacing full-face horned helm.",
-        slot=EquipSlot.HEAD, required_class="warrior",
-        stats_bonus=Stats(max_hp=20, attack=4, defense=8, speed=0, crit_chance=0.05),
-    ),
-
-    # --- WARRIOR LEGENDARIES (1 Weapon, 1 Armor) ---
-    "legendary_worldbreaker": EquipmentItem(
-        id="legendary_worldbreaker", name="Worldbreaker Greatsword",
-        description="A gargantuan slab of consecrated obsidian said to crack castle gates in a single blow.",
-        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.TWO_HANDED, required_class="warrior",
-        stats_bonus=Stats(max_hp=30, attack=35, defense=8, speed=2, crit_chance=0.15),
-    ),
-    "legendary_colossus_cuirass": EquipmentItem(
-        id="legendary_colossus_cuirass", name="Cuirass of the Immortal Colossus",
-        description="Forged in mountain heart-fire; blows against it ring out like hammer taps on bedrock.",
-        slot=EquipSlot.CHEST, required_class="warrior",
-        stats_bonus=Stats(max_hp=80, attack=4, defense=28, speed=0, crit_chance=0.05),
-    ),
-
-    # =========================================================================
-    # 6. ROGUE ARSENAL & ARMOR
-    # =========================================================================
-    # Common / Uncommon
-    "bandit_dagger": EquipmentItem(
-        id="bandit_dagger", name="Bandit Dagger", description="A swift, sharp blade.",
-        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.ONE_HANDED, required_class="rogue",
-        stats_bonus=Stats(max_hp=0, attack=4, defense=0, speed=5, crit_chance=0.10),
-    ),
-    "serrated_parrying_dagger": EquipmentItem(
-        id="serrated_parrying_dagger", name="Parrying Stiletto",
-        description="Designed to catch enemy blades and riposte.",
-        slot=EquipSlot.OFF_HAND, weapon_type=WeaponType.ONE_HANDED, required_class="rogue",
-        stats_bonus=Stats(max_hp=0, attack=3, defense=3, speed=4, crit_chance=0.08),
-    ),
-    "thief_cowl": EquipmentItem(
-        id="thief_cowl", name="Thief's Cowl", description="Conceals the eyes in velvety blackness.",
-        slot=EquipSlot.HEAD, required_class="rogue",
-        stats_bonus=Stats(max_hp=5, attack=1, defense=1, speed=3, crit_chance=0.06),
-    ),
-    "shadow_tunic": EquipmentItem(
-        id="shadow_tunic", name="Shadowweave Tunic", description="Muffles sound and blends into dungeon stone.",
-        slot=EquipSlot.CHEST, required_class="rogue",
-        stats_bonus=Stats(max_hp=15, attack=2, defense=3, speed=6, crit_chance=0.05),
-    ),
-    "padded_stalker_boots": EquipmentItem(
-        id="padded_stalker_boots", name="Stalker Boots", description="Silent soles that leave no trace.",
-        slot=EquipSlot.LEGS, required_class="rogue",
-        stats_bonus=Stats(max_hp=5, attack=0, defense=1, speed=7, crit_chance=0.04),
-    ),
-
-    # Rare / Epic
-    "widowmaker_dirk": EquipmentItem(
-        id="widowmaker_dirk", name="Widowmaker Dirk", description="Dripping with virulent necro-toxin.",
-        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.ONE_HANDED, required_class="rogue",
-        stats_bonus=Stats(max_hp=0, attack=14, defense=0, speed=8, crit_chance=0.22),
-    ),
-    "assassins_twinblade": EquipmentItem(
-        id="assassins_twinblade", name="Whispering Sai", description="Needle-thin sai for lightning-fast thrusts.",
-        slot=EquipSlot.OFF_HAND, weapon_type=WeaponType.ONE_HANDED, required_class="rogue",
-        stats_bonus=Stats(max_hp=10, attack=8, defense=2, speed=6, crit_chance=0.15),
-    ),
-    "duelists_buckler": EquipmentItem(
-        id="duelists_buckler", name="Steel Buckler", description="Small shield designed for agile deflection.",
-        slot=EquipSlot.OFF_HAND, weapon_type=WeaponType.SHIELD, required_class="rogue",
-        stats_bonus=Stats(max_hp=15, attack=2, defense=8, speed=3, crit_chance=0.05),
-    ),
-    "nightstalker_vest": EquipmentItem(
-        id="nightstalker_vest", name="Nightstalker Vest", description="Studded hardened wyvern hide.",
-        slot=EquipSlot.CHEST, required_class="rogue",
-        stats_bonus=Stats(max_hp=25, attack=6, defense=7, speed=10, crit_chance=0.12),
-    ),
-
-    # --- ROGUE LEGENDARIES (1 Weapon, 1 Armor) ---
-    "legendary_whisper_void": EquipmentItem(
-        id="legendary_whisper_void", name="Whisper of the Void",
-        description="A translucent dagger formed from frozen moonlight. Strikes ignore armor and tear reality.",
-        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.ONE_HANDED, required_class="rogue",
-        stats_bonus=Stats(max_hp=15, attack=28, defense=2, speed=18, crit_chance=0.35),
-    ),
-    "legendary_shadowmeld_cloak": EquipmentItem(
-        id="legendary_shadowmeld_cloak", name="Mantle of the Ghost Phantom",
-        description="A diaphanous cape that shifts between dimensions, making the wearer nearly intangible.",
-        slot=EquipSlot.SHOULDERS, required_class="rogue",
-        stats_bonus=Stats(max_hp=45, attack=8, defense=14, speed=15, crit_chance=0.18),
-    ),
-
-    # =========================================================================
-    # 7. MAGE ARSENAL & ARMOR
-    # =========================================================================
-    # Common / Uncommon
-    "apprentice_wand": EquipmentItem(
-        id="apprentice_wand", name="Apprentice Wand", description="A basic magical focus.",
-        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.ONE_HANDED, required_class="mage",
-        stats_bonus=Stats(max_hp=0, attack=6, defense=0, speed=2, crit_chance=0.0),
-    ),
-    "arcane_grimoire": EquipmentItem(
-        id="arcane_grimoire", name="Arcane Grimoire", description="A tome of spells.",
-        slot=EquipSlot.OFF_HAND, weapon_type=WeaponType.FOCUS, required_class="mage",
-        stats_bonus=Stats(max_hp=0, attack=3, defense=0, speed=0, crit_chance=0.05),
-    ),
-    "staff_of_embers": EquipmentItem(
-        id="staff_of_embers", name="Staff of Embers", description="A glowing two-handed staff.",
-        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.TWO_HANDED, required_class="mage",
-        stats_bonus=Stats(max_hp=0, attack=12, defense=0, speed=1, crit_chance=0.05),
-    ),
-    "scholar_cap": EquipmentItem(
-        id="scholar_cap", name="Scholar's Pointed Cap", description="A brimmed cloth cap charged with static mana.",
-        slot=EquipSlot.HEAD, required_class="mage",
-        stats_bonus=Stats(max_hp=0, attack=4, defense=1, speed=1, crit_chance=0.04),
-    ),
-    "spellweaver_robe": EquipmentItem(
-        id="spellweaver_robe", name="Spellweaver Robe",
-        description="Silken vestments embroidered with protective runes.",
-        slot=EquipSlot.CHEST, required_class="mage",
-        stats_bonus=Stats(max_hp=10, attack=5, defense=3, speed=2, crit_chance=0.03),
-    ),
-
-    # Rare / Epic
-    "crystal_channeler_wand": EquipmentItem(
-        id="crystal_channeler_wand", name="Glimmering Quartz Wand", description="Channels raw elemental fury.",
-        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.ONE_HANDED, required_class="mage",
-        stats_bonus=Stats(max_hp=5, attack=16, defense=0, speed=3, crit_chance=0.10),
-    ),
-    "skull_of_the_heretic": EquipmentItem(
-        id="skull_of_the_heretic", name="Heretic's Scrying Skull",
-        description="Whispers forbidden incantations from the void.",
-        slot=EquipSlot.OFF_HAND, weapon_type=WeaponType.FOCUS, required_class="mage",
-        stats_bonus=Stats(max_hp=0, attack=10, defense=2, speed=2, crit_chance=0.12),
-    ),
-    "archmages_staff": EquipmentItem(
-        id="archmages_staff", name="Spire of the Archmage", description="Carved from petrified mana-trees of Eld.",
-        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.TWO_HANDED, required_class="mage",
-        stats_bonus=Stats(max_hp=15, attack=26, defense=2, speed=3, crit_chance=0.08),
-    ),
-    "voidstrider_robes": EquipmentItem(
-        id="voidstrider_robes", name="Voidstrider Vestments",
-        description="Draped in shadows that siphon ambient kinetic force.",
-        slot=EquipSlot.CHEST, required_class="mage",
-        stats_bonus=Stats(max_hp=25, attack=14, defense=6, speed=4, crit_chance=0.07),
-    ),
-
-    # --- MAGE LEGENDARIES (1 Weapon, 1 Armor) ---
-    "legendary_cataclysm_staff": EquipmentItem(
-        id="legendary_cataclysm_staff", name="Calamity, Staff of the Supernova",
-        description="A staff holding a trapped dying star at its apex. Radiates blinding thermal magic.",
-        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.TWO_HANDED, required_class="mage",
-        stats_bonus=Stats(max_hp=20, attack=44, defense=4, speed=5, crit_chance=0.20),
-    ),
-    "legendary_astral_cowl": EquipmentItem(
-        id="legendary_astral_cowl", name="Astral Archon's Diadem",
-        description="A floating coronet of starlight that illuminates truth and bends incoming hostile sorcery.",
-        slot=EquipSlot.HEAD, required_class="mage",
-        stats_bonus=Stats(max_hp=50, attack=16, defense=18, speed=6, crit_chance=0.12),
-    ),
-
-    # =========================================================================
-    # 8. UNIVERSAL & GENERIC GEAR (Wearable by All Classes)
-    # =========================================================================
-    # Shoulders
-    "leather_mantle": EquipmentItem(
-        id="leather_mantle", name="Leather Mantle", description="Basic shoulder protection.",
-        slot=EquipSlot.SHOULDERS, stats_bonus=Stats(max_hp=5, attack=0, defense=1, speed=1, crit_chance=0.0),
-    ),
-    "fur_lined_capelet": EquipmentItem(
-        id="fur_lined_capelet", name="Wolf-Fur Capelet",
-        description="Warm animal pelt that shields against dungeon drafts.",
-        slot=EquipSlot.SHOULDERS, stats_bonus=Stats(max_hp=12, attack=1, defense=2, speed=1, crit_chance=0.02),
-    ),
-    "iron_scaled_epaulets": EquipmentItem(
-        id="iron_scaled_epaulets", name="Scale Epaulets", description="Overlapping iron scales protecting the neck.",
-        slot=EquipSlot.SHOULDERS, stats_bonus=Stats(max_hp=15, attack=0, defense=5, speed=0, crit_chance=0.0),
-    ),
-
-    # Waist
-    "leather_belt": EquipmentItem(
-        id="leather_belt", name="Leather Belt", description="A simple waist sash.",
-        slot=EquipSlot.WAIST, stats_bonus=Stats(max_hp=5, attack=0, defense=0, speed=2, crit_chance=0.0),
-    ),
-    "plated_war_belt": EquipmentItem(
-        id="plated_war_belt", name="Plated War-Belt", description="Heavy studded brass cincher.",
-        slot=EquipSlot.WAIST, stats_bonus=Stats(max_hp=18, attack=2, defense=3, speed=1, crit_chance=0.01),
-    ),
-    "runic_sash": EquipmentItem(
-        id="runic_sash", name="Runic Silk Sash", description="Infused with glyphs of deflection.",
-        slot=EquipSlot.WAIST, stats_bonus=Stats(max_hp=10, attack=3, defense=2, speed=3, crit_chance=0.03),
-    ),
-
-    # Hands
-    "brawler_handwraps": EquipmentItem(
-        id="brawler_handwraps", name="Brawler Handwraps", description="Rough cloth bindings stained with old blood.",
-        slot=EquipSlot.HANDS, stats_bonus=Stats(max_hp=0, attack=3, defense=0, speed=2, crit_chance=0.06),
-    ),
-    "chainmail_mitts": EquipmentItem(
-        id="chainmail_mitts", name="Chainmail Mitts", description="Flexible steel interlocking rings.",
-        slot=EquipSlot.HANDS, stats_bonus=Stats(max_hp=10, attack=1, defense=4, speed=-1, crit_chance=0.0),
-    ),
-    "assassins_gloves": EquipmentItem(
-        id="assassins_gloves", name="Grip of the Executioner",
-        description="Supple leather gloves with steel knuckle-studs.",
-        slot=EquipSlot.HANDS, stats_bonus=Stats(max_hp=5, attack=4, defense=2, speed=3, crit_chance=0.08),
-    ),
-
-    # Legs
-    "iron_shod_treads": EquipmentItem(
-        id="iron_shod_treads", name="Iron-Shod Treads", description="Heavy boots that grip rocky terrain firmly.",
-        slot=EquipSlot.LEGS, stats_bonus=Stats(max_hp=10, attack=1, defense=3, speed=1, crit_chance=0.0),
-    ),
-    "quicksilver_greaves": EquipmentItem(
-        id="quicksilver_greaves", name="Quicksilver Sabatons",
-        description="Imbued with mercury enchantments for rapid steps.",
-        slot=EquipSlot.LEGS, stats_bonus=Stats(max_hp=10, attack=2, defense=4, speed=6, crit_chance=0.04),
-    ),
-
-    # Head
-    "iron_sallet": EquipmentItem(
-        id="iron_sallet", name="Iron Sallet", description="Standard medieval infantry helmet.",
-        slot=EquipSlot.HEAD, stats_bonus=Stats(max_hp=10, attack=0, defense=4, speed=0, crit_chance=0.02),
-    ),
-    "circlet_of_clarity": EquipmentItem(
-        id="circlet_of_clarity", name="Circlet of Clarity",
-        description="A silver circlet that sharpens focus and reflexes.",
-        slot=EquipSlot.HEAD, stats_bonus=Stats(max_hp=15, attack=3, defense=2, speed=3, crit_chance=0.05),
-    ),
-
-    # =========================================================================
-    # 9. FUNNY, QUIRKY & STRANGE DUNGEON FINDS
-    # =========================================================================
     "suspicious_pie": ConsumableItem(
-        id="suspicious_pie", name="Meat Pie",
-        description="Warm, moist, and smells like dungeon lichen. Restores 45 HP (probably).", heal_amount=45,
+        id="suspicious_pie", name="Suspicious Meat Pie", description="Smells like mutton... probably.",
+        heal_amount=30
     ),
     "goblin_cheese_wheel": ConsumableItem(
-        id="goblin_cheese_wheel", name="Stink-Cheese",
-        description="So pungent it makes your eyes water. Restores 15 HP and grants +1 ATK from pure rage.",
-        heal_amount=15,
+        id="goblin_cheese_wheel", name="Goblin Cheese Wheel", description="Aged in an actual cave.",
+        heal_amount=25
     ),
-    "tax_audit_scroll": EquipmentItem(
-        id="tax_audit_scroll", name="Unpaid Aethelgard Tax Notice",
-        description="Wielding this terrifying parchment terrifies enemies into hesitation.",
-        slot=EquipSlot.OFF_HAND, weapon_type=WeaponType.FOCUS,
-        stats_bonus=Stats(max_hp=0, attack=1, defense=5, speed=2, crit_chance=0.0),
+
+    "travelers_shortsword": EquipmentItem(
+        id="travelers_shortsword", name="Traveler's Shortsword", description="A balanced, reliable steel blade.",
+        slot=EquipSlot.MAIN_HAND, tier=1,
+        weapon_type=WeaponType.ONE_HANDED,
+        stats_bonus=Stats(max_hp=0, attack=5, defense=0, speed=1, crit_chance=0.00),
+        gold_value=40,
     ),
-    "rusty_spork_of_doom": EquipmentItem(
-        id="rusty_spork_of_doom", name="Rusty Spork of Doom",
-        description="An antique utensil repurposed for heroic stabbing. Oddly lethal.",
-        slot=EquipSlot.MAIN_HAND, weapon_type=WeaponType.ONE_HANDED,
-        stats_bonus=Stats(max_hp=0, attack=7, defense=0, speed=4, crit_chance=0.15),
+    "hunting_spear": EquipmentItem(
+        id="hunting_spear", name="Hunting Spear", description="A sharp ash spear with good reach.",
+        slot=EquipSlot.MAIN_HAND, tier=1,
+        weapon_type=WeaponType.ONE_HANDED,
+        stats_bonus=Stats(max_hp=0, attack=6, defense=0, speed=0, crit_chance=0.03),
+        gold_value=44,
     ),
-    "tinfoil_coif": EquipmentItem(
-        id="tinfoil_coif", name="Paranoid's Shiny Coif",
-        description="Crafted from hammered silver leaf. Completely deflects mind rays and bad vibes.",
-        slot=EquipSlot.HEAD,
-        stats_bonus=Stats(max_hp=0, attack=0, defense=2, speed=2, crit_chance=0.07),
+    "bronze_sword": EquipmentItem(
+        id="bronze_sword", name="Iron Broadsword", description="Solid martial blade with sturdy crossguard.",
+        slot=EquipSlot.MAIN_HAND, tier=1,
+        weapon_type=WeaponType.ONE_HANDED,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=0, attack=6, defense=2, speed=0, crit_chance=0.00),
+        gold_value=54,
     ),
-    "lead_balloon_boots": EquipmentItem(
-        id="lead_balloon_boots", name="Boots of Extreme Gravity",
-        description="Ridiculously heavy boots. You can barely move, but nothing can knock you down.",
-        slot=EquipSlot.LEGS,
-        stats_bonus=Stats(max_hp=35, attack=0, defense=12, speed=-4, crit_chance=0.0),
+    "vanguard_cleaver": EquipmentItem(
+        id="vanguard_cleaver", name="Vanguard Cleaver", description="Heavy iron cleaver built for chopping strikes.",
+        slot=EquipSlot.MAIN_HAND, tier=1,
+        weapon_type=WeaponType.ONE_HANDED,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=10, attack=7, defense=0, speed=-1, crit_chance=0.00),
+        gold_value=53,
     ),
-    "ring_of_mild_disappointment": EquipmentItem(
-        id="ring_of_mild_disappointment", name="Ring of Modest Hopes",
-        description="It glows with a magnificent celestial aura, but only gives +1 HP.",
-        slot=EquipSlot.WAIST,
-        stats_bonus=Stats(max_hp=1, attack=0, defense=0, speed=0, crit_chance=0.001),
+    "worn_dagger": EquipmentItem(
+        id="worn_dagger", name="Bandit Dirk", description="Light and swift dagger with a keen edge.",
+        slot=EquipSlot.MAIN_HAND, tier=1,
+        weapon_type=WeaponType.ONE_HANDED,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=0, attack=5, defense=0, speed=2, crit_chance=0.04),
+        gold_value=40,
+    ),
+    "serrated_stiletto": EquipmentItem(
+        id="serrated_stiletto", name="Serrated Stiletto", description="Narrow thrusting dagger designed for critical punctures.",
+        slot=EquipSlot.MAIN_HAND, tier=1,
+        weapon_type=WeaponType.ONE_HANDED,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=0, attack=6, defense=0, speed=0, crit_chance=0.06),
+        gold_value=44,
+    ),
+    "gnarled_wand": EquipmentItem(
+        id="gnarled_wand", name="Apprentice Wand", description="Channeled yew wand that sparks with arcane hum.",
+        slot=EquipSlot.MAIN_HAND, tier=1,
+        weapon_type=WeaponType.WAND,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=0, attack=6, defense=0, speed=1, crit_chance=0.00),
+        gold_value=44,
+    ),
+    "oak_focus_staff": EquipmentItem(
+        id="oak_focus_staff", name="Oak Focus Staff", description="Sturdy oak stave grounding magical energies.",
+        slot=EquipSlot.MAIN_HAND, tier=1,
+        weapon_type=WeaponType.TWO_HANDED,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=5, attack=7, defense=0, speed=0, crit_chance=0.00),
+        gold_value=50,
+    ),
+    "wooden_round_shield": EquipmentItem(
+        id="wooden_round_shield", name="Wooden Round Shield", description="Reinforced oak planks bound by iron.",
+        slot=EquipSlot.OFF_HAND, tier=1,
+        weapon_type=WeaponType.SHIELD,
+        stats_bonus=Stats(max_hp=10, attack=0, defense=2, speed=0, crit_chance=0.00),
+        gold_value=35,
+    ),
+    "surveyors_lantern": EquipmentItem(
+        id="surveyors_lantern", name="Surveyor's Lantern", description="Illuminates blind spots and hastens footwork.",
+        slot=EquipSlot.OFF_HAND, tier=1,
+        stats_bonus=Stats(max_hp=0, attack=1, defense=0, speed=2, crit_chance=0.00),
+        gold_value=24,
+    ),
+    "bronze_shield": EquipmentItem(
+        id="bronze_shield", name="Iron Kite Shield", description="Broad heater shield providing total flank cover.",
+        slot=EquipSlot.OFF_HAND, tier=1,
+        weapon_type=WeaponType.SHIELD,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=15, attack=0, defense=3, speed=-1, crit_chance=0.00),
+        gold_value=42,
+    ),
+    "spiked_targe": EquipmentItem(
+        id="spiked_targe", name="Spiked Targe", description="Round buckler bearing a brutal central counter-spike.",
+        slot=EquipSlot.OFF_HAND, tier=1,
+        weapon_type=WeaponType.SHIELD,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=0, attack=2, defense=2, speed=0, crit_chance=0.00),
+        gold_value=38,
+    ),
+    "rusty_parrying_dirk": EquipmentItem(
+        id="rusty_parrying_dirk", name="Parrying Dagger", description="Specialized off-hand dagger for intercepting incoming strikes.",
+        slot=EquipSlot.OFF_HAND, tier=1,
+        weapon_type=WeaponType.ONE_HANDED,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=0, attack=2, defense=0, speed=2, crit_chance=0.05),
+        gold_value=28,
+    ),
+    "thiefs_handwraps": EquipmentItem(
+        id="thiefs_handwraps", name="Thief's Weighted Handwraps", description="Lead-lined straps enhancing attack tempo.",
+        slot=EquipSlot.OFF_HAND, tier=1,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=0, attack=1, defense=0, speed=3, crit_chance=0.00),
+        gold_value=24,
+    ),
+    "tattered_grimoire": EquipmentItem(
+        id="tattered_grimoire", name="Tattered Spellbook", description="Worn leather tome inscribed with starter incantations.",
+        slot=EquipSlot.OFF_HAND, tier=1,
+        weapon_type=WeaponType.FOCUS,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=0, attack=3, defense=0, speed=0, crit_chance=0.04),
+        gold_value=32,
+    ),
+    "glowing_quartz_orb": EquipmentItem(
+        id="glowing_quartz_orb", name="Glowing Quartz Orb", description="Pulsing crystal creating a mild protective field.",
+        slot=EquipSlot.OFF_HAND, tier=1,
+        weapon_type=WeaponType.FOCUS,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=15, attack=2, defense=0, speed=0, crit_chance=0.00),
+        gold_value=35,
+    ),
+    "padded_arming_cap": EquipmentItem(
+        id="padded_arming_cap", name="Padded Arming Cap", description="Quilted cap dampening glancing head strikes.",
+        slot=EquipSlot.HEAD, tier=1,
+        stats_bonus=Stats(max_hp=10, attack=0, defense=1, speed=0, crit_chance=0.00),
+        gold_value=30,
+    ),
+    "scouts_bandana": EquipmentItem(
+        id="scouts_bandana", name="Scout's Bandana", description="Light fabric band keeping hair and sweat clear.",
+        slot=EquipSlot.HEAD, tier=1,
+        stats_bonus=Stats(max_hp=0, attack=0, defense=0, speed=2, crit_chance=0.03),
+        gold_value=20,
+    ),
+    "bronze_helmet": EquipmentItem(
+        id="bronze_helmet", name="Iron Pot Helmet", description="Stout iron helmet with nose guard.",
+        slot=EquipSlot.HEAD, tier=1,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=12, attack=0, defense=2, speed=0, crit_chance=0.00),
+        gold_value=36,
+    ),
+    "soldiers_sallet": EquipmentItem(
+        id="soldiers_sallet", name="Soldier's Sallet", description="Aerodynamic helmet balancing vision and protection.",
+        slot=EquipSlot.HEAD, tier=1,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=8, attack=1, defense=2, speed=0, crit_chance=0.00),
+        gold_value=38,
+    ),
+    "shadow_cowl": EquipmentItem(
+        id="shadow_cowl", name="Leather Eye-Patch", description="Sharpens instinct and focus on vulnerable seams.",
+        slot=EquipSlot.HEAD, tier=1,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=0, attack=1, defense=0, speed=1, crit_chance=0.05),
+        gold_value=24,
+    ),
+    "shadow_hood_t1": EquipmentItem(
+        id="shadow_hood_t1", name="Shadow Cowl", description="Supple dark cowl concealing facial movement.",
+        slot=EquipSlot.HEAD, tier=1,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=10, attack=0, defense=0, speed=2, crit_chance=0.00),
+        gold_value=25,
+    ),
+    "apprentice_cowl": EquipmentItem(
+        id="apprentice_cowl", name="Novice Scholar Hat", description="Pointed velvet hat worn by aspiring conjurers.",
+        slot=EquipSlot.HEAD, tier=1,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=0, attack=2, defense=1, speed=0, crit_chance=0.00),
+        gold_value=33,
+    ),
+    "focus_circlet": EquipmentItem(
+        id="focus_circlet", name="Focus Circlet", description="Thin silver circlet clarifying mental spellcasting.",
+        slot=EquipSlot.HEAD, tier=1,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=8, attack=2, defense=0, speed=0, crit_chance=0.03),
+        gold_value=32,
+    ),
+    "reinforced_leather_jerkin": EquipmentItem(
+        id="reinforced_leather_jerkin", name="Reinforced Leather Jerkin", description="Cured leather sewn with defensive metal studs.",
+        slot=EquipSlot.CHEST, tier=1,
+        stats_bonus=Stats(max_hp=15, attack=0, defense=2, speed=0, crit_chance=0.00),
+        gold_value=37,
+    ),
+    "quilted_doublet": EquipmentItem(
+        id="quilted_doublet", name="Quilted Doublet", description="Thick layers of wool providing flexible warmth and guard.",
+        slot=EquipSlot.CHEST, tier=1,
+        stats_bonus=Stats(max_hp=12, attack=0, defense=1, speed=1, crit_chance=0.00),
+        gold_value=31,
+    ),
+    "bronze_chestplate": EquipmentItem(
+        id="bronze_chestplate", name="Iron Chainmail Hauberk", description="Interlocking iron rings offering resilient armor.",
+        slot=EquipSlot.CHEST, tier=1,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=20, attack=0, defense=4, speed=-1, crit_chance=0.00),
+        gold_value=50,
+    ),
+    "infantry_breastplate": EquipmentItem(
+        id="infantry_breastplate", name="Infantry Breastplate", description="Solid iron pectoral plating with leather fittings.",
+        slot=EquipSlot.CHEST, tier=1,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=15, attack=1, defense=3, speed=0, crit_chance=0.00),
+        gold_value=46,
+    ),
+    "padded_leather_vest": EquipmentItem(
+        id="padded_leather_vest", name="Duelist's Gambeson", description="Fitted quilted vest allowing unhindered weapon flourishes.",
+        slot=EquipSlot.CHEST, tier=1,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=12, attack=1, defense=1, speed=2, crit_chance=0.00),
+        gold_value=35,
+    ),
+    "darkweave_vest": EquipmentItem(
+        id="darkweave_vest", name="Darkweave Vest", description="Light shadowy garment woven for deadly ambushes.",
+        slot=EquipSlot.CHEST, tier=1,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=10, attack=0, defense=0, speed=2, crit_chance=0.04),
+        gold_value=25,
+    ),
+    "apprentice_robes": EquipmentItem(
+        id="apprentice_robes", name="Apprentice Vestments", description="Simple robes woven with ambient mana threads.",
+        slot=EquipSlot.CHEST, tier=1,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=10, attack=3, defense=1, speed=0, crit_chance=0.00),
+        gold_value=42,
+    ),
+    "runed_weaver_robe": EquipmentItem(
+        id="runed_weaver_robe", name="Runed Weaver Robe", description="Enchanted fabric that pulses with faint warding magic.",
+        slot=EquipSlot.CHEST, tier=1,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=15, attack=2, defense=0, speed=0, crit_chance=0.02),
+        gold_value=35,
+    ),
+    "hardened_boots": EquipmentItem(
+        id="hardened_boots", name="Hardened Boots", description="Sturdy footwear designed for treacherous trails.",
+        slot=EquipSlot.LEGS, tier=1,
+        stats_bonus=Stats(max_hp=10, attack=0, defense=1, speed=1, crit_chance=0.00),
+        gold_value=30,
+    ),
+    "travelers_greaves": EquipmentItem(
+        id="travelers_greaves", name="Traveler's Greaves", description="Light plate greaves shielding the shins.",
+        slot=EquipSlot.LEGS, tier=1,
+        stats_bonus=Stats(max_hp=12, attack=0, defense=2, speed=0, crit_chance=0.00),
+        gold_value=36,
+    ),
+    "leather_pants": EquipmentItem(
+        id="leather_pants", name="Iron Plate Greaves", description="Heavy iron greaves anchoring the fighter firmly.",
+        slot=EquipSlot.LEGS, tier=1,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=15, attack=0, defense=3, speed=0, crit_chance=0.00),
+        gold_value=42,
+    ),
+    "hobnail_warboots": EquipmentItem(
+        id="hobnail_warboots", name="Hobnail Warboots", description="Studded soles providing brutal grip in melee.",
+        slot=EquipSlot.LEGS, tier=1,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=10, attack=1, defense=2, speed=0, crit_chance=0.00),
+        gold_value=39,
+    ),
+    "rogue_breeches": EquipmentItem(
+        id="rogue_breeches", name="Soft-Sole Stalkers", description="Muffles footfalls to stalk prey unheard.",
+        slot=EquipSlot.LEGS, tier=1,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=8, attack=0, defense=0, speed=3, crit_chance=0.03),
+        gold_value=24,
+    ),
+    "fencers_breeches": EquipmentItem(
+        id="fencers_breeches", name="Fencer's Breeches", description="Tailored breeches offering seamless footwork.",
+        slot=EquipSlot.LEGS, tier=1,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=10, attack=0, defense=1, speed=2, crit_chance=0.00),
+        gold_value=30,
+    ),
+    "woven_pantaloons": EquipmentItem(
+        id="woven_pantaloons", name="Woven Silk Trousers", description="Gentle silk trousers providing comfortable spell focus.",
+        slot=EquipSlot.LEGS, tier=1,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=8, attack=2, defense=0, speed=1, crit_chance=0.00),
+        gold_value=32,
+    ),
+    "mystic_sandals": EquipmentItem(
+        id="mystic_sandals", name="Mystic Sandals", description="Light enameled sandals attuned to leyline pulses.",
+        slot=EquipSlot.LEGS, tier=1,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=12, attack=0, defense=1, speed=0, crit_chance=0.02),
+        gold_value=31,
+    ),
+    "leather_mantle": EquipmentItem(
+        id="leather_mantle", name="Leather Mantle", description="Shoulder wrap protecting against scrapes.",
+        slot=EquipSlot.SHOULDERS, tier=1,
+        stats_bonus=Stats(max_hp=8, attack=0, defense=1, speed=1, crit_chance=0.00),
+        gold_value=29,
+    ),
+    "fur_trimmed_capelet": EquipmentItem(
+        id="fur_trimmed_capelet", name="Fur-Trimmed Capelet", description="Warm pelt providing solid cushioning.",
+        slot=EquipSlot.SHOULDERS, tier=1,
+        stats_bonus=Stats(max_hp=10, attack=0, defense=2, speed=0, crit_chance=0.00),
+        gold_value=35,
+    ),
+    "iron_pauldrons": EquipmentItem(
+        id="iron_pauldrons", name="Iron Pauldrons", description="Thick curved iron plates covering shoulders.",
+        slot=EquipSlot.SHOULDERS, tier=1,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=12, attack=0, defense=3, speed=0, crit_chance=0.00),
+        gold_value=41,
+    ),
+    "spiked_spaulders": EquipmentItem(
+        id="spiked_spaulders", name="Spiked Spaulders", description="Jagged spaulders punishing close charges.",
+        slot=EquipSlot.SHOULDERS, tier=1,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=8, attack=1, defense=2, speed=0, crit_chance=0.00),
+        gold_value=38,
+    ),
+    "shadow_shoulderguards": EquipmentItem(
+        id="shadow_shoulderguards", name="Shadow Shoulder-Guards", description="Light boiled leather pads that do not snag.",
+        slot=EquipSlot.SHOULDERS, tier=1,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=6, attack=0, defense=0, speed=2, crit_chance=0.03),
+        gold_value=23,
+    ),
+    "brawlers_epaulets": EquipmentItem(
+        id="brawlers_epaulets", name="Brawler's Epaulets", description="Reinforced shoulders built for brawl lunges.",
+        slot=EquipSlot.SHOULDERS, tier=1,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=0, attack=1, defense=1, speed=2, crit_chance=0.00),
+        gold_value=29,
+    ),
+    "scholars_stole": EquipmentItem(
+        id="scholars_stole", name="Scholar's Stole", description="Inscribed cloth hanging over the chest and shoulders.",
+        slot=EquipSlot.SHOULDERS, tier=1,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=5, attack=2, defense=1, speed=0, crit_chance=0.00),
+        gold_value=35,
+    ),
+    "aether_capelet": EquipmentItem(
+        id="aether_capelet", name="Aether Capelet", description="Light cape shimmering with elemental trace.",
+        slot=EquipSlot.SHOULDERS, tier=1,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=0, attack=3, defense=0, speed=0, crit_chance=0.02),
+        gold_value=32,
+    ),
+    "padded_gloves": EquipmentItem(
+        id="padded_gloves", name="Padded Gloves", description="Supple gloves granting firm weapon grip.",
+        slot=EquipSlot.HANDS, tier=1,
+        stats_bonus=Stats(max_hp=6, attack=0, defense=1, speed=1, crit_chance=0.00),
+        gold_value=28,
+    ),
+    "reinforced_mitts": EquipmentItem(
+        id="reinforced_mitts", name="Reinforced Mitts", description="Thick leather gloves with studded knuckles.",
+        slot=EquipSlot.HANDS, tier=1,
+        stats_bonus=Stats(max_hp=10, attack=0, defense=2, speed=0, crit_chance=0.00),
+        gold_value=35,
+    ),
+    "leather_gloves": EquipmentItem(
+        id="leather_gloves", name="Iron Gauntlets", description="Articulated iron plates shielding wrists and fingers.",
+        slot=EquipSlot.HANDS, tier=1,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=10, attack=1, defense=2, speed=0, crit_chance=0.00),
+        gold_value=39,
+    ),
+    "grip_wraps": EquipmentItem(
+        id="grip_wraps", name="Grip Wraps", description="Rawhide wraps securing weapon purchase.",
+        slot=EquipSlot.HANDS, tier=1,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=5, attack=2, defense=1, speed=0, crit_chance=0.00),
+        gold_value=35,
+    ),
+    "cutpurse_gloves": EquipmentItem(
+        id="cutpurse_gloves", name="Cutpurse Fingerless Gloves", description="Exposes fingers for lockpicking and swift blade draws.",
+        slot=EquipSlot.HANDS, tier=1,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=0, attack=1, defense=0, speed=2, crit_chance=0.04),
+        gold_value=24,
+    ),
+    "quickdraw_bracers": EquipmentItem(
+        id="quickdraw_bracers", name="Quickdraw Bracers", description="Leather wrist-bracers priming instantaneous thrusts.",
+        slot=EquipSlot.HANDS, tier=1,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=0, attack=0, defense=0, speed=3, crit_chance=0.03),
+        gold_value=20,
+    ),
+    "cloth_handwraps": EquipmentItem(
+        id="cloth_handwraps", name="Channeler's Silk Gloves", description="Conductive silk glove pair focusing spell flow.",
+        slot=EquipSlot.HANDS, tier=1,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=0, attack=3, defense=0, speed=1, crit_chance=0.00),
+        gold_value=32,
+    ),
+    "spellscribe_cuffs": EquipmentItem(
+        id="spellscribe_cuffs", name="Spellscribe Cuffs", description="Protects wrists during extended casting rituals.",
+        slot=EquipSlot.HANDS, tier=1,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=0, attack=2, defense=1, speed=0, crit_chance=0.03),
+        gold_value=33,
+    ),
+    "leather_belt": EquipmentItem(
+        id="leather_belt", name="Sturdy Leather Belt", description="A wide utility belt with iron clasp.",
+        slot=EquipSlot.WAIST, tier=1,
+        stats_bonus=Stats(max_hp=10, attack=0, defense=1, speed=0, crit_chance=0.00),
+        gold_value=30,
+    ),
+    "rope_sash": EquipmentItem(
+        id="rope_sash", name="Rope Sash", description="Knotted sash promoting easy body pivoting.",
+        slot=EquipSlot.WAIST, tier=1,
+        stats_bonus=Stats(max_hp=0, attack=0, defense=0, speed=1, crit_chance=0.03),
+        gold_value=20,
+    ),
+    "iron_girdle": EquipmentItem(
+        id="iron_girdle", name="Iron Plated Girdle", description="Broad belt protecting hips and kidneys.",
+        slot=EquipSlot.WAIST, tier=1,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=14, attack=0, defense=3, speed=0, crit_chance=0.00),
+        gold_value=42,
+    ),
+    "war_horn_belt": EquipmentItem(
+        id="war_horn_belt", name="War-Horn Belt", description="Thick belt adorned with warlike brass studs.",
+        slot=EquipSlot.WAIST, tier=1,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=8, attack=1, defense=2, speed=0, crit_chance=0.00),
+        gold_value=38,
+    ),
+    "thiefs_toolbelt": EquipmentItem(
+        id="thiefs_toolbelt", name="Thief's Toolbelt", description="Pouches containing oils, lockpicks, and quick-knives.",
+        slot=EquipSlot.WAIST, tier=1,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=5, attack=0, defense=0, speed=2, crit_chance=0.04),
+        gold_value=22,
+    ),
+    "viper_belt": EquipmentItem(
+        id="viper_belt", name="Viper Belt", description="Supple snakeskin belt enhancing bodily fluidity.",
+        slot=EquipSlot.WAIST, tier=1,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=0, attack=1, defense=0, speed=2, crit_chance=0.02),
+        gold_value=24,
+    ),
+    "runic_cord": EquipmentItem(
+        id="runic_cord", name="Runic Cord", description="Braided cord vibrating with defensive wards.",
+        slot=EquipSlot.WAIST, tier=1,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=8, attack=3, defense=0, speed=0, crit_chance=0.00),
+        gold_value=36,
+    ),
+    "mana_cinch": EquipmentItem(
+        id="mana_cinch", name="Mana-Infused Cinch", description="Tight cloth cinch circulating spiritual energy.",
+        slot=EquipSlot.WAIST, tier=1,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=0, attack=2, defense=1, speed=1, crit_chance=0.00),
+        gold_value=33,
+    ),
+    "tempered_steel_longsword": EquipmentItem(
+        id="tempered_steel_longsword", name="Tempered Steel Longsword", description="Expertly quenched steel longsword with fine balance.",
+        slot=EquipSlot.MAIN_HAND, tier=2,
+        weapon_type=WeaponType.ONE_HANDED,
+        stats_bonus=Stats(max_hp=0, attack=14, defense=1, speed=0, crit_chance=0.05),
+        gold_value=101,
+    ),
+    "barbed_glaive": EquipmentItem(
+        id="barbed_glaive", name="Huntsman's Barbed Glaive", description="Cruel polearm with barbed blades.",
+        slot=EquipSlot.MAIN_HAND, tier=2,
+        weapon_type=WeaponType.TWO_HANDED,
+        stats_bonus=Stats(max_hp=15, attack=15, defense=0, speed=2, crit_chance=0.00),
+        gold_value=107,
+    ),
+    "steel_claymore": EquipmentItem(
+        id="steel_claymore", name="Steel Claymore", description="Massive blade sweeping across the frontline.",
+        slot=EquipSlot.MAIN_HAND, tier=2,
+        weapon_type=WeaponType.TWO_HANDED,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=15, attack=17, defense=0, speed=-1, crit_chance=0.00),
+        gold_value=115,
+    ),
+    "heavy_war_mace": EquipmentItem(
+        id="heavy_war_mace", name="Heavy War Mace", description="Flanged steel mace designed to crush full plate.",
+        slot=EquipSlot.MAIN_HAND, tier=2,
+        weapon_type=WeaponType.ONE_HANDED,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=0, attack=15, defense=4, speed=0, crit_chance=0.04),
+        gold_value=120,
+    ),
+    "assassins_dirk": EquipmentItem(
+        id="assassins_dirk", name="Assassin's Dirk", description="Balanced weapon intended for lethal throat strikes.",
+        slot=EquipSlot.MAIN_HAND, tier=2,
+        weapon_type=WeaponType.ONE_HANDED,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=0, attack=13, defense=0, speed=5, crit_chance=0.10),
+        gold_value=92,
+    ),
+    "venom_stiletto": EquipmentItem(
+        id="venom_stiletto", name="Venom-Tipped Stiletto", description="Grooved stiletto constantly dripping venom.",
+        slot=EquipSlot.MAIN_HAND, tier=2,
+        weapon_type=WeaponType.ONE_HANDED,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=0, attack=14, defense=0, speed=3, crit_chance=0.00),
+        on_hit_status="poison", on_hit_chance=0.25,
+        gold_value=96,
+    ),
+    "crystalline_wand": EquipmentItem(
+        id="crystalline_wand", name="Crystalline Wand", description="Prismatic core wand intensifying spell impact.",
+        slot=EquipSlot.MAIN_HAND, tier=2,
+        weapon_type=WeaponType.WAND,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=0, attack=16, defense=0, speed=2, crit_chance=0.06),
+        gold_value=104,
+    ),
+    "staff_of_embers": EquipmentItem(
+        id="staff_of_embers", name="Staff of Embers", description="Ever-burning staff igniting foes upon contact.",
+        slot=EquipSlot.MAIN_HAND, tier=2,
+        weapon_type=WeaponType.TWO_HANDED,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=15, attack=15, defense=0, speed=0, crit_chance=0.00),
+        on_hit_status="burn", on_hit_chance=0.25,
+        gold_value=107,
+    ),
+    "reinforced_heater_shield": EquipmentItem(
+        id="reinforced_heater_shield", name="Reinforced Heater Shield", description="Polished steel shield with heraldic rivets.",
+        slot=EquipSlot.OFF_HAND, tier=2,
+        weapon_type=WeaponType.SHIELD,
+        stats_bonus=Stats(max_hp=25, attack=0, defense=5, speed=0, crit_chance=0.00),
+        gold_value=77,
+    ),
+    "alchemists_satchel": EquipmentItem(
+        id="alchemists_satchel", name="Alchemist's Satchel", description="Bandolier of volatile salts granting versatile tactics.",
+        slot=EquipSlot.OFF_HAND, tier=2,
+        stats_bonus=Stats(max_hp=10, attack=3, defense=0, speed=3, crit_chance=0.00),
+        gold_value=57,
+    ),
+    "steel_bastion_shield": EquipmentItem(
+        id="steel_bastion_shield", name="Steel Bastion Shield", description="Massive fortress shield absorbing titanic blows.",
+        slot=EquipSlot.OFF_HAND, tier=2,
+        weapon_type=WeaponType.SHIELD,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=35, attack=0, defense=7, speed=-2, crit_chance=0.00),
+        gold_value=92,
+    ),
+    "bladed_spiked_shield": EquipmentItem(
+        id="bladed_spiked_shield", name="Bladed Spiked Shield", description="Off-hand buckler lined with sharpened edges.",
+        slot=EquipSlot.OFF_HAND, tier=2,
+        weapon_type=WeaponType.SHIELD,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=15, attack=6, defense=4, speed=0, crit_chance=0.00),
+        gold_value=91,
+    ),
+    "main_gauche": EquipmentItem(
+        id="main_gauche", name="Main Gauche", description="Exquisite dueling dagger intercepting lethal thrusts.",
+        slot=EquipSlot.OFF_HAND, tier=2,
+        weapon_type=WeaponType.ONE_HANDED,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=0, attack=5, defense=3, speed=4, crit_chance=0.06),
+        gold_value=75,
+    ),
+    "steel_buckler": EquipmentItem(
+        id="steel_buckler", name="Steel Buckler", description="Light steel shield engineered for deflections.",
+        slot=EquipSlot.OFF_HAND, tier=2,
+        weapon_type=WeaponType.SHIELD,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=20, attack=0, defense=4, speed=3, crit_chance=0.00),
+        gold_value=70,
+    ),
+    "arcane_grimoire": EquipmentItem(
+        id="arcane_grimoire", name="Arcane Grimoire", description="Bound tome containing ancient arcane incantations.",
+        slot=EquipSlot.OFF_HAND, tier=2,
+        weapon_type=WeaponType.FOCUS,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=0, attack=8, defense=0, speed=0, crit_chance=0.08),
+        gold_value=72,
+    ),
+    "mirror_ward": EquipmentItem(
+        id="mirror_ward", name="Enchanted Mirror Ward", description="Silvered ward reflecting incoming hostile spells.",
+        slot=EquipSlot.OFF_HAND, tier=2,
+        weapon_type=WeaponType.FOCUS,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=25, attack=4, defense=3, speed=0, crit_chance=0.00),
+        gold_value=83,
+    ),
+    "steel_kettle_hat": EquipmentItem(
+        id="steel_kettle_hat", name="Steel Kettle Hat", description="Wide-brimmed helmet deflecting downward blows.",
+        slot=EquipSlot.HEAD, tier=2,
+        stats_bonus=Stats(max_hp=20, attack=0, defense=4, speed=0, crit_chance=0.00),
+        gold_value=70,
+    ),
+    "highwaymans_mask": EquipmentItem(
+        id="highwaymans_mask", name="Highwayman's Mask", description="Silk-lined mask keeping gaze sharp and focused.",
+        slot=EquipSlot.HEAD, tier=2,
+        stats_bonus=Stats(max_hp=0, attack=2, defense=0, speed=3, crit_chance=0.06),
+        gold_value=48,
+    ),
+    "full_visor_helm": EquipmentItem(
+        id="full_visor_helm", name="Full Visor Helm", description="Impenetrable steel helmet with slitted eyeholes.",
+        slot=EquipSlot.HEAD, tier=2,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=25, attack=0, defense=6, speed=0, crit_chance=0.00),
+        gold_value=82,
+    ),
+    "knights_armet": EquipmentItem(
+        id="knights_armet", name="Knight's Armet", description="Elegantly forged armet worn by order champions.",
+        slot=EquipSlot.HEAD, tier=2,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=20, attack=3, defense=4, speed=0, crit_chance=0.00),
+        gold_value=82,
+    ),
+    "nightstalker_hood": EquipmentItem(
+        id="nightstalker_hood", name="Nightstalker Hood", description="Shadowy hood blending effortlessly into dim cover.",
+        slot=EquipSlot.HEAD, tier=2,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=15, attack=2, defense=0, speed=4, crit_chance=0.07),
+        gold_value=55,
+    ),
+    "shadow_mask": EquipmentItem(
+        id="shadow_mask", name="Shadow Mask", description="Leather mask concealing breath and sudden eye turns.",
+        slot=EquipSlot.HEAD, tier=2,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=12, attack=0, defense=0, speed=5, crit_chance=0.08),
+        gold_value=46,
+    ),
+    "scholars_pointed_hat": EquipmentItem(
+        id="scholars_pointed_hat", name="Scholar's Pointed Cap", description="Starred felt hat sharpening magical cognition.",
+        slot=EquipSlot.HEAD, tier=2,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=10, attack=6, defense=2, speed=0, crit_chance=0.00),
+        gold_value=79,
+    ),
+    "arcanists_circlet": EquipmentItem(
+        id="arcanists_circlet", name="Arcanist's Circlet", description="Gemmed headpiece gathering ambient mana filaments.",
+        slot=EquipSlot.HEAD, tier=2,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=0, attack=7, defense=0, speed=2, crit_chance=0.06),
+        gold_value=68,
+    ),
+    "brigandine_armor": EquipmentItem(
+        id="brigandine_armor", name="Brigandine Armor", description="Steel plates riveted inside supple leather.",
+        slot=EquipSlot.CHEST, tier=2,
+        stats_bonus=Stats(max_hp=30, attack=0, defense=5, speed=0, crit_chance=0.00),
+        gold_value=80,
+    ),
+    "layered_hauberk": EquipmentItem(
+        id="layered_hauberk", name="Layered Maille Hauberk", description="Intertwined rings backed by sturdy gambeson.",
+        slot=EquipSlot.CHEST, tier=2,
+        stats_bonus=Stats(max_hp=25, attack=0, defense=4, speed=2, crit_chance=0.00),
+        gold_value=72,
+    ),
+    "steel_cuirass": EquipmentItem(
+        id="steel_cuirass", name="Steel Cuirass", description="Heavy breastplate forging an unbroken shield.",
+        slot=EquipSlot.CHEST, tier=2,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=40, attack=0, defense=8, speed=-1, crit_chance=0.00),
+        gold_value=100,
+    ),
+    "vanguard_halfplate": EquipmentItem(
+        id="vanguard_halfplate", name="Vanguard Half-Plate", description="Molded steel half-suit balancing offense and armor.",
+        slot=EquipSlot.CHEST, tier=2,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=30, attack=4, defense=6, speed=0, crit_chance=0.00),
+        gold_value=101,
+    ),
+    "shadowweave_tunic": EquipmentItem(
+        id="shadowweave_tunic", name="Shadowweave Tunic", description="Dark cloth woven from nightshade gossamer.",
+        slot=EquipSlot.CHEST, tier=2,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=20, attack=4, defense=3, speed=5, crit_chance=0.00),
+        gold_value=81,
+    ),
+    "fencers_doublet": EquipmentItem(
+        id="fencers_doublet", name="Fencer's Doublet", description="Tailored doublet designed for quick ripostes.",
+        slot=EquipSlot.CHEST, tier=2,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=18, attack=2, defense=2, speed=6, crit_chance=0.06),
+        gold_value=67,
+    ),
+    "spellweaver_robe": EquipmentItem(
+        id="spellweaver_robe", name="Spellweaver Robe", description="Resonant robes amplifying arcane cast power.",
+        slot=EquipSlot.CHEST, tier=2,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=20, attack=8, defense=3, speed=2, crit_chance=0.00),
+        gold_value=97,
+    ),
+    "runed_battlerobes": EquipmentItem(
+        id="runed_battlerobes", name="Runed Battle-Robes", description="Heavily fortified robes shielding battle-mages.",
+        slot=EquipSlot.CHEST, tier=2,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=30, attack=6, defense=4, speed=0, crit_chance=0.00),
+        gold_value=99,
+    ),
+    "steel_greaves": EquipmentItem(
+        id="steel_greaves", name="Steel Greaves", description="Steel shin guards deflecting wild swings.",
+        slot=EquipSlot.LEGS, tier=2,
+        stats_bonus=Stats(max_hp=25, attack=0, defense=5, speed=0, crit_chance=0.00),
+        gold_value=77,
+    ),
+    "reinforced_riding_trousers": EquipmentItem(
+        id="reinforced_riding_trousers", name="Reinforced Riding Trousers", description="Sturdy pants allowing agile mounting and dodging.",
+        slot=EquipSlot.LEGS, tier=2,
+        stats_bonus=Stats(max_hp=20, attack=0, defense=3, speed=3, crit_chance=0.00),
+        gold_value=65,
+    ),
+    "heavy_plate_sabatons": EquipmentItem(
+        id="heavy_plate_sabatons", name="Heavy Plate Sabatons", description="Solid steel boots grounding against charges.",
+        slot=EquipSlot.LEGS, tier=2,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=30, attack=0, defense=6, speed=0, crit_chance=0.00),
+        gold_value=85,
+    ),
+    "knightly_greaves": EquipmentItem(
+        id="knightly_greaves", name="Knightly Greaves", description="Polished steel greaves embossed with battle crests.",
+        slot=EquipSlot.LEGS, tier=2,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=25, attack=2, defense=5, speed=0, crit_chance=0.00),
+        gold_value=85,
+    ),
+    "stalker_breeches": EquipmentItem(
+        id="stalker_breeches", name="Stalker Breeches", description="Flexible pants optimized for silent flanking.",
+        slot=EquipSlot.LEGS, tier=2,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=15, attack=2, defense=0, speed=6, crit_chance=0.05),
+        gold_value=55,
+    ),
+    "quicksilver_boots": EquipmentItem(
+        id="quicksilver_boots", name="Quicksilver Boots", description="Enchanted soles lightening body weight.",
+        slot=EquipSlot.LEGS, tier=2,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=12, attack=0, defense=2, speed=7, crit_chance=0.00),
+        gold_value=56,
+    ),
+    "archivists_trousers": EquipmentItem(
+        id="archivists_trousers", name="Archivist's Trousers", description="Embroidered breeches protecting the caster's footing.",
+        slot=EquipSlot.LEGS, tier=2,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=15, attack=5, defense=2, speed=2, crit_chance=0.00),
+        gold_value=77,
+    ),
+    "astral_weft_skirt": EquipmentItem(
+        id="astral_weft_skirt", name="Astral Weft Skirt", description="Silk layered skirt humming with astral cadence.",
+        slot=EquipSlot.LEGS, tier=2,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=20, attack=6, defense=0, speed=0, crit_chance=0.03),
+        gold_value=74,
+    ),
+    "steel_pauldrons": EquipmentItem(
+        id="steel_pauldrons", name="Steel Pauldrons", description="Thick shoulder plates deflecting heavy blows.",
+        slot=EquipSlot.SHOULDERS, tier=2,
+        stats_bonus=Stats(max_hp=20, attack=0, defense=4, speed=0, crit_chance=0.00),
+        gold_value=70,
+    ),
+    "hardened_leather_mantle": EquipmentItem(
+        id="hardened_leather_mantle", name="Hardened Leather Mantle", description="Thickened mantle providing mobility and protection.",
+        slot=EquipSlot.SHOULDERS, tier=2,
+        stats_bonus=Stats(max_hp=15, attack=0, defense=2, speed=3, crit_chance=0.00),
+        gold_value=57,
+    ),
+    "tower_guard_spaulders": EquipmentItem(
+        id="tower_guard_spaulders", name="Tower Guard Spaulders", description="Heavy overlapping plates guarding neck and shoulders.",
+        slot=EquipSlot.SHOULDERS, tier=2,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=25, attack=0, defense=6, speed=0, crit_chance=0.00),
+        gold_value=82,
+    ),
+    "spiked_steel_pauldrons": EquipmentItem(
+        id="spiked_steel_pauldrons", name="Spiked Steel Pauldrons", description="Menacing spiked shoulder guards.",
+        slot=EquipSlot.SHOULDERS, tier=2,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=15, attack=3, defense=4, speed=0, crit_chance=0.03),
+        gold_value=79,
+    ),
+    "duelists_epaulets": EquipmentItem(
+        id="duelists_epaulets", name="Duelist's Epaulets", description="Lightweight epaulets favoring swift sword pivots.",
+        slot=EquipSlot.SHOULDERS, tier=2,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=10, attack=3, defense=2, speed=4, crit_chance=0.00),
+        gold_value=67,
+    ),
+    "assassins_shroud": EquipmentItem(
+        id="assassins_shroud", name="Assassin's Shroud", description="Muffled cloth draping over killing shoulders.",
+        slot=EquipSlot.SHOULDERS, tier=2,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=12, attack=2, defense=0, speed=5, crit_chance=0.05),
+        gold_value=54,
+    ),
+    "mantle_of_sparks": EquipmentItem(
+        id="mantle_of_sparks", name="Mantle of Sparks", description="Crackle of harmless sparks warning away foes.",
+        slot=EquipSlot.SHOULDERS, tier=2,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=10, attack=6, defense=2, speed=0, crit_chance=0.00),
+        gold_value=79,
+    ),
+    "star_woven_shawl": EquipmentItem(
+        id="star_woven_shawl", name="Star-Woven Shawl", description="Gleaming shawl drawing focus from celestial bodies.",
+        slot=EquipSlot.SHOULDERS, tier=2,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=0, attack=7, defense=0, speed=3, crit_chance=0.04),
+        gold_value=68,
+    ),
+    "steel_plated_mitts": EquipmentItem(
+        id="steel_plated_mitts", name="Steel-Plated Mitts", description="Rigid gloves protecting fingers from bone-breaks.",
+        slot=EquipSlot.HANDS, tier=2,
+        stats_bonus=Stats(max_hp=20, attack=0, defense=4, speed=0, crit_chance=0.00),
+        gold_value=70,
+    ),
+    "brawler_handwraps": EquipmentItem(
+        id="brawler_handwraps", name="Brawler Handwraps", description="Toughened wraps delivering punishing brawling strikes.",
+        slot=EquipSlot.HANDS, tier=2,
+        stats_bonus=Stats(max_hp=0, attack=3, defense=2, speed=3, crit_chance=0.04),
+        gold_value=62,
+    ),
+    "knights_gauntlets": EquipmentItem(
+        id="knights_gauntlets", name="Knight's Gauntlets", description="Finely articulated plate gauntlets with leather grips.",
+        slot=EquipSlot.HANDS, tier=2,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=20, attack=3, defense=4, speed=0, crit_chance=0.00),
+        gold_value=82,
+    ),
+    "executioners_grips": EquipmentItem(
+        id="executioners_grips", name="Executioner's Grips", description="Heavy leather grips maximizing cleave force.",
+        slot=EquipSlot.HANDS, tier=2,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=10, attack=4, defense=2, speed=0, crit_chance=0.05),
+        gold_value=71,
+    ),
+    "cutpurse_leather_gloves": EquipmentItem(
+        id="cutpurse_leather_gloves", name="Cutpurse Leather Gloves", description="Supple gloves granting surgical dagger control.",
+        slot=EquipSlot.HANDS, tier=2,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=0, attack=3, defense=0, speed=4, crit_chance=0.07),
+        gold_value=52,
+    ),
+    "shadowfinger_bracers": EquipmentItem(
+        id="shadowfinger_bracers", name="Shadowfinger Bracers", description="Conceals throwing darts and quick-release blades.",
+        slot=EquipSlot.HANDS, tier=2,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=0, attack=2, defense=1, speed=6, crit_chance=0.05),
+        gold_value=53,
+    ),
+    "sorcerers_silk_gloves": EquipmentItem(
+        id="sorcerers_silk_gloves", name="Sorcerer's Silk Gloves", description="Intricate stitchings amplifying spell focus.",
+        slot=EquipSlot.HANDS, tier=2,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=0, attack=6, defense=0, speed=2, crit_chance=0.04),
+        gold_value=64,
+    ),
+    "mana_channeling_wraps": EquipmentItem(
+        id="mana_channeling_wraps", name="Mana-Channeling Wraps", description="Tightly bound wraps sustaining intense magical output.",
+        slot=EquipSlot.HANDS, tier=2,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=12, attack=7, defense=2, speed=0, crit_chance=0.00),
+        gold_value=84,
+    ),
+    "steel_buckled_belt": EquipmentItem(
+        id="steel_buckled_belt", name="Steel-Buckled Belt", description="Broad leather belt with forged iron reinforcement.",
+        slot=EquipSlot.WAIST, tier=2,
+        stats_bonus=Stats(max_hp=22, attack=0, defense=4, speed=0, crit_chance=0.00),
+        gold_value=71,
+    ),
+    "adventurers_utility_sash": EquipmentItem(
+        id="adventurers_utility_sash", name="Adventurer's Utility Sash", description="Multipurpose belt loaded with hooks and pouches.",
+        slot=EquipSlot.WAIST, tier=2,
+        stats_bonus=Stats(max_hp=15, attack=0, defense=2, speed=3, crit_chance=0.03),
+        gold_value=57,
+    ),
+    "plated_war_belt": EquipmentItem(
+        id="plated_war_belt", name="Plated War-Belt", description="Heavy plate-reinforced belt holding plate legs.",
+        slot=EquipSlot.WAIST, tier=2,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=28, attack=2, defense=5, speed=0, crit_chance=0.00),
+        gold_value=87,
+    ),
+    "girdle_of_the_mountain": EquipmentItem(
+        id="girdle_of_the_mountain", name="Girdle of the Mountain", description="Stout dwarven belt bolstering core constitution.",
+        slot=EquipSlot.WAIST, tier=2,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=35, attack=0, defense=6, speed=0, crit_chance=0.00),
+        gold_value=87,
+    ),
+    "duelists_rapier_frog": EquipmentItem(
+        id="duelists_rapier_frog", name="Duelist's Rapier Frog", description="Secure leather frog balancing off-hand daggers.",
+        slot=EquipSlot.WAIST, tier=2,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=0, attack=3, defense=2, speed=4, crit_chance=0.05),
+        gold_value=62,
+    ),
+    "viper_stalker_belt": EquipmentItem(
+        id="viper_stalker_belt", name="Viper Stalker Belt", description="Padded belt carrying concealed glass poison vials.",
+        slot=EquipSlot.WAIST, tier=2,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=12, attack=2, defense=0, speed=5, crit_chance=0.06),
+        gold_value=54,
+    ),
+    "runic_sash": EquipmentItem(
+        id="runic_sash", name="Runic Silk Sash", description="Gilded sash inscribed with ancient protection runes.",
+        slot=EquipSlot.WAIST, tier=2,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=15, attack=7, defense=2, speed=0, crit_chance=0.00),
+        gold_value=85,
+    ),
+    "spellbinder_cord": EquipmentItem(
+        id="spellbinder_cord", name="Spellbinder Cord", description="Braided cord vibrating with heightened casting rhythm.",
+        slot=EquipSlot.WAIST, tier=2,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=0, attack=8, defense=0, speed=2, crit_chance=0.05),
+        gold_value=72,
+    ),
+    "ancient_sunblade": EquipmentItem(
+        id="ancient_sunblade", name="Ancient Sunblade", description="A radiant blade blazing with eternal solar fire.",
+        slot=EquipSlot.MAIN_HAND, tier=3,
+        weapon_type=WeaponType.ONE_HANDED,
+        stats_bonus=Stats(max_hp=20, attack=26, defense=3, speed=0, crit_chance=0.08),
+        on_hit_status="burn", on_hit_chance=0.40,
+        gold_value=189,
+    ),
+    "meteorite_cleaver": EquipmentItem(
+        id="meteorite_cleaver", name="Meteorite Cleaver", description="Heavy cosmic iron cleaver opening bleeding wounds.",
+        slot=EquipSlot.MAIN_HAND, tier=3,
+        weapon_type=WeaponType.TWO_HANDED,
+        stats_bonus=Stats(max_hp=30, attack=28, defense=0, speed=-2, crit_chance=0.10),
+        on_hit_status="bleed", on_hit_chance=0.40,
+        gold_value=187,
+    ),
+    "worldbreaker_greatsword": EquipmentItem(
+        id="worldbreaker_greatsword", name="Worldbreaker Greatsword", description="Colossal legendary broadsword shattering enemy ranks.",
+        slot=EquipSlot.MAIN_HAND, tier=3,
+        weapon_type=WeaponType.TWO_HANDED,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=35, attack=34, defense=8, speed=0, crit_chance=0.10),
+        gold_value=253,
+    ),
+    "doomhammer_ancients": EquipmentItem(
+        id="doomhammer_ancients", name="Doomhammer of the Ancients", description="Titan-forged hammer whose impact echoes thunder.",
+        slot=EquipSlot.MAIN_HAND, tier=3,
+        weapon_type=WeaponType.ONE_HANDED,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=0, attack=30, defense=12, speed=5, crit_chance=0.00),
+        gold_value=240,
+    ),
+    "whisper_of_the_void": EquipmentItem(
+        id="whisper_of_the_void", name="Whisper of the Void", description="Translucent phantom blade piercing through reality.",
+        slot=EquipSlot.MAIN_HAND, tier=3,
+        weapon_type=WeaponType.ONE_HANDED,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=0, attack=27, defense=0, speed=12, crit_chance=0.25),
+        gold_value=168,
+    ),
+    "viper_queens_stinger": EquipmentItem(
+        id="viper_queens_stinger", name="Viper Queen's Stinger", description="Dripping stiletto laced with lethal sovereign neurotoxin.",
+        slot=EquipSlot.MAIN_HAND, tier=3,
+        weapon_type=WeaponType.ONE_HANDED,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=20, attack=25, defense=0, speed=8, crit_chance=0.00),
+        on_hit_status="poison", on_hit_chance=0.50,
+        gold_value=170,
+    ),
+    "calamity_staff": EquipmentItem(
+        id="calamity_staff", name="Calamity Staff", description="Crackles with apocalyptic raw cataclysm energy.",
+        slot=EquipSlot.MAIN_HAND, tier=3,
+        weapon_type=WeaponType.TWO_HANDED,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=20, attack=33, defense=0, speed=5, crit_chance=0.15),
+        gold_value=202,
+    ),
+    "spire_of_the_archon": EquipmentItem(
+        id="spire_of_the_archon", name="Spire of the Archon", description="Primordial spire focusing absolute cosmic authority.",
+        slot=EquipSlot.MAIN_HAND, tier=3,
+        weapon_type=WeaponType.TWO_HANDED,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=25, attack=31, defense=6, speed=0, crit_chance=0.10),
+        gold_value=226,
+    ),
+    "aegis_of_the_immortal": EquipmentItem(
+        id="aegis_of_the_immortal", name="Aegis of the Immortal", description="Ancient bulwark making the wielder unyielding to stuns.",
+        slot=EquipSlot.OFF_HAND, tier=3,
+        weapon_type=WeaponType.SHIELD,
+        stats_bonus=Stats(max_hp=50, attack=0, defense=12, speed=0, crit_chance=0.00),
+        immune_statuses=['stun'],
+        gold_value=145,
+    ),
+    "relic_of_the_eclipse": EquipmentItem(
+        id="relic_of_the_eclipse", name="Relic of the Eclipse", description="Celestial duality relic empowering swift deadly strikes.",
+        slot=EquipSlot.OFF_HAND, tier=3,
+        stats_bonus=Stats(max_hp=20, attack=8, defense=0, speed=10, crit_chance=0.10),
+        gold_value=102,
+    ),
+    "colossus_tower_bastion": EquipmentItem(
+        id="colossus_tower_bastion", name="Colossus Tower Bastion", description="Impenetrable slab of living blackstone.",
+        slot=EquipSlot.OFF_HAND, tier=3,
+        weapon_type=WeaponType.SHIELD,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=65, attack=0, defense=16, speed=-2, crit_chance=0.00),
+        gold_value=172,
+    ),
+    "dreadnought_spiked_shield": EquipmentItem(
+        id="dreadnought_spiked_shield", name="Dreadnought Spiked Shield", description="War fortress shield bearing heavy serrated spines.",
+        slot=EquipSlot.OFF_HAND, tier=3,
+        weapon_type=WeaponType.SHIELD,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=40, attack=12, defense=10, speed=0, crit_chance=0.05),
+        gold_value=178,
+    ),
+    "phantom_parrying_stiletto": EquipmentItem(
+        id="phantom_parrying_stiletto", name="Phantom Parrying Stiletto", description="Ethereal parrying blade deflecting strikes into mist.",
+        slot=EquipSlot.OFF_HAND, tier=3,
+        weapon_type=WeaponType.ONE_HANDED,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=0, attack=10, defense=8, speed=8, crit_chance=0.15),
+        gold_value=140,
+    ),
+    "shadow_mirror_buckler": EquipmentItem(
+        id="shadow_mirror_buckler", name="Shadow Mirror Buckler", description="Absorbs incoming force and converts it to agility.",
+        slot=EquipSlot.OFF_HAND, tier=3,
+        weapon_type=WeaponType.SHIELD,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=35, attack=0, defense=9, speed=6, crit_chance=0.08),
+        gold_value=122,
+    ),
+    "tome_ancient_cataclysms": EquipmentItem(
+        id="tome_ancient_cataclysms", name="Tome of Ancient Cataclysms", description="Grimoire detailing primordial star eruptions.",
+        slot=EquipSlot.OFF_HAND, tier=3,
+        weapon_type=WeaponType.FOCUS,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=0, attack=16, defense=4, speed=0, crit_chance=0.15),
+        gold_value=144,
+    ),
+    "prismatic_warding_sphere": EquipmentItem(
+        id="prismatic_warding_sphere", name="Prismatic Warding Sphere", description="Shields against burning embers and weakening curses.",
+        slot=EquipSlot.OFF_HAND, tier=3,
+        weapon_type=WeaponType.FOCUS,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=45, attack=8, defense=8, speed=0, crit_chance=0.00),
+        immune_statuses=['burn', 'weaken'],
+        gold_value=154,
+    ),
+    "crown_of_forgotten_king": EquipmentItem(
+        id="crown_of_forgotten_king", name="Crown of the Forgotten King", description="Ancient gilded circlet exuding undeniable regality.",
+        slot=EquipSlot.HEAD, tier=3,
+        stats_bonus=Stats(max_hp=40, attack=4, defense=8, speed=0, crit_chance=0.00),
+        gold_value=136,
+    ),
+    "paranoids_golden_coif": EquipmentItem(
+        id="paranoids_golden_coif", name="Paranoid's Golden Coif", description="Lined with warding runes repelling unexpected deceit.",
+        slot=EquipSlot.HEAD, tier=3,
+        stats_bonus=Stats(max_hp=25, attack=0, defense=6, speed=5, crit_chance=0.12),
+        gold_value=102,
+    ),
+    "warlords_dreadhelm": EquipmentItem(
+        id="warlords_dreadhelm", name="Warlord's Dreadhelm", description="Frightening iron mask instilling dread in onlookers.",
+        slot=EquipSlot.HEAD, tier=3,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=50, attack=4, defense=12, speed=0, crit_chance=0.00),
+        gold_value=161,
+    ),
+    "immortal_visage": EquipmentItem(
+        id="immortal_visage", name="Immortal Visage", description="Forged in titan embers, defying mortal frailty.",
+        slot=EquipSlot.HEAD, tier=3,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=60, attack=0, defense=14, speed=0, crit_chance=0.00),
+        gold_value=160,
+    ),
+    "specter_cowl": EquipmentItem(
+        id="specter_cowl", name="Specter Cowl", description="Woven from void strands, concealing the wearer's gaze.",
+        slot=EquipSlot.HEAD, tier=3,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=30, attack=5, defense=0, speed=9, crit_chance=0.15),
+        gold_value=95,
+    ),
+    "faceless_assassin_mask": EquipmentItem(
+        id="faceless_assassin_mask", name="Faceless Assassin Mask", description="Erases personal presence to ensure fatal strikes.",
+        slot=EquipSlot.HEAD, tier=3,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=25, attack=6, defense=4, speed=8, crit_chance=0.12),
+        gold_value=116,
+    ),
+    "archmage_diadem": EquipmentItem(
+        id="archmage_diadem", name="Arch-Mage Diadem", description="Priceless crown resonating with boundless arcane mastery.",
+        slot=EquipSlot.HEAD, tier=3,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=25, attack=14, defense=6, speed=0, crit_chance=0.10),
+        gold_value=158,
+    ),
+    "crown_cosmic_insight": EquipmentItem(
+        id="crown_cosmic_insight", name="Crown of Cosmic Insight", description="Reveals hidden leylines across time and space.",
+        slot=EquipSlot.HEAD, tier=3,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=35, attack=16, defense=0, speed=4, crit_chance=0.00),
+        gold_value=141,
+    ),
+    "purifying_vestment_light": EquipmentItem(
+        id="purifying_vestment_light", name="Purifying Vestment of Light", description="Woven with celestial silk granting status immunity.",
+        slot=EquipSlot.CHEST, tier=3,
+        stats_bonus=Stats(max_hp=50, attack=0, defense=10, speed=0, crit_chance=0.00),
+        immune_statuses=['burn', 'poison', 'bleed'],
+        gold_value=135,
+    ),
+    "spiked_dragon_carapace": EquipmentItem(
+        id="spiked_dragon_carapace", name="Spiked Dragon Carapace", description="Ancient dragon scales forged into impenetrable plates.",
+        slot=EquipSlot.CHEST, tier=3,
+        stats_bonus=Stats(max_hp=60, attack=4, defense=12, speed=0, crit_chance=0.00),
+        gold_value=166,
+    ),
+    "cuirass_of_colossus": EquipmentItem(
+        id="cuirass_of_colossus", name="Cuirass of the Colossus", description="Monumental armor carved from living mountains.",
+        slot=EquipSlot.CHEST, tier=3,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=75, attack=0, defense=18, speed=0, crit_chance=0.00),
+        gold_value=187,
+    ),
+    "bloodforged_plate": EquipmentItem(
+        id="bloodforged_plate", name="Bloodforged Plate", description="Bathed in dragon's blood, fueling relentless warfare.",
+        slot=EquipSlot.CHEST, tier=3,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=55, attack=8, defense=14, speed=0, crit_chance=0.05),
+        gold_value=189,
+    ),
+    "nightstalker_master_vest": EquipmentItem(
+        id="nightstalker_master_vest", name="Nightstalker Master Vest", description="Peak garment of guildmaster rogues.",
+        slot=EquipSlot.CHEST, tier=3,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=40, attack=8, defense=8, speed=10, crit_chance=0.12),
+        gold_value=152,
+    ),
+    "shadowdancer_raiment": EquipmentItem(
+        id="shadowdancer_raiment", name="Shadowdancer Raiment", description="Fluid cloth flowing around blades like water.",
+        slot=EquipSlot.CHEST, tier=3,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=35, attack=6, defense=6, speed=14, crit_chance=0.15),
+        gold_value=131,
+    ),
+    "voidstrider_robes": EquipmentItem(
+        id="voidstrider_robes", name="Voidstrider Robes", description="Shifting dark fabric feeding on pure arcane fallout.",
+        slot=EquipSlot.CHEST, tier=3,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=45, attack=16, defense=7, speed=4, crit_chance=0.08),
+        gold_value=181,
+    ),
+    "robes_astral_phoenix": EquipmentItem(
+        id="robes_astral_phoenix", name="Robes of the Astral Phoenix", description="Radiant phoenix feathers igniting enemies upon contact.",
+        slot=EquipSlot.CHEST, tier=3,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=50, attack=14, defense=8, speed=0, crit_chance=0.00),
+        on_hit_status="burn", on_hit_chance=0.40,
+        gold_value=181,
+    ),
+    "titan_tread_greaves": EquipmentItem(
+        id="titan_tread_greaves", name="Titan Tread Greaves", description="Massive legplates shaking the earth with each step.",
+        slot=EquipSlot.LEGS, tier=3,
+        stats_bonus=Stats(max_hp=50, attack=0, defense=10, speed=-2, crit_chance=0.00),
+        gold_value=135,
+    ),
+    "boots_of_windstrider": EquipmentItem(
+        id="boots_of_windstrider", name="Boots of the Windstrider", description="Enchanted with bound Zephyrs for incredible speed.",
+        slot=EquipSlot.LEGS, tier=3,
+        stats_bonus=Stats(max_hp=35, attack=0, defense=6, speed=8, crit_chance=0.08),
+        gold_value=107,
+    ),
+    "juggernaut_legplates": EquipmentItem(
+        id="juggernaut_legplates", name="Juggernaut Legplates", description="Reinforced greaves ensuring no advance is stopped.",
+        slot=EquipSlot.LEGS, tier=3,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=60, attack=0, defense=14, speed=0, crit_chance=0.00),
+        gold_value=160,
+    ),
+    "warlords_greaves": EquipmentItem(
+        id="warlords_greaves", name="Warlord's Greaves", description="Spiked greaves used in brutal shield-wall scuffles.",
+        slot=EquipSlot.LEGS, tier=3,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=45, attack=5, defense=11, speed=0, crit_chance=0.00),
+        gold_value=157,
+    ),
+    "ghostwalker_boots": EquipmentItem(
+        id="ghostwalker_boots", name="Ghostwalker Boots", description="Allows the wearer to step beyond the boundary of sight.",
+        slot=EquipSlot.LEGS, tier=3,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=25, attack=4, defense=0, speed=12, crit_chance=0.12),
+        gold_value=88,
+    ),
+    "shadowrunner_breeches": EquipmentItem(
+        id="shadowrunner_breeches", name="Shadowrunner Breeches", description="Silent trousers facilitating supersonic sidesteps.",
+        slot=EquipSlot.LEGS, tier=3,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=30, attack=0, defense=5, speed=10, crit_chance=0.10),
+        gold_value=100,
+    ),
+    "chronoweaver_trousers": EquipmentItem(
+        id="chronoweaver_trousers", name="Chronoweaver Trousers", description="Manipulates personal time dilation around footsteps.",
+        slot=EquipSlot.LEGS, tier=3,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=30, attack=12, defense=5, speed=6, crit_chance=0.00),
+        gold_value=148,
+    ),
+    "celestial_silk_leggings": EquipmentItem(
+        id="celestial_silk_leggings", name="Celestial Silk Leggings", description="Spun from starlight, offering supernatural agility.",
+        slot=EquipSlot.LEGS, tier=3,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=40, attack=14, defense=6, speed=0, crit_chance=0.06),
+        gold_value=166,
+    ),
+    "dragonscale_epaulets": EquipmentItem(
+        id="dragonscale_epaulets", name="Dragon-Scale Epaulets", description="Molten dragon plates absorbing direct concussions.",
+        slot=EquipSlot.SHOULDERS, tier=3,
+        stats_bonus=Stats(max_hp=40, attack=0, defense=9, speed=0, crit_chance=0.00),
+        gold_value=125,
+    ),
+    "mantle_of_the_nomad": EquipmentItem(
+        id="mantle_of_the_nomad", name="Mantle of the Nomad", description="Feathered mantle tested in thousands of battles.",
+        slot=EquipSlot.SHOULDERS, tier=3,
+        stats_bonus=Stats(max_hp=30, attack=0, defense=5, speed=6, crit_chance=0.06),
+        gold_value=100,
+    ),
+    "fortress_pauldrons": EquipmentItem(
+        id="fortress_pauldrons", name="Fortress Pauldrons", description="Bastion-like spaulders protecting against overhead executions.",
+        slot=EquipSlot.SHOULDERS, tier=3,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=50, attack=0, defense=12, speed=0, crit_chance=0.00),
+        gold_value=145,
+    ),
+    "warmasters_spiked_shoulders": EquipmentItem(
+        id="warmasters_spiked_shoulders", name="Warmaster's Spiked Shoulders", description="Fearsome spiked armor punishing enemy melee.",
+        slot=EquipSlot.SHOULDERS, tier=3,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=35, attack=6, defense=9, speed=0, crit_chance=0.06),
+        gold_value=146,
+    ),
+    "mantle_ghost_phantom": EquipmentItem(
+        id="mantle_ghost_phantom", name="Mantle of the Ghost Phantom", description="Ethereal mantle blurring body contours into mist.",
+        slot=EquipSlot.SHOULDERS, tier=3,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=25, attack=6, defense=6, speed=10, crit_chance=0.12),
+        gold_value=126,
+    ),
+    "shadowblade_pauldrons": EquipmentItem(
+        id="shadowblade_pauldrons", name="Shadowblade Pauldrons", description="Razor-sharp shoulder blades assisting in lethal maneuvers.",
+        slot=EquipSlot.SHOULDERS, tier=3,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=20, attack=7, defense=4, speed=8, crit_chance=0.14),
+        gold_value=118,
+    ),
+    "aetherflame_mantle": EquipmentItem(
+        id="aetherflame_mantle", name="Aetherflame Mantle", description="Drapes the spellcaster in crackling arcane fires.",
+        slot=EquipSlot.SHOULDERS, tier=3,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=25, attack=14, defense=6, speed=0, crit_chance=0.00),
+        gold_value=158,
+    ),
+    "void_touched_epaulets": EquipmentItem(
+        id="void_touched_epaulets", name="Void-Touched Epaulets", description="Gathers void residues to empower deadly spells.",
+        slot=EquipSlot.SHOULDERS, tier=3,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=20, attack=15, defense=0, speed=5, crit_chance=0.10),
+        gold_value=130,
+    ),
+    "titans_iron_gauntlets": EquipmentItem(
+        id="titans_iron_gauntlets", name="Titan's Iron Gauntlets", description="Unforgiving iron fists multiplying crush impacts.",
+        slot=EquipSlot.HANDS, tier=3,
+        stats_bonus=Stats(max_hp=40, attack=3, defense=8, speed=0, crit_chance=0.00),
+        gold_value=132,
+    ),
+    "grip_of_the_executioner": EquipmentItem(
+        id="grip_of_the_executioner", name="Grip of the Executioner", description="Forged to sever vital arteries without falter.",
+        slot=EquipSlot.HANDS, tier=3,
+        stats_bonus=Stats(max_hp=20, attack=6, defense=5, speed=5, crit_chance=0.10),
+        gold_value=119,
+    ),
+    "colossus_fists": EquipmentItem(
+        id="colossus_fists", name="Colossus Fists", description="Massive gauntlets encasing wrists in mountain stone.",
+        slot=EquipSlot.HANDS, tier=3,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=45, attack=4, defense=10, speed=0, crit_chance=0.00),
+        gold_value=148,
+    ),
+    "gauntlets_of_ruin": EquipmentItem(
+        id="gauntlets_of_ruin", name="Gauntlets of Ruin", description="Dark spiked gauntlets breaking armors on contact.",
+        slot=EquipSlot.HANDS, tier=3,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=30, attack=8, defense=7, speed=0, crit_chance=0.08),
+        gold_value=142,
+    ),
+    "assassins_twin_grips": EquipmentItem(
+        id="assassins_twin_grips", name="Assassin's Twin-Grips", description="Provides supreme tactile control for dual daggers.",
+        slot=EquipSlot.HANDS, tier=3,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=0, attack=7, defense=0, speed=8, crit_chance=0.15),
+        gold_value=88,
+    ),
+    "master_poisoner_gloves": EquipmentItem(
+        id="master_poisoner_gloves", name="Master Poisoner Gloves", description="Permeated with venom, poisoning foes upon contact.",
+        slot=EquipSlot.HANDS, tier=3,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=25, attack=6, defense=4, speed=8, crit_chance=0.00),
+        on_hit_status="poison", on_hit_chance=0.20,
+        gold_value=116,
+    ),
+    "archmages_spellgloves": EquipmentItem(
+        id="archmages_spellgloves", name="Archmage's Spell-Gloves", description="Silk weaves dancing with lightning at the fingertips.",
+        slot=EquipSlot.HANDS, tier=3,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=0, attack=14, defense=0, speed=6, crit_chance=0.10),
+        gold_value=116,
+    ),
+    "hands_of_the_voidcaller": EquipmentItem(
+        id="hands_of_the_voidcaller", name="Hands of the Voidcaller", description="Dark gloves reaching into extraplanar dimensions.",
+        slot=EquipSlot.HANDS, tier=3,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=30, attack=15, defense=5, speed=0, crit_chance=0.00),
+        gold_value=160,
+    ),
+    "girdle_of_earth_titan": EquipmentItem(
+        id="girdle_of_earth_titan", name="Girdle of the Earth Titan", description="Heavy stone-studded belt grounding the adventurer.",
+        slot=EquipSlot.WAIST, tier=3,
+        stats_bonus=Stats(max_hp=45, attack=0, defense=10, speed=0, crit_chance=0.00),
+        gold_value=132,
+    ),
+    "champions_belt": EquipmentItem(
+        id="champions_belt", name="Champion's Championship Belt", description="Ornate golden belt rewarding proven arena legends.",
+        slot=EquipSlot.WAIST, tier=3,
+        stats_bonus=Stats(max_hp=30, attack=4, defense=6, speed=4, crit_chance=0.06),
+        gold_value=121,
+    ),
+    "warlords_greatbelt": EquipmentItem(
+        id="warlords_greatbelt", name="Warlord's Greatbelt", description="Banded steel girdle holding war trophy plates.",
+        slot=EquipSlot.WAIST, tier=3,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=50, attack=3, defense=11, speed=0, crit_chance=0.00),
+        gold_value=152,
+    ),
+    "bloodforged_cincture": EquipmentItem(
+        id="bloodforged_cincture", name="Blood-Forged Cincture", description="Runic girdle channeling martial wrath into raw vigor.",
+        slot=EquipSlot.WAIST, tier=3,
+        required_class="warrior",
+        stats_bonus=Stats(max_hp=35, attack=6, defense=8, speed=0, crit_chance=0.06),
+        gold_value=141,
+    ),
+    "master_rogues_sash": EquipmentItem(
+        id="master_rogues_sash", name="Master Rogue's Sash", description="Weighted sash housing throwing caltrops and daggers.",
+        slot=EquipSlot.WAIST, tier=3,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=25, attack=5, defense=4, speed=8, crit_chance=0.12),
+        gold_value=112,
+    ),
+    "shadowweaver_cord": EquipmentItem(
+        id="shadowweaver_cord", name="Shadow-Weaver Cord", description="Silent belt harmonizing agility and lethal instinct.",
+        slot=EquipSlot.WAIST, tier=3,
+        required_class="rogue",
+        stats_bonus=Stats(max_hp=20, attack=4, defense=0, speed=10, crit_chance=0.14),
+        gold_value=86,
+    ),
+    "sash_of_the_archmage": EquipmentItem(
+        id="sash_of_the_archmage", name="Sash of the Archmage", description="Golden sash radiating concentrated mystical authority.",
+        slot=EquipSlot.WAIST, tier=3,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=30, attack=14, defense=5, speed=0, crit_chance=0.00),
+        gold_value=156,
+    ),
+    "cosmic_leyline_belt": EquipmentItem(
+        id="cosmic_leyline_belt", name="Cosmic Leyline Belt", description="Channels ambient cosmic leylines to quicken spellcraft.",
+        slot=EquipSlot.WAIST, tier=3,
+        required_class="mage",
+        stats_bonus=Stats(max_hp=0, attack=16, defense=0, speed=5, crit_chance=0.10),
+        gold_value=124,
     ),
 }
 
-# =============================================================================
-# STARTER KITS REGISTRY (Class ID -> List of item IDs)
-# =============================================================================
+
 STARTER_KITS: Final[dict[str, list[str]]] = {
     "warrior": [
         "bronze_sword",

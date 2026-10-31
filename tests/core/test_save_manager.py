@@ -55,8 +55,8 @@ def test_stats_serialization_roundtrip():
 
 def test_inventory_serialization_roundtrip():
     inv = Inventory()
-    weapon = get_item("iron_broadsword")
-    shield = get_item("iron_tower_shield")
+    weapon = get_item("bronze_sword")
+    shield = get_item("bronze_shield")
     potion = get_item("health_potion")
 
     assert weapon is not None
@@ -72,9 +72,9 @@ def test_inventory_serialization_roundtrip():
     restored = deserialize_inventory(data)
 
     assert restored.equipment[EquipSlot.MAIN_HAND] is not None
-    assert restored.equipment[EquipSlot.MAIN_HAND].id == "iron_broadsword"
+    assert restored.equipment[EquipSlot.MAIN_HAND].id == "bronze_sword"
     assert restored.equipment[EquipSlot.OFF_HAND] is not None
-    assert restored.equipment[EquipSlot.OFF_HAND].id == "iron_tower_shield"
+    assert restored.equipment[EquipSlot.OFF_HAND].id == "bronze_shield"
     assert len(restored.pouch) == 1
     assert restored.pouch[0].id == "health_potion"
     assert restored.belt[0] is not None
