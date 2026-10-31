@@ -177,17 +177,16 @@ def finalize_qte_sequence(combat: CombatSystem) -> dict[str, object]:
     qte.summary_frames = QTE_SUMMARY_FRAMES
 
     bonuses: list[str] = []
-    if final_score <= 20:
-        bonuses.append(_t("qte_bonus_none"))
     if final_score >= 21:
-        combat.qte_next_damage_mitigation = final_score / 100.0
-        bonuses.append(_t("qte_bonus_mitigation", pct=final_score))
+        mitigation_pct = int(round(final_score * 0.5))
+        combat.qte_next_damage_mitigation = final_score / 200.0
+        bonuses.append(_t("qte_bonus_mitigation", pct=mitigation_pct))
     if final_score >= 41:
-        def_gain = max(1, int(round(combat.player.effective_stats.defense * 0.10)))
+        def_gain = max(1, int(round(combat.player.effective_stats.defense * 0.05)))
         combat.player.combat_def_buff += def_gain
         bonuses.append(_t("qte_bonus_def_up"))
     if final_score >= 61:
-        atk_loss = max(1, int(round(combat.enemy.base_stats.attack * 0.10)))
+        atk_loss = max(1, int(round(combat.enemy.base_stats.attack * 0.05)))
         combat.enemy.base_stats.attack = max(1, combat.enemy.base_stats.attack - atk_loss)
         bonuses.append(_t("qte_bonus_atk_down"))
     if final_score >= 81 and combat.enemy.is_alive and combat.player.is_alive:
@@ -197,6 +196,25 @@ def finalize_qte_sequence(combat: CombatSystem) -> dict[str, object]:
         bonuses.append(_t("qte_bonus_counter", dmg=dealt, heal=healed))
         audio.play_sfx(SND_CRIT)
         combat._evaluate_battle_outcome()
+
+    failed_buttons = sum(1 for t in qte.targets if t.score < 50)
+    if failed_buttons > 0 and combat.player.is_alive:
+        from src.systems.status import get_status_by_id
+
+        vuln_ticks = 5 * failed_buttons
+        existing_vuln = next((s for s in combat.player.statuses if s.id == "vulnerable"), None)
+        if existing_vuln is not None:
+            existing_vuln.duration += vuln_ticks
+            bonuses.append(_t("qte_penalty_vulnerable", ticks=vuln_ticks))
+        else:
+            vuln = get_status_by_id("vulnerable", duration=vuln_ticks)
+            if vuln:
+                combat.player.apply_status(vuln)
+                if combat.player.has_status("vulnerable"):
+                    bonuses.append(_t("qte_penalty_vulnerable", ticks=vuln_ticks))
+
+    if not bonuses:
+        bonuses.append(_t("qte_bonus_none"))
 
     qte.bonuses_applied = bonuses
     combat.combat_logs.append(

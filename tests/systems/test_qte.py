@@ -143,6 +143,14 @@ def test_qte_resolution_tiers_and_cumulative_bonuses(
     assert combat.active_qte.final_score == expected_avg
     assert combat.active_qte.final_tier == expected_tier
 
+    expected_vuln_ticks = 5 * sum(1 for s in scores if s < 50)
+    vuln = next((s for s in base_player.statuses if s.id == "vulnerable"), None)
+    if expected_vuln_ticks > 0:
+        assert vuln is not None
+        assert vuln.duration == expected_vuln_ticks
+    else:
+        assert vuln is None
+
     if expected_avg <= 20:
         assert combat.qte_next_damage_mitigation == 0.0
         assert base_player.combat_def_buff == 0
@@ -150,22 +158,22 @@ def test_qte_resolution_tiers_and_cumulative_bonuses(
         assert boss.current_hp == 200
         assert base_player.current_hp == 60
     elif expected_avg <= 40:
-        assert pytest.approx(combat.qte_next_damage_mitigation) == expected_avg / 100.0
+        assert pytest.approx(combat.qte_next_damage_mitigation) == expected_avg / 200.0
         assert base_player.combat_def_buff == 0
         assert boss.base_stats.attack == 30
     elif expected_avg <= 60:
-        assert pytest.approx(combat.qte_next_damage_mitigation) == expected_avg / 100.0
-        assert base_player.combat_def_buff == 2  # +10% of 20 DEF
+        assert pytest.approx(combat.qte_next_damage_mitigation) == expected_avg / 200.0
+        assert base_player.combat_def_buff == 1  # +5% of 20 DEF
         assert boss.base_stats.attack == 30
     elif expected_avg <= 80:
-        assert pytest.approx(combat.qte_next_damage_mitigation) == expected_avg / 100.0
-        assert base_player.combat_def_buff == 2  # +10% of 20 DEF
-        assert boss.base_stats.attack == 27  # -10% of 30 ATK
+        assert pytest.approx(combat.qte_next_damage_mitigation) == expected_avg / 200.0
+        assert base_player.combat_def_buff == 1  # +5% of 20 DEF
+        assert boss.base_stats.attack == 28  # -5% of 30 ATK (round(1.5) == 2)
         assert boss.current_hp == 200
     else:
-        assert pytest.approx(combat.qte_next_damage_mitigation) == expected_avg / 100.0
-        assert base_player.combat_def_buff == 2  # +10% of 20 DEF
-        assert boss.base_stats.attack == 27  # -10% of 30 ATK
+        assert pytest.approx(combat.qte_next_damage_mitigation) == expected_avg / 200.0
+        assert base_player.combat_def_buff == 1  # +5% of 20 DEF
+        assert boss.base_stats.attack == 28  # -5% of 30 ATK (round(1.5) == 2)
         # Immediate counterattack: 50% of 20 ATK = 10 dmg, heals half (5 HP)
         assert boss.current_hp == 190
         assert base_player.current_hp == 65

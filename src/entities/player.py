@@ -146,8 +146,9 @@ class Player(Actor):
         if actual_damage > 0 and self.consume_stance("riposte") and self.is_alive:
             combat = getattr(self, "combat_ref", None)
             if combat and combat.enemy.is_alive:
-                counter = int(self.effective_stats.attack * 0.50)
+                counter = int(self.effective_stats.attack * 0.40)
                 dealt = combat.damage_enemy(counter)
+                combat.player_gauge = min(100, combat.player_gauge + 5)
                 from src.core.i18n import t
                 combat.combat_logs.append(t("combat_riposte_counter", actor=self.name, damage=dealt))
 

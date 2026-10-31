@@ -130,6 +130,24 @@ class CombatSystem:
         else:
             self.player.shield = 0
 
+        if self._has_signature("venomancer_mastery") and self.enemy.is_alive:
+            from src.systems.status import get_status_by_id
+
+            can_stack = any(a.id == "venomous_accumulation" for a in self.player.all_passives)
+            attack = self.player.effective_stats.attack
+            poison = get_status_by_id(
+                "poison",
+                duration=5,
+                potency=max(1, int(attack * 0.10)),
+                max_stacks=3 if can_stack else 1,
+            )
+            if poison:
+                poison.stacks = 2
+                self.enemy.apply_status(poison)
+                self.combat_logs.append(
+                    _t("combat_status_applied", target=self.enemy.name, effect=poison.localized_name)
+                )
+
         if normalize_speeds:
             self.normalize_speeds()
 
@@ -194,6 +212,16 @@ class CombatSystem:
 
     def _record_signature_proc(self, signature_id: str, count: int = 1) -> None:
         self.signature_proc_counts[signature_id] = self.signature_proc_counts.get(signature_id, 0) + count
+
+    def get_player_parry_chance(self) -> float:
+        """Return total Parry probability from Riposte, Whirlwind Defense, and Flowing Steel."""
+        has_riposte = any(ability.id == "riposte" for ability in self.player.all_passives)
+        has_whirlwind = any(ability.id == "whirlwind_defense" for ability in self.player.all_passives)
+        parry_chance = (0.20 if has_riposte else 0.0) + (0.20 if has_whirlwind else 0.0)
+        if self._has_signature("duelist_precision"):
+            sig_parry = 0.15 - (0.05 if has_riposte else 0.0) - (0.05 if has_whirlwind else 0.0)
+            parry_chance += max(0.0, sig_parry)
+        return parry_chance
 
     def on_player_stance_consumed(self, stance_id: str) -> None:
         if self._has_signature("duelist_precision"):
@@ -268,7 +296,9 @@ class CombatSystem:
                                 self._record_signature_proc("warlock_pact")
                     if s.id == "poison" and actor is self.enemy and self._has_signature("venomancer_mastery"):
                         self.venom_poison_ticks += 1
-                        if self.venom_poison_ticks % 4 == 0 and dmg > 0 and actor.is_alive:
+                        app_ticks = s.stack_tick_counts[0] if s.stack_tick_counts else 0
+                        s.stack_tick_counts = [app_ticks + 1]
+                        if app_ticks == 0 and dmg > 0 and actor.is_alive:
                             detonation = min(actor.current_hp, max(0, dmg * 2))
                             actor.current_hp -= detonation
                             dmg += detonation
@@ -684,9 +714,13 @@ class CombatSystem:
                             _t("combat_summon_imp_burn", target=self.enemy.name)
                         )
 
+        primary_crit = is_crit and dmg_dealt > 0
+        if primary_crit and self._has_signature("duelist_precision"):
+            self.duelist_flourish_armed = True
+
         if whirlwind_ready and dmg_dealt > 0 and self.enemy.is_alive:
             extra_crit = self.rng.random() < self.player.effective_stats.crit_chance
-            extra_raw = int(self.player.effective_stats.attack * 0.25)
+            extra_raw = int(self.player.effective_stats.attack * 0.50)
             if extra_crit:
                 extra_raw = int(extra_raw * 1.5)
             extra_damage = self.damage_enemy(extra_raw)
@@ -696,12 +730,9 @@ class CombatSystem:
             self.combat_logs.append(_t(log_key, actor=self.player.name, target=self.enemy.name, damage=extra_damage))
 
         if duelist_flourish_ready and dmg_dealt > 0:
-            # The extra strikes apply weapon on-hit effects but do not trigger stances.
-            self._record_signature_proc("duelist_precision")
-            for _ in range(2):
-                if not self.enemy.is_alive:
-                    break
-                extra_damage, extra_crit = self._signature_bonus_hit(0.50, "duelist_precision")
+            # The extra strike applies weapon on-hit effects, heals 10%, and grants +5 gauge.
+            if self.enemy.is_alive:
+                extra_damage, extra_crit = self._signature_bonus_hit(0.75, "duelist_precision")
                 dmg_dealt += extra_damage
                 is_crit = is_crit or extra_crit
         elif duelist_flourish_ready:
@@ -712,7 +743,7 @@ class CombatSystem:
         # restricted to basic attacks; other passives may still react to abilities.
         if dmg_dealt > 0 and not self._passives_handled_per_hit:
             self.trigger_player_attack_passives(
-                dmg_dealt, is_crit, is_basic_attack=is_basic_attack
+                dmg_dealt, primary_crit, is_basic_attack=is_basic_attack
             )
         self._passives_handled_per_hit = False
         self._current_player_action_is_basic = False
@@ -757,7 +788,10 @@ class CombatSystem:
                         _t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name)
                     )
             if signature_id == "paladin_oath":
-                self.player.heal(max(1, damage // 4))
+                self.player.heal(max(1, int(damage * 0.15)))
+            elif signature_id == "duelist_precision":
+                self.player.heal(max(1, int(damage * 0.10)))
+                self.player_gauge = min(100, self.player_gauge + 5)
             self._record_signature_proc(signature_id)
         log_key = "combat_signature_hit_crit" if is_crit else "combat_signature_hit"
         self.combat_logs.append(
@@ -794,12 +828,6 @@ class CombatSystem:
         if self.enemy.has_status("blind") and self.rng.random() < 0.50:
             self.combat_logs.append(_t("combat_blind_miss", actor=self.enemy.name))
             return
-
-        if any(ability.id == "riposte" for ability in self.player.all_passives):
-            if self.rng.random() < 0.25:
-                self.player.activate_stance("riposte")
-                self.combat_logs.append(_t("combat_riposte_block", actor=self.player.name))
-                return
 
         if skill is None:
             skill = self._choose_enemy_skill()
@@ -843,11 +871,26 @@ class CombatSystem:
             # Preserve the legacy 30% Vulnerable effect when no potency is supplied.
             vulnerability = vulnerable.potency if vulnerable.potency > 0 else 30
             raw_dmg = int(raw_dmg * (1 + vulnerability / 100))
+
+        parried = False
+        parry_chance = self.get_player_parry_chance()
+        if parry_chance > 0.0 and self.rng.random() < parry_chance:
+            parried = True
+            raw_dmg = max(1, raw_dmg // 2)
+            self.combat_logs.append(_t("combat_riposte_block", actor=self.player.name))
+
         self._in_enemy_attack = True
         try:
             dmg_dealt = self.player.take_damage(raw_dmg)
         finally:
             self._in_enemy_attack = False
+
+        if parried and self.player.is_alive:
+            if any(ability.id == "riposte" for ability in self.player.all_passives):
+                self.player.activate_stance("riposte")
+            if self._has_signature("duelist_precision"):
+                self.duelist_flourish_armed = True
+                self._record_signature_proc("duelist_precision")
 
         # Audio feedback: Sound 1 (Crit) or Sound 0 (Hit)
         audio.play_sfx(SND_CRIT if is_crit else SND_HIT)

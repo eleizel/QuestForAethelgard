@@ -41,6 +41,8 @@ class StatusEffect:
     def __post_init__(self) -> None:
         if self.id == "burn":
             self.stack_tick_counts = (self.stack_tick_counts + [0] * self.stacks)[:self.stacks]
+        elif self.id == "poison" and not self.stack_tick_counts:
+            self.stack_tick_counts = [0]
 
     @property
     def localized_name(self) -> str:

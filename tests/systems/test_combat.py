@@ -281,8 +281,45 @@ def test_paladin_oath_heal_quarter(base_player, base_enemy, monkeypatch):
     # Base hit deals 20 damage. Signature hit deals 50% ATK = 10 damage.
     # Total damage to enemy: 30
     assert base_enemy.current_hp == 70
-    # Paladin heal is quarter of signature damage: 10 // 4 = 2 HP
-    assert base_player.current_hp == 52
+    # Paladin heal is 15% of signature damage: max(1, int(10 * 0.15)) = 1 HP
+    assert base_player.current_hp == 51
+
+
+def test_venomancer_mastery_combat_start_poison_and_first_tick_detonation(base_player, base_enemy, monkeypatch):
+    import pyxel
+    from src.systems.status import get_status_by_id
+
+    monkeypatch.setattr(pyxel, "play", lambda *args, **kwargs: None)
+
+    base_player.signature_passive = get_ability_by_id("venomancer_mastery")
+    base_player.base_stats.speed = 10
+    base_player.base_stats.attack = 20
+    base_enemy.base_stats.speed = 10
+    base_enemy.base_stats.defense = 0
+    base_enemy.base_stats.max_hp = 100
+    base_enemy.current_hp = 100
+
+    combat = CombatSystem(player=base_player, enemy=base_enemy)
+    poison = next((s for s in base_enemy.statuses if s.id == "poison"), None)
+    assert poison is not None
+    assert poison.stacks == 2
+    assert poison.max_stacks == 1
+
+    # Tick 1: 2 stacks * 2 potency = 4 poison dmg + 200% detonation (8 dmg) = 12 total dmg
+    combat.step()
+    assert base_enemy.current_hp == 88
+    assert combat.signature_proc_counts.get("venomancer_mastery", 0) == 1
+
+    # Tick 2: same poison application does NOT detonate again (only 4 poison dmg)
+    combat.step()
+    assert base_enemy.current_hp == 84
+    assert combat.signature_proc_counts.get("venomancer_mastery", 0) == 1
+
+    # Re-applying poison triggers detonation again on the next tick
+    base_enemy.apply_status(get_status_by_id("poison", duration=5, potency=2, max_stacks=1))
+    combat.step()
+    assert base_enemy.current_hp == 72
+    assert combat.signature_proc_counts.get("venomancer_mastery", 0) == 2
 
 
 def test_berserker_rage_threshold_and_heal(base_player, base_enemy, monkeypatch):
