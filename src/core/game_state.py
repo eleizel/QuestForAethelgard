@@ -204,6 +204,7 @@ class GameState:
                 player_speed=self.player.base_stats.speed,
             )
             self.combat = CombatSystem(player=self.player, enemy=enemy)
+            self.combat.normalize_speeds()
             self.switch_mode(GameMode.COMBAT)
 
         elif node.node_type == NodeType.REST:

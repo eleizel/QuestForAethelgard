@@ -76,6 +76,7 @@ MUS_MAP_SANCTUM: Final[int] = 8
 
 # System Limits & Combat
 ACTION_THRESHOLD: Final[int] = 100
+TARGET_COMBAT_SPEED: Final[float] = 12.5
 ABILITY_COOLDOWN_TICKS: Final[int] = 3
 MAX_POUCH_SLOTS: Final[int] = 10
 MAX_BELT_SLOTS: Final[int] = 3

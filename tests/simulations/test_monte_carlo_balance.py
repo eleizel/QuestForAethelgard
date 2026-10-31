@@ -847,7 +847,9 @@ def _ability_damage_per_action(combat: Any, ability: Any) -> float:
 def _queue_ability_if_ready(combat: Any, rng: random.Random) -> None:
     if combat.queued_ability is not None:
         return
-    projected_player_gauge = combat.player_gauge + combat.player.effective_stats.speed
+    raw_speed = combat.player.effective_stats.speed
+    step_speed = combat.get_scaled_speed(raw_speed) if hasattr(combat, "get_scaled_speed") else raw_speed
+    projected_player_gauge = combat.player_gauge + step_speed
     if projected_player_gauge < 100:
         return
 

@@ -106,6 +106,17 @@ class Player(Actor):
         effective_defense = max(0, self.effective_stats.defense)
         mitigated = calculate_damage(raw_damage, effective_defense, defense_penetration)
 
+        combat = getattr(self, "combat_ref", None)
+        if combat and getattr(combat, "_in_enemy_attack", False):
+            qte_mitigation = getattr(combat, "qte_next_damage_mitigation", 0.0)
+            if qte_mitigation > 0.0 and mitigated > 0:
+                mitigated = max(0, int(round(mitigated * (1.0 - qte_mitigation))))
+                combat.qte_next_damage_mitigation = 0.0
+                from src.core.i18n import t
+                combat.combat_logs.append(
+                    t("combat_qte_mitigated", actor=self.name, pct=int(round(qte_mitigation * 100)))
+                )
+
         if getattr(self, "shield", 0) > 0 and mitigated > 0:
             absorbed = min(self.shield, mitigated)
             self.shield -= absorbed

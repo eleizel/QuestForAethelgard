@@ -98,6 +98,10 @@ class CombatView(View):
             p.lifetime -= 1
         self.popups = [p for p in self.popups if p.lifetime > 0]
 
+        if game_state.combat.is_qte_active():
+            self._update_qte(game_state)
+            return
+
         # Speed toggle [Z] or click at bottom-right corner of dungeon arena (222, 79, 28, 11)
         if pyxel.btnp(pyxel.KEY_Z) or Renderer.is_clicked(222, 79, 28, 11):
             self.speed_index = (self.speed_index + 1) % len(SPEED_INTERVALS)
@@ -506,4 +510,168 @@ class CombatView(View):
             ind_x, ind_y = log_x + log_w - 8, log_y + log_h - 7
             pyxel.tri(ind_x - 2, ind_y, ind_x + 2, ind_y, ind_x, ind_y + 3, COLOR_YELLOW)
 
+        if combat.is_qte_active():
+            self._draw_qte(combat, renderer)
+
         pyxel.camera(0, 0)
+
+    def _update_qte(self, game_state: GameState) -> None:
+        """Advance QTE shrinking circles, input checks, between-button pauses, and final summary."""
+        combat = game_state.combat
+        if combat is None or combat.active_qte is None:
+            return
+        qte = combat.active_qte
+
+        if qte.summary_active:
+            qte.summary_frames -= 1
+            early_dismiss = qte.summary_frames <= 35 and (
+                pyxel.btnp(pyxel.KEY_SPACE)
+                or pyxel.btnp(pyxel.KEY_RETURN)
+                or pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT)
+            )
+            if qte.summary_frames <= 0 or early_dismiss:
+                combat.dismiss_qte_summary()
+                if not combat.is_qte_active() and not combat.is_active():
+                    game_state.update_combat()
+            return
+
+        target = qte.current_target
+        if target is None:
+            return
+
+        if target.resolved:
+            target.feedback_frames -= 1
+            if target.feedback_frames <= 0:
+                old_p_hp = game_state.player.current_hp
+                old_e_hp = combat.enemy.current_hp
+                combat.advance_qte_after_feedback()
+                self._detect_combat_deltas(game_state, old_p_hp, old_e_hp)
+            return
+
+        # Check number keys [1, 2, 3]
+        pressed_number: int | None = None
+        key_map = (
+            (1, pyxel.KEY_1, getattr(pyxel, "KEY_KP_1", None)),
+            (2, pyxel.KEY_2, getattr(pyxel, "KEY_KP_2", None)),
+            (3, pyxel.KEY_3, getattr(pyxel, "KEY_KP_3", None)),
+        )
+        for num, main_key, kp_key in key_map:
+            if pyxel.btnp(main_key) or (kp_key is not None and pyxel.btnp(kp_key)):
+                pressed_number = num
+                break
+
+        if pressed_number is not None:
+            if pressed_number == target.number:
+                combat.resolve_qte_target(target.current_accuracy())
+            else:
+                combat.resolve_qte_target(0)
+            return
+
+        # Check mouse / touch tap
+        if pyxel.btnp(pyxel.MOUSE_BUTTON_LEFT):
+            dist = math.hypot(pyxel.mouse_x - target.x, pyxel.mouse_y - target.y)
+            if dist <= target.button_radius + 6:
+                combat.resolve_qte_target(target.current_accuracy())
+            else:
+                combat.resolve_qte_target(0)
+            return
+
+        # Advance shrinking outer circle
+        target.current_radius -= target.shrink_speed
+        if target.current_radius < target.button_radius - 2.0:
+            combat.resolve_qte_target(0)
+
+    @staticmethod
+    def _qte_tier_color(tier: str) -> int:
+        if tier == "perfect":
+            return COLOR_YELLOW
+        if tier == "amazing":
+            return COLOR_CYAN
+        if tier == "nice":
+            return COLOR_LIME
+        if tier == "good":
+            return COLOR_WHITE
+        return COLOR_RED
+
+    def _draw_qte(self, combat, renderer: Renderer) -> None:
+        """Render the active QTE button, shrinking ring, per-button rating, or final summary banner."""
+        qte = combat.active_qte
+        if qte is None:
+            return
+
+        # Top QTE header banner
+        hdr_x, hdr_y, hdr_w, hdr_h = 24, 22, 208, 13
+        renderer.draw_box(hdr_x, hdr_y, hdr_w, hdr_h, bg_col=COLOR_BLACK, border_col=COLOR_YELLOW)
+        step_num = min(len(qte.targets), qte.current_index + 1)
+        hdr_text = f"{t('qte_header')} [{step_num}/{len(qte.targets)}]"
+        hdr_tw = renderer.get_text_width(hdr_text)
+        renderer.draw_text(hdr_x + (hdr_w - hdr_tw) // 2, hdr_y + 4, hdr_text, COLOR_YELLOW)
+
+        if qte.summary_active:
+            tier_col = self._qte_tier_color(qte.final_tier)
+            box_x, box_y, box_w, box_h = 16, 62, 224, 88
+            renderer.draw_box(box_x, box_y, box_w, box_h, bg_col=COLOR_BLACK, border_col=tier_col)
+            pyxel.rectb(box_x + 2, box_y + 2, box_w - 4, box_h - 4, COLOR_NAVY)
+
+            title = t("qte_summary_title")
+            title_w = renderer.get_text_width(title)
+            renderer.draw_text(box_x + (box_w - title_w) // 2, box_y + 7, title, COLOR_YELLOW)
+
+            tier_label = f"{t('qte_tier_' + qte.final_tier)} ({qte.final_score}%)"
+            tier_w = renderer.get_text_width(tier_label)
+            renderer.draw_text(box_x + (box_w - tier_w) // 2, box_y + 18, tier_label, tier_col)
+
+            pyxel.line(box_x + 10, box_y + 28, box_x + box_w - 11, box_y + 28, COLOR_DARK_BLUE)
+
+            by = box_y + 34
+            bonus_col = COLOR_GRAY if qte.final_score <= 20 else COLOR_LIME
+            for bonus_line in qte.bonuses_applied[:4]:
+                bw = renderer.get_text_width(bonus_line)
+                renderer.draw_text(box_x + max(6, (box_w - bw) // 2), by, bonus_line, bonus_col)
+                by += 12
+            return
+
+        target = qte.current_target
+        if target is None:
+            return
+
+        if not target.resolved:
+            acc = target.current_accuracy()
+            if acc >= 81:
+                ring_col = COLOR_YELLOW
+            elif acc >= 61:
+                ring_col = COLOR_CYAN
+            elif acc >= 41:
+                ring_col = COLOR_LIME
+            else:
+                ring_col = COLOR_WHITE
+
+            outer_r = max(1, int(round(target.current_radius)))
+            pyxel.circb(target.x, target.y, outer_r, ring_col)
+            pyxel.circb(target.x, target.y, outer_r + 1, ring_col)
+
+            pyxel.circ(target.x, target.y, target.button_radius, COLOR_DARK_BLUE)
+            pyxel.circb(target.x, target.y, target.button_radius, COLOR_YELLOW)
+            pyxel.circb(target.x, target.y, target.button_radius - 1, COLOR_LIGHT_BLUE)
+
+            num_str = str(target.number)
+            nw = renderer.get_text_width(num_str)
+            renderer.draw_text(target.x - nw // 2, target.y - 2, num_str, COLOR_WHITE)
+        else:
+            tier_col = self._qte_tier_color(target.tier)
+            pyxel.circ(target.x, target.y, target.button_radius, COLOR_BLACK)
+            pyxel.circb(target.x, target.y, target.button_radius, tier_col)
+            pyxel.circb(target.x, target.y, target.button_radius + 1, tier_col)
+
+            num_str = str(target.number)
+            nw = renderer.get_text_width(num_str)
+            renderer.draw_text(target.x - nw // 2, target.y - 2, num_str, tier_col)
+
+            msg = f"{t('qte_tier_' + target.tier)} {target.score}%"
+            mw = renderer.get_text_width(msg) + 8
+            mx = max(6, min(SCREEN_WIDTH - mw - 6, target.x - mw // 2))
+            my = target.y - target.button_radius - 16
+            if my < 38:
+                my = target.y + target.button_radius + 6
+            renderer.draw_box(mx, my, mw, 11, bg_col=COLOR_BLACK, border_col=tier_col)
+            renderer.draw_text(mx + 4, my + 3, msg, tier_col)
