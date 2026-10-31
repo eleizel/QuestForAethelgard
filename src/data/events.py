@@ -450,10 +450,10 @@ BIOME_EVENTS = {
             scene_type="CHEST",
             choices=[
                 EventChoice(
-                    label_en="Claim masterwork blade (Obtain Widowmaker Dirk)",
-                    label_es="Reclamar hoja maestra (Obtener Daga Viuda Negra)",
+                    label_en="Claim masterwork blade (Obtain Assassin's Dirk)",
+                    label_es="Reclamar hoja maestra (Obtener Daga del Asesino)",
                     action_hook=lambda state: (
-                        state.player.inventory.add_to_pouch(ITEM_CATALOG["widowmaker_dirk"]),
+                        state.player.inventory.add_to_pouch(ITEM_CATALOG["assassins_dirk"]),
                         "You carefully lift the deadly dagger from the rack." if i18n.locale == "en" else "Levantas cuidadosamente la daga mortal del estante."
                     )[-1]
                 ),
