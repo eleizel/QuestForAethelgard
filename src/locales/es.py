@@ -745,6 +745,8 @@ TRANSLATIONS_ES = {
     "combat_daemonic_pact_heal": "El Pacto Demoníaco restaura {heal} PV a {actor}.",
     "combat_signature_hit": "El golpe de firma de {actor} alcanza a {target} e inflige {damage} de daño.",
     "combat_signature_hit_crit": "¡El golpe de firma de {actor} asesta un crítico a {target} e inflige {damage} de daño!",
+    "qte_intro_title": "¡CHOQUE DE PODER!",
+    "qte_intro_desc": "¡Pulsa los círculos en el momento justo para ganar el choque!",
     "qte_header": "QTE [{current}/{total}] - ¡PULSA O TOCA!",
     "qte_tier_failed": "FALLIDO",
     "qte_tier_good": "BIEN",

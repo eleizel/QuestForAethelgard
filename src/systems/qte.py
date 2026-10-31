@@ -26,6 +26,7 @@ QTE_START_RADIUS: Final[float] = 32.0
 QTE_MIN_SHRINK_SPEED: Final[float] = 0.75
 QTE_MAX_SHRINK_SPEED: Final[float] = 1.25
 QTE_OVERSHOOT_GRACE: Final[float] = 1.2
+QTE_INTRO_FRAMES: Final[int] = 75
 QTE_FEEDBACK_FRAMES: Final[int] = 20
 QTE_SUMMARY_FRAMES: Final[int] = 45
 
@@ -88,11 +89,16 @@ class QTESequence:
 
     targets: list[QTETarget]
     current_index: int = 0
+    intro_frames: int = QTE_INTRO_FRAMES
     summary_active: bool = False
     summary_frames: int = 0
     final_score: int = 0
     final_tier: str = ""
     bonuses_applied: list[str] = field(default_factory=list)
+
+    @property
+    def in_intro(self) -> bool:
+        return self.intro_frames > 0 and not self.summary_active
 
     @property
     def current_target(self) -> QTETarget | None:
@@ -128,6 +134,7 @@ def resolve_target(qte: QTESequence | None, score: int) -> str:
     """Resolve the active QTE button with a 0..100 score and start its between-button feedback pause."""
     if qte is None or qte.summary_active:
         return "failed"
+    qte.intro_frames = 0
     target = qte.current_target
     if target is None or target.resolved:
         return "failed"
@@ -193,6 +200,11 @@ def finalize_qte_sequence(combat: CombatSystem) -> dict[str, object]:
 
     qte.bonuses_applied = bonuses
     combat.combat_logs.append(
-        _t("combat_qte_resolved", tier=_t(f"qte_tier_{final_tier}"), score=final_score)
+        _t(
+            "combat_qte_resolved",
+            tier=_t(f"qte_tier_{final_tier}"),
+            score=final_score,
+            bonuses=", ".join(bonuses),
+        )
     )
     return {"score": final_score, "tier": final_tier, "bonuses": bonuses}

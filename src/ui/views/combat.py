@@ -535,6 +535,10 @@ class CombatView(View):
                     game_state.update_combat()
             return
 
+        if qte.in_intro:
+            qte.intro_frames -= 1
+            return
+
         target = qte.current_target
         if target is None:
             return
@@ -592,19 +596,67 @@ class CombatView(View):
             return COLOR_WHITE
         return COLOR_RED
 
+    @staticmethod
+    def _draw_centered_5px(renderer: Renderer, box_x: int, box_w: int, y: int, text: str, col: int) -> None:
+        """Draw text horizontally centered inside [box_x, box_x + box_w] using 5px per character."""
+        text_w = len(text) * 5
+        tx = box_x + max(2, (box_w - text_w) // 2)
+        renderer.draw_text(tx, y, text, col)
+
+    def _draw_qte_intro_banner_and_scroll(self, renderer: Renderer) -> None:
+        """Render the '¡Clash of Might!' title banner and an ornate scroll explaining the QTE."""
+        # 1. Title Banner
+        ban_x, ban_y, ban_w, ban_h = 36, 58, 184, 20
+        pyxel.rect(ban_x - 2, ban_y + 2, ban_w + 4, ban_h - 4, COLOR_RED)
+        renderer.draw_box(ban_x, ban_y, ban_w, ban_h, bg_col=COLOR_BLACK, border_col=COLOR_YELLOW)
+        pyxel.rectb(ban_x + 2, ban_y + 2, ban_w - 4, ban_h - 4, COLOR_ORANGE)
+
+        title = t("qte_intro_title")
+        self._draw_centered_5px(renderer, ban_x, ban_w, ban_y + 6, title, COLOR_YELLOW)
+
+        # 2. Ornate Scroll underneath the banner
+        scr_x, scr_y, scr_w, scr_h = 24, 86, 208, 48
+        # Left and right rolled wooden/gold scroll rods
+        for rod_x in (scr_x - 5, scr_x + scr_w):
+            pyxel.rect(rod_x, scr_y - 3, 5, scr_h + 6, COLOR_BROWN)
+            pyxel.rectb(rod_x, scr_y - 3, 5, scr_h + 6, COLOR_ORANGE)
+            pyxel.rect(rod_x - 1, scr_y - 5, 7, 3, COLOR_YELLOW)
+            pyxel.rect(rod_x - 1, scr_y + scr_h + 2, 7, 3, COLOR_YELLOW)
+
+        # Scroll body & inner trim
+        renderer.draw_box(scr_x, scr_y, scr_w, scr_h, bg_col=COLOR_NAVY, border_col=COLOR_PEACH)
+        pyxel.rect(scr_x + 2, scr_y + 2, scr_w - 4, scr_h - 4, COLOR_BLACK)
+        pyxel.rectb(scr_x + 2, scr_y + 2, scr_w - 4, scr_h - 4, COLOR_YELLOW)
+
+        # Wrap explanation text to fit inside scroll width (36 chars * 5px = 180px)
+        desc_lines = renderer.wrap_text(t("qte_intro_desc"), max_chars_per_line=36)
+        total_text_h = len(desc_lines) * 11
+        line_y = scr_y + max(6, (scr_h - total_text_h) // 2 + 1)
+        for line in desc_lines:
+            self._draw_centered_5px(renderer, scr_x, scr_w, line_y, line, COLOR_WHITE)
+            line_y += 11
+
     def _draw_qte(self, combat, renderer: Renderer) -> None:
-        """Render the active QTE button, shrinking ring, per-button rating, or final summary banner."""
+        """Render the shadowed combat overlay, intro scroll, active QTE button, or final summary."""
         qte = combat.active_qte
         if qte is None:
             return
 
+        # Dim / shadow the combat background while keeping it visible behind the QTE
+        pyxel.dither(0.65)
+        pyxel.rect(0, 22, SCREEN_WIDTH, 234, COLOR_BLACK)
+        pyxel.dither(1.0)
+
+        if qte.in_intro:
+            self._draw_qte_intro_banner_and_scroll(renderer)
+            return
+
         # Top QTE header banner
-        hdr_x, hdr_y, hdr_w, hdr_h = 24, 22, 208, 13
+        hdr_x, hdr_y, hdr_w, hdr_h = 20, 22, 216, 13
         renderer.draw_box(hdr_x, hdr_y, hdr_w, hdr_h, bg_col=COLOR_BLACK, border_col=COLOR_YELLOW)
         step_num = min(len(qte.targets), qte.current_index + 1)
-        hdr_text = f"{t('qte_header')} [{step_num}/{len(qte.targets)}]"
-        hdr_tw = renderer.get_text_width(hdr_text)
-        renderer.draw_text(hdr_x + (hdr_w - hdr_tw) // 2, hdr_y + 4, hdr_text, COLOR_YELLOW)
+        hdr_text = t("qte_header", current=step_num, total=len(qte.targets))
+        self._draw_centered_5px(renderer, hdr_x, hdr_w, hdr_y + 3, hdr_text, COLOR_YELLOW)
 
         if qte.summary_active:
             tier_col = self._qte_tier_color(qte.final_tier)
@@ -613,20 +665,17 @@ class CombatView(View):
             pyxel.rectb(box_x + 2, box_y + 2, box_w - 4, box_h - 4, COLOR_NAVY)
 
             title = t("qte_summary_title")
-            title_w = renderer.get_text_width(title)
-            renderer.draw_text(box_x + (box_w - title_w) // 2, box_y + 7, title, COLOR_YELLOW)
+            self._draw_centered_5px(renderer, box_x, box_w, box_y + 7, title, COLOR_YELLOW)
 
             tier_label = f"{t('qte_tier_' + qte.final_tier)} ({qte.final_score}%)"
-            tier_w = renderer.get_text_width(tier_label)
-            renderer.draw_text(box_x + (box_w - tier_w) // 2, box_y + 18, tier_label, tier_col)
+            self._draw_centered_5px(renderer, box_x, box_w, box_y + 18, tier_label, tier_col)
 
             pyxel.line(box_x + 10, box_y + 28, box_x + box_w - 11, box_y + 28, COLOR_DARK_BLUE)
 
             by = box_y + 34
             bonus_col = COLOR_GRAY if qte.final_score <= 20 else COLOR_LIME
             for bonus_line in qte.bonuses_applied[:4]:
-                bw = renderer.get_text_width(bonus_line)
-                renderer.draw_text(box_x + max(6, (box_w - bw) // 2), by, bonus_line, bonus_col)
+                self._draw_centered_5px(renderer, box_x, box_w, by, bonus_line, bonus_col)
                 by += 12
             return
 
@@ -654,8 +703,7 @@ class CombatView(View):
             pyxel.circb(target.x, target.y, target.button_radius - 1, COLOR_LIGHT_BLUE)
 
             num_str = str(target.number)
-            nw = renderer.get_text_width(num_str)
-            renderer.draw_text(target.x - nw // 2, target.y - 2, num_str, COLOR_WHITE)
+            renderer.draw_text(target.x - (len(num_str) * 5) // 2, target.y - 3, num_str, COLOR_WHITE)
         else:
             tier_col = self._qte_tier_color(target.tier)
             pyxel.circ(target.x, target.y, target.button_radius, COLOR_BLACK)
@@ -663,14 +711,13 @@ class CombatView(View):
             pyxel.circb(target.x, target.y, target.button_radius + 1, tier_col)
 
             num_str = str(target.number)
-            nw = renderer.get_text_width(num_str)
-            renderer.draw_text(target.x - nw // 2, target.y - 2, num_str, tier_col)
+            renderer.draw_text(target.x - (len(num_str) * 5) // 2, target.y - 3, num_str, tier_col)
 
             msg = f"{t('qte_tier_' + target.tier)} {target.score}%"
-            mw = renderer.get_text_width(msg) + 8
+            mw = len(msg) * 5 + 8
             mx = max(6, min(SCREEN_WIDTH - mw - 6, target.x - mw // 2))
             my = target.y - target.button_radius - 16
             if my < 38:
                 my = target.y + target.button_radius + 6
             renderer.draw_box(mx, my, mw, 11, bg_col=COLOR_BLACK, border_col=tier_col)
-            renderer.draw_text(mx + 4, my + 3, msg, tier_col)
+            self._draw_centered_5px(renderer, mx, mw, my + 2, msg, tier_col)

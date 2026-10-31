@@ -12,6 +12,7 @@ from src.entities.enemy import Enemy, EnemyTier
 from src.entities.player import Player
 from src.systems.combat import CombatSystem
 from src.systems.qte import (
+    QTE_INTRO_FRAMES,
     QTE_MAX_SHRINK_SPEED,
     QTE_MIN_SHRINK_SPEED,
     QTE_OVERSHOOT_GRACE,
@@ -70,6 +71,8 @@ def test_qte_triggers_on_elite_and_boss_thresholds(base_player, monkeypatch):
     # Crossing 50% HP triggers QTE on Elite
     combat_elite.damage_enemy(55)
     assert combat_elite.is_qte_active()
+    assert combat_elite.active_qte.in_intro is True
+    assert combat_elite.active_qte.intro_frames == QTE_INTRO_FRAMES
     assert 3 <= len(combat_elite.active_qte.targets) <= 5
     for target in combat_elite.active_qte.targets:
         assert 40 <= target.x <= 216

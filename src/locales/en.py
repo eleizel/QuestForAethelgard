@@ -745,6 +745,8 @@ TRANSLATIONS_EN = {
     "combat_daemonic_pact_heal": "Daemonic Pact restores {heal} HP to {actor}.",
     "combat_signature_hit": "{actor}'s signature strike hits {target} for {damage} damage.",
     "combat_signature_hit_crit": "{actor}'s signature strike critically hits {target} for {damage} damage!",
+    "qte_intro_title": "¡CLASH OF MIGHT!",
+    "qte_intro_desc": "¡Hit the circles at the right time to win the clash!",
     "qte_header": "QTE [{current}/{total}] - PRESS OR TAP!",
     "qte_tier_failed": "FAILED",
     "qte_tier_good": "GOOD",
