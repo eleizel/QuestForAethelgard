@@ -104,7 +104,7 @@ CLASS_REGISTRY: Final[dict[str, ClassDefinition]] = {
         name="Archmage",
         tier=2,
         base_stats=Stats(max_hp=95, attack=42, defense=4, speed=12, crit_chance=0.13),
-        growth_per_level=Stats(max_hp=10, attack=6, defense=1, speed=2, crit_chance=0.01),
+        growth_per_level=Stats(max_hp=10, attack=5, defense=1, speed=2, crit_chance=0.01),
         promotions=[],
         description="An unparalleled master of arcane forces.",
         signature_passive="archmage_focus"

@@ -247,7 +247,7 @@ def test_passive_abilities(monkeypatch):
 
     # Test the Warlock and Archmage damage-reduction passives.
     bone_barrier = get_ability_by_id("bone_barrier")
-    assert bone_barrier.on_damage_taken(None, 100) == 80
+    assert bone_barrier.on_damage_taken(None, 100) == 85
     assert bone_barrier.on_damage_taken(None, 1) == 1
 
     ice_shards = get_ability_by_id("ice_shards")

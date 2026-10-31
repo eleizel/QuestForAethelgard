@@ -376,8 +376,8 @@ def execute_soul_siphon(combat: CombatSystem) -> tuple[str, int, bool]:
 
 
 def hook_bone_barrier(actor: Actor, raw_damage: int) -> int:
-    """Reduce incoming damage by 20%."""
-    return max(1, int(raw_damage * 0.80))
+    """Reduce incoming damage by 15%."""
+    return max(1, int(raw_damage * 0.85))
 
 
 def hook_soulfire(actor: Actor, target: Actor, damage: int, is_crit: bool) -> None:
@@ -610,13 +610,13 @@ def execute_time_stop(combat: CombatSystem) -> tuple[str, int, bool]:
 
 
 def modify_time_dilation(stats: Stats) -> Stats:
-    return stats.add(type(stats)(max_hp=0, attack=stats.attack*0.25, defense=0, speed=stats.speed*0.30, crit_chance=0.25))
+    return stats.add(type(stats)(max_hp=0, attack=stats.attack*0.15, defense=0, speed=stats.speed*0.15, crit_chance=0.15))
 
 
 def hook_phoenix_rebirth(actor: Actor, raw_damage: int) -> int:
     if actor.current_hp - raw_damage <= 0 and not getattr(actor, "_phoenix_used", False):
         setattr(actor, "_phoenix_used", True)
-        actor.current_hp = int(actor.max_hp * 0.50)
+        actor.current_hp = int(actor.max_hp * 0.30)
         return 0
     return raw_damage
 
@@ -738,7 +738,7 @@ STANDARD_ABILITIES: list[Ability] = [
     Ability(id="soulfire", name="Soulfire", description="Basic attacks have a 30% chance to add a Burn stack.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
             on_attack_dealt_hook=hook_soulfire, affinities=("warlock",)),
-    Ability(id="bone_barrier", name="Bone Barrier", description="Reduces incoming damage by 20%.",
+    Ability(id="bone_barrier", name="Bone Barrier", description="Reduces incoming damage by 15%.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="mage",
             on_damage_taken_hook=hook_bone_barrier, affinities=("warlock",)),
     Ability(id="summon_imp", name="Summon Imp",
@@ -809,10 +809,10 @@ EPIC_ABILITIES: list[Ability] = [
             description="Freezes time: resets enemy to 0 gauge and grants instant turn.",
             ability_type=AbilityType.ACTIVE, rarity=AbilityRarity.EPIC, required_class="mage",
             execute_hook=execute_time_stop,cooldown=6,),
-    Ability(id="time_dilation", name="Time Dilation", description="+25% ATK, +30% Speed, +25% Crit Chance.",
+    Ability(id="time_dilation", name="Time Dilation", description="+15% ATK, +15% Speed, +15% Crit Chance.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.EPIC, required_class="mage",
             modify_stats_hook=modify_time_dilation),
-    Ability(id="phoenix_rebirth", name="Phoenix Rebirth", description="Once per combat, lethal blow heals to 50% HP.",
+    Ability(id="phoenix_rebirth", name="Phoenix Rebirth", description="Once per combat, lethal blow heals to 30% HP.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.EPIC, required_class="mage",
             on_damage_taken_hook=hook_phoenix_rebirth),
 ]
