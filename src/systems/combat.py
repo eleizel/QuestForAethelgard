@@ -65,6 +65,7 @@ class CombatSystem:
         self.berserker_threshold_triggered = False
         self.berserker_bonus_ready = False
         self._berserker_bonus_damage_active = False
+
         self.duelist_flourish_armed = False
         self._current_player_action_is_basic = False
         self._passives_handled_per_hit = False
@@ -90,6 +91,24 @@ class CombatSystem:
         self.combat_logs: list[str] = [
             _t("combat_start", player=player.name, enemy=enemy.name)
         ]
+        if (
+            self._has_signature("berserker_rage")
+            and self.player.current_hp <= self.player.max_hp * 0.50
+        ):
+            self.berserker_threshold_triggered = True
+            self.berserker_bonus_ready = True
+            self.player_gauge = max(self.player_gauge, ACTION_THRESHOLD)
+            self._record_signature_proc("berserker_rage")
+            self.combat_logs.append(_t("combat_deathless_onslaught_ready", actor=self.player.name))
+
+        if self._has_signature("archmage_focus"):
+            self.player.shield = int(self.player.max_hp * 0.20)
+            self._record_signature_proc("archmage_focus")
+            self.combat_logs.append(
+                _t("combat_archmage_barrier_active", actor=self.player.name, shield=self.player.shield)
+            )
+        else:
+            self.player.shield = 0
 
     def is_active(self) -> bool:
         """Return True if combat is still ongoing."""
@@ -112,8 +131,8 @@ class CombatSystem:
         if (
             self._has_signature("berserker_rage")
             and not self.berserker_threshold_triggered
-            and previous_hp >= self.player.max_hp * 0.30
-            and self.player.current_hp < self.player.max_hp * 0.30
+            and self.player.is_alive
+            and self.player.current_hp <= self.player.max_hp * 0.50
         ):
             self.berserker_threshold_triggered = True
             self.berserker_bonus_ready = True
@@ -205,6 +224,7 @@ class CombatSystem:
         if not self.enemy.is_alive:
             self._trigger_enemy_death_hook()
             self.arcane_reservoir_charges = 0
+            self.player.shield = 0
             if not self.player.is_alive:
                 self.result = CombatResult.PLAYER_DEFEAT
                 self.combat_logs.append(_t("combat_player_defeat", player=self.player.name))
@@ -217,6 +237,7 @@ class CombatSystem:
             return True
         elif not self.player.is_alive:
             self.arcane_reservoir_charges = 0
+            self.player.shield = 0
             self.result = CombatResult.PLAYER_DEFEAT
             self.combat_logs.append(_t("combat_player_defeat", player=self.player.name))
             audio.play_sfx(SND_DEFEAT)  # Sound 5: Defeat sting
@@ -617,7 +638,7 @@ class CombatSystem:
         self._berserker_bonus_damage_active = False
         if berserker_bonus_this_action and dmg_dealt > 0:
             self.berserker_bonus_ready = False
-            heal_cap = int(self.player.max_hp * 0.25)
+            heal_cap = int(self.player.max_hp * 0.30)
             healed = self.player.heal(min(dmg_dealt // 2, heal_cap))
             if healed:
                 self.combat_logs.append(_t("combat_deathless_onslaught_heal", actor=self.player.name, heal=healed))
@@ -653,7 +674,7 @@ class CombatSystem:
                         _t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name)
                     )
             if signature_id == "paladin_oath":
-                self.player.heal(damage // 2)
+                self.player.heal(max(1, damage // 4))
             self._record_signature_proc(signature_id)
         log_key = "combat_signature_hit_crit" if is_crit else "combat_signature_hit"
         self.combat_logs.append(

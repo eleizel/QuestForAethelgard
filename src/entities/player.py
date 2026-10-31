@@ -34,6 +34,7 @@ class Player(Actor):
         self._active_stances: set[str] = set()
         self.signature_passive = None
         self.promotion_due = False
+        self.shield: int = 0
 
         from src.data.abilities import get_ability_by_id
         for ab_id in class_def.starting_abilities:
@@ -104,6 +105,17 @@ class Player(Actor):
 
         effective_defense = max(0, self.effective_stats.defense)
         mitigated = calculate_damage(raw_damage, effective_defense, defense_penetration)
+
+        if getattr(self, "shield", 0) > 0 and mitigated > 0:
+            absorbed = min(self.shield, mitigated)
+            self.shield -= absorbed
+            mitigated -= absorbed
+            combat = getattr(self, "combat_ref", None)
+            if combat:
+                from src.core.i18n import t
+                combat.combat_logs.append(
+                    t("combat_archmage_shield_absorbed", actor=self.name, absorbed=absorbed, remaining=self.shield)
+                )
 
         has_undying_will = any(a.id == "undying_will" for a in self.all_passives)
         if has_undying_will and self.current_hp - mitigated <= 0 and not getattr(self, "undying_will_used", False):
