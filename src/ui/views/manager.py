@@ -57,7 +57,12 @@ class ViewManager:
             GameMode.MAP, GameMode.COMBAT, GameMode.EVENTS, GameMode.INVENTORY,
             GameMode.CHARACTER, GameMode.LOOT, GameMode.SHOP,
         )
-        if game_state.current_mode in overlay_modes:
+        qte_blocking = (
+            game_state.current_mode == GameMode.COMBAT
+            and game_state.combat is not None
+            and game_state.combat.is_qte_active()
+        )
+        if game_state.current_mode in overlay_modes and not qte_blocking:
             inv_clicked = Renderer.is_clicked(222, 3, 30, 16)
             character_clicked = Renderer.is_clicked(188, 3, 30, 16)
             if game_state.current_mode == GameMode.CHARACTER and (
