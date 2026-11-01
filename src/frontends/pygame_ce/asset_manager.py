@@ -203,5 +203,19 @@ class AssetManager:
         return self.get_sprite(0, 16, 0, 16, 16, scale=scale)
 
 
+    def get_ui_component(self, name: str) -> pygame.Surface | None:
+        """Retrieve a registered reusable UI component (frame, border, banner, button)."""
+        cache_key = f"ui_{name}"
+        if cache_key in self.sprite_cache:
+            return self.sprite_cache[cache_key]
+
+        candidate = PROJECT_ROOT / "assets" / "ui" / f"{name}.png"
+        if candidate.exists():
+            surf = pygame.image.load(str(candidate)).convert_alpha()
+            self.sprite_cache[cache_key] = surf
+            return surf
+        return None
+
+
 # Global singleton helper
 assets = AssetManager()

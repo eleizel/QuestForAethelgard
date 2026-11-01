@@ -1,0 +1,23 @@
+{
+  "version": "1.0.0",
+  "style_guide": "16-bit Super Nintendo Golden Age RPG (Secret of Evermore, Terranigma, Super Castlevania IV)",
+  "generator_model": "gemini-3.1-flash-image",
+  "backgrounds": {
+    "welcome": "assets/backgrounds/welcome.png",
+    "cathedral": "assets/backgrounds/cathedral.png",
+    "arboretum": "assets/backgrounds/arboretum.png",
+    "ossuary": "assets/backgrounds/ossuary.png",
+    "foundry": "assets/backgrounds/foundry.png",
+    "observatory": "assets/backgrounds/observatory.png",
+    "sanctum": "assets/backgrounds/sanctum.png",
+    "shop": "assets/backgrounds/shop.png",
+    "rest": "assets/backgrounds/rest.png"
+  },
+  "ui_components": {
+    "frames": {},
+    "banners": {},
+    "buttons": {},
+    "decorations": {},
+    "icons": {}
+  }
+}

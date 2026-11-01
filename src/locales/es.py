@@ -2,9 +2,9 @@
 
 TRANSLATIONS_ES = {
     # Menus & Navigation
-    "menu_new_game": "> [1] NUEVA PARTIDA",
-    "menu_load_game": "  [2] CARGAR",
-    "menu_credits": "  [3] CReDITOS",
+    "menu_new_game": "NUEVA PARTIDA",
+    "menu_load_game": "CARGAR",
+    "menu_credits": "CReDITOS",
     "menu_prompt": "- PULSA [1] PARA COMENZAR TU VIAJE -",
     "btn_back": "[VOLVER]",
     "btn_start_journey": "[COMENZAR]",
