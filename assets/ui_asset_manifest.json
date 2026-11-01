@@ -14,10 +14,16 @@
     "rest": "assets/backgrounds/rest.png"
   },
   "ui_components": {
-    "frames": {},
-    "banners": {},
+    "frames": {
+      "gold_ornate": "assets/ui/frame_gold_ornate.png"
+    },
+    "banners": {
+      "title_logo": "assets/ui/title_logo.png"
+    },
     "buttons": {},
     "decorations": {},
-    "icons": {}
+    "icons": {
+      "sword_cursor": "assets/ui/sword_cursor.png"
+    }
   }
 }

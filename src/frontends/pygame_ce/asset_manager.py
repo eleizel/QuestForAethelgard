@@ -211,7 +211,9 @@ class AssetManager:
 
         candidate = PROJECT_ROOT / "assets" / "ui" / f"{name}.png"
         if candidate.exists():
-            surf = pygame.image.load(str(candidate)).convert_alpha()
+            surf = pygame.image.load(str(candidate))
+            if pygame.display.get_surface():
+                surf = surf.convert_alpha()
             self.sprite_cache[cache_key] = surf
             return surf
         return None
