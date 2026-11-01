@@ -182,15 +182,86 @@ class AssetManager:
         self.sprite_cache[cache_key] = scaled
         return scaled
 
-    def get_class_portrait(self, class_id: str, scale: int = 2) -> pygame.Surface | None:
-        """Retrieve 48x64 hero or promoted class portrait."""
+    def get_class_portrait(self, class_id: str, scale: int = 2, size: tuple[int, int] | None = None) -> pygame.Surface | None:
+        """Retrieve hero or promoted class portrait, preferring SNES-style PNG assets."""
         cid = class_id.lower()
+        cache_key = f"portrait_{cid}_{scale}_{size}"
+        if cache_key in self.sprite_cache:
+            return self.sprite_cache[cache_key]
+
+        png_path = PROJECT_ROOT / "assets" / "portraits" / f"{cid}.png"
+        if png_path.exists():
+            surf = pygame.image.load(str(png_path))
+            if pygame.display.get_surface():
+                surf = surf.convert_alpha()
+            if size is not None:
+                surf = pygame.transform.smoothscale(surf, size)
+            elif scale > 1:
+                surf = pygame.transform.scale(surf, (surf.get_width() * scale, surf.get_height() * scale))
+            self.sprite_cache[cache_key] = surf
+            return surf
+
+        # Fallback to Pyxel banks
         if cid in STARTER_PORTRAITS:
             bank, u, v, w, h = STARTER_PORTRAITS[cid]
             return self.get_sprite(bank, u, v, w, h, scale=scale)
         elif cid in PROMOTED_PORTRAITS:
             bank, u, v, w, h = PROMOTED_PORTRAITS[cid]
             return self.get_sprite(bank, u, v, w, h, scale=scale)
+        return None
+
+    def get_class_sprite(self, class_id: str, size: tuple[int, int] | None = None) -> pygame.Surface | None:
+        """Retrieve 16-bit SNES class combat/pedestal sprite."""
+        cid = class_id.lower()
+        cache_key = f"sprite_{cid}_{size}"
+        if cache_key in self.sprite_cache:
+            return self.sprite_cache[cache_key]
+
+        png_path = PROJECT_ROOT / "assets" / "sprites" / f"{cid}.png"
+        if png_path.exists():
+            surf = pygame.image.load(str(png_path))
+            if pygame.display.get_surface():
+                surf = surf.convert_alpha()
+            if size is not None:
+                surf = pygame.transform.smoothscale(surf, size)
+            self.sprite_cache[cache_key] = surf
+            return surf
+        return None
+
+    def get_class_crest(self, class_id: str, size: tuple[int, int] | None = None) -> pygame.Surface | None:
+        """Retrieve 16-bit SNES class emblem/crest icon."""
+        cid = class_id.lower()
+        cache_key = f"crest_{cid}_{size}"
+        if cache_key in self.sprite_cache:
+            return self.sprite_cache[cache_key]
+
+        png_path = PROJECT_ROOT / "assets" / "icons" / f"crest_{cid}.png"
+        if png_path.exists():
+            surf = pygame.image.load(str(png_path))
+            if pygame.display.get_surface():
+                surf = surf.convert_alpha()
+            if size is not None:
+                surf = pygame.transform.smoothscale(surf, size)
+            self.sprite_cache[cache_key] = surf
+            return surf
+        return None
+
+    def get_stat_icon(self, stat_name: str, size: tuple[int, int] | None = None) -> pygame.Surface | None:
+        """Retrieve 16-bit stat icon (hp, atk, def, spd, crit)."""
+        sname = stat_name.lower()
+        cache_key = f"stat_{sname}_{size}"
+        if cache_key in self.sprite_cache:
+            return self.sprite_cache[cache_key]
+
+        png_path = PROJECT_ROOT / "assets" / "icons" / f"{sname}.png"
+        if png_path.exists():
+            surf = pygame.image.load(str(png_path))
+            if pygame.display.get_surface():
+                surf = surf.convert_alpha()
+            if size is not None:
+                surf = pygame.transform.smoothscale(surf, size)
+            self.sprite_cache[cache_key] = surf
+            return surf
         return None
 
     def get_enemy_sprite(self, enemy_id: str, scale: int = 3) -> pygame.Surface | None:

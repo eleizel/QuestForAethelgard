@@ -1,9 +1,10 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "style_guide": "16-bit Super Nintendo Golden Age RPG (Secret of Evermore, Terranigma, Super Castlevania IV)",
   "generator_model": "gemini-3.1-flash-image",
   "backgrounds": {
     "welcome": "assets/backgrounds/welcome.png",
+    "class_select": "assets/backgrounds/class_select.png",
     "cathedral": "assets/backgrounds/cathedral.png",
     "arboretum": "assets/backgrounds/arboretum.png",
     "ossuary": "assets/backgrounds/ossuary.png",
@@ -25,5 +26,45 @@
     "icons": {
       "sword_cursor": "assets/ui/sword_cursor.png"
     }
+  },
+  "stat_icons": {
+    "hp": "assets/icons/hp.png",
+    "atk": "assets/icons/atk.png",
+    "def": "assets/icons/def.png",
+    "spd": "assets/icons/spd.png",
+    "crit": "assets/icons/crit.png"
+  },
+  "class_crests": {
+    "warrior": "assets/icons/crest_warrior.png",
+    "rogue": "assets/icons/crest_rogue.png",
+    "mage": "assets/icons/crest_mage.png",
+    "paladin": "assets/icons/crest_paladin.png",
+    "berserker": "assets/icons/crest_berserker.png",
+    "venomancer": "assets/icons/crest_venomancer.png",
+    "duelist": "assets/icons/crest_duelist.png",
+    "archmage": "assets/icons/crest_archmage.png",
+    "warlock": "assets/icons/crest_warlock.png"
+  },
+  "combat_sprites": {
+    "warrior": "assets/sprites/warrior.png",
+    "rogue": "assets/sprites/rogue.png",
+    "mage": "assets/sprites/mage.png",
+    "paladin": "assets/sprites/paladin.png",
+    "berserker": "assets/sprites/berserker.png",
+    "venomancer": "assets/sprites/venomancer.png",
+    "duelist": "assets/sprites/duelist.png",
+    "archmage": "assets/sprites/archmage.png",
+    "warlock": "assets/sprites/warlock.png"
+  },
+  "portraits": {
+    "warrior": "assets/portraits/warrior.png",
+    "rogue": "assets/portraits/rogue.png",
+    "mage": "assets/portraits/mage.png",
+    "paladin": "assets/portraits/paladin.png",
+    "berserker": "assets/portraits/berserker.png",
+    "venomancer": "assets/portraits/venomancer.png",
+    "duelist": "assets/portraits/duelist.png",
+    "archmage": "assets/portraits/archmage.png",
+    "warlock": "assets/portraits/warlock.png"
   }
 }
