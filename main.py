@@ -2,7 +2,7 @@
 
 import sys
 
-from src.core.engine import Engine
+from src.ui.engine import Engine
 
 
 def main() -> None:

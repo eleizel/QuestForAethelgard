@@ -23,7 +23,7 @@ from src.config import (
     COLOR_YELLOW,
     SCREEN_WIDTH,
 )
-from src.core.audio import audio
+from src.ui.audio import audio
 from src.core.game_state import GameMode
 from src.core.i18n import i18n, t
 from src.data.abilities import get_random_abilities

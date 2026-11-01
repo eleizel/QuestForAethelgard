@@ -270,7 +270,7 @@ def test_full_game_lifecycle_auto_save_and_death(tmp_path):
 
 def test_map_view_save_and_quit(tmp_path, monkeypatch):
     import pyxel
-    from src.core.audio import audio
+    from src.ui.audio import audio
     from src.core.save_manager import save_manager
     from src.ui.views.map import MapView
 

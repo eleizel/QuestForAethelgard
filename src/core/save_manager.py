@@ -20,6 +20,7 @@ from src.entities.item import EquipSlot, EquipmentItem
 from src.entities.player import Player
 from src.systems.inventory import Inventory, MAX_BELT_SLOTS
 from src.systems.map_gen import MapGraph, MapNode, NodeType
+from src.core.persistence import RunMemento, RunRepository, MemoryStorageBackend, SAVE_STORAGE_KEY, CURRENT_SAVE_VERSION
 
 SAVE_STORAGE_KEY = "quest_for_aethelgard_save"
 CURRENT_SAVE_VERSION = 1
@@ -389,6 +390,18 @@ def restore_game_state(game_state: GameState, data: dict[str, Any]) -> bool:
         return False
 
 
+
+
+def create_run_memento(game_state: GameState) -> RunMemento:
+    """Create an immutable RunMemento snapshot from GameState."""
+    payload = serialize_game_state(game_state)
+    return RunMemento.from_dict(payload)
+
+
+def restore_from_memento(game_state: GameState, memento: RunMemento) -> bool:
+    """Restore GameState from an immutable RunMemento snapshot."""
+    return restore_game_state(game_state, memento.to_dict())
+
 # =============================================================================
 # SAVE MANAGER SERVICE
 # =============================================================================
@@ -398,28 +411,21 @@ class SaveManager:
 
     def __init__(self, storage: StorageBackend | None = None) -> None:
         self.storage: StorageBackend = storage if storage is not None else detect_storage_backend()
+        self.repository: RunRepository = RunRepository(self.storage)
 
     def set_storage(self, storage: StorageBackend) -> None:
         """Allow switching the storage backend (e.g. for testing)."""
         self.storage = storage
+        self.repository = RunRepository(self.storage)
 
     def has_save(self) -> bool:
         """Return True if an existing, valid save game is available."""
-        return self.storage.exists(SAVE_STORAGE_KEY)
+        return self.repository.exists()
 
     def get_save_data(self) -> dict[str, Any] | None:
         """Retrieve and parse JSON save state dictionary, or None if invalid."""
-        raw = self.storage.get(SAVE_STORAGE_KEY)
-        if not raw:
-            return None
-        try:
-            data = json.loads(raw)
-            if isinstance(data, dict) and "player" in data:
-                return data
-            return None
-        except Exception as e:
-            print(f"Error parsing save JSON: {e}")
-            return None
+        memento = self.repository.load()
+        return memento.to_dict() if memento else None
 
     def get_save_summary(self) -> dict[str, Any] | None:
         """Extract quick run overview for UI banners without reconstructing full entities."""
@@ -437,25 +443,24 @@ class SaveManager:
         }
 
     def save_game(self, game_state: GameState) -> bool:
-        """Serialize and persist the given GameState."""
+        """Serialize and persist the given GameState via RunMemento and RunRepository."""
         try:
-            payload = serialize_game_state(game_state)
-            json_str = json.dumps(payload, separators=(",", ":"))
-            return self.storage.set(SAVE_STORAGE_KEY, json_str)
+            memento = create_run_memento(game_state)
+            return self.repository.save(memento)
         except Exception as e:
             print(f"Failed to save game: {e}")
             return False
 
     def load_game(self, game_state: GameState) -> bool:
         """Load saved data and restore it into the provided GameState container."""
-        data = self.get_save_data()
-        if not data:
+        memento = self.repository.load()
+        if not memento:
             return False
-        return restore_game_state(game_state, data)
+        return restore_from_memento(game_state, memento)
 
     def delete_save(self) -> bool:
         """Delete active save game (e.g. on Game Over or Victory)."""
-        return self.storage.remove(SAVE_STORAGE_KEY)
+        return self.repository.delete()
 
 
 # Global singleton instance

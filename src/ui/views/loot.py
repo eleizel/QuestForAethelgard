@@ -23,7 +23,7 @@ from src.config import (
     SCREEN_HEIGHT,
     SCREEN_WIDTH, SND_CLICK, SND_CHEST,
 )
-from src.core.audio import audio
+from src.ui.audio import audio
 from src.core.game_state import GameMode
 from src.core.i18n import i18n, t
 from src.ui.renderer import Renderer
@@ -59,26 +59,20 @@ class LootView(View):
         elif (pyxel.btnp(pyxel.KEY_3) or pyxel.btnp(pyxel.KEY_KP_3)) and total_items > 2:
             self._take_loot(game_state, 2)
         elif pyxel.btnp(pyxel.KEY_SPACE) or Renderer.is_clicked(110, 228, 66, 18):
-            for i in range(len(game_state.pending_loot) - 1, -1, -1):
-                self._take_loot(game_state, i, play_sound=False)
-            audio.play_sfx(SND_CHEST)
+            LootService.take_all(game_state.player, game_state.pending_loot)
         elif pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_C) or Renderer.is_clicked(180, 228, 68, 18):
             audio.play_sfx(SND_CLICK)
             self._exit_loot(game_state)
 
     def _take_loot(self, game_state: GameState, index: int, play_sound: bool = True) -> None:
-        if index >= len(game_state.pending_loot):
-            return
-        item = game_state.pending_loot[index]
-        if game_state.player.inventory.add_to_pouch(item):
-            game_state.pending_loot.pop(index)
-            if play_sound:
-                audio.play_sfx(SND_CHEST)
+        LootService.take_item(game_state.player, game_state.pending_loot, index)
 
     def _exit_loot(self, game_state: GameState) -> None:
-        if game_state.player.promotion_due and game_state.begin_promotion(GameMode.LOOT):
-            return
-        if game_state.player.pending_ability_choices:
+        next_mode = LootService.resolve_exit_mode(game_state.player)
+        if next_mode == GameMode.PROMOTION:
+            if game_state.begin_promotion(GameMode.LOOT):
+                return
+        elif next_mode == GameMode.ABILITY_CHOICE:
             game_state.switch_mode(GameMode.ABILITY_CHOICE)
             return
 

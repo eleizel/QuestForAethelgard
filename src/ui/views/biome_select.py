@@ -26,7 +26,7 @@ from src.config import (
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
 )
-from src.core.audio import audio
+from src.ui.audio import audio
 from src.core.i18n import i18n, t
 from src.data.abilities import get_random_abilities
 from src.ui.renderer import Renderer

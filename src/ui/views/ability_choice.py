@@ -26,6 +26,7 @@ from src.core.game_state import GameMode
 from src.core.i18n import i18n, t
 from src.data.abilities import get_random_abilities
 from src.systems.abilities import Ability, AbilityRarity, AbilityType
+from src.systems.draft_service import DraftService
 from src.tools.generate_assets import get_ability_icon
 from src.ui.renderer import Renderer
 from src.ui.views.base import View
@@ -48,14 +49,7 @@ class AbilityChoiceView(View):
             return
 
         self.pending_rarity = game_state.player.pending_ability_choices[0]
-        rarity_enum = AbilityRarity.STANDARD if self.pending_rarity == "STANDARD" else AbilityRarity.EPIC
-        known = [a.id for a in game_state.player.all_passives + game_state.player.abilities.active]
-        self.choices = get_random_abilities(
-            rarity_enum,
-            known,
-            player_class=game_state.player.class_id,
-            count=2,
-        )
+        self.choices = DraftService.generate_draft(game_state.player, count=2)
 
     def update(self, game_state: GameState) -> None:
         if game_state.player.pending_ability_choices and (
@@ -72,11 +66,11 @@ class AbilityChoiceView(View):
         if self.replace_mode and self.selected_ability:
             if pyxel.btnp(pyxel.KEY_1) or pyxel.btnp(pyxel.KEY_KP_1) or Renderer.is_clicked(card_x, card1_y, card_w,
                                                                                             card_h):
-                game_state.player.abilities.replace_ability(self.selected_ability, 0)
+                DraftService.apply_selection(game_state.player, self.selected_ability, replace_index=0)
                 self._finish_choice(game_state)
             elif pyxel.btnp(pyxel.KEY_2) or pyxel.btnp(pyxel.KEY_KP_2) or Renderer.is_clicked(card_x, card2_y, card_w,
                                                                                               card_h):
-                game_state.player.abilities.replace_ability(self.selected_ability, 1)
+                DraftService.apply_selection(game_state.player, self.selected_ability, replace_index=1)
                 self._finish_choice(game_state)
             elif pyxel.btnp(pyxel.KEY_ESCAPE) or Renderer.is_clicked(skip_x, skip_y, skip_w, skip_h):
                 self.replace_mode = False
@@ -97,15 +91,16 @@ class AbilityChoiceView(View):
             self._handle_selection(game_state, self.choices[1])
 
     def _handle_selection(self, game_state: GameState, chosen: Ability) -> None:
-        added = game_state.player.abilities.add_ability(chosen)
-        if added:
+        res = DraftService.apply_selection(game_state.player, chosen)
+        if res.success:
             self._finish_choice(game_state)
         else:
             self.replace_mode = True
             self.selected_ability = chosen
 
     def _finish_choice(self, game_state: GameState) -> None:
-        game_state.player.pending_ability_choices.pop(0)
+        if game_state.player.pending_ability_choices:
+            game_state.player.pending_ability_choices.pop(0)
         self.choices = []
         self.replace_mode = False
         self.selected_ability = None

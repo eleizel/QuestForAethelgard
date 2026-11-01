@@ -6,10 +6,18 @@ import random
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Final
 
-import pyxel
 
-from src.core.audio import audio
-from src.config import SND_HIT, SND_CRIT, SND_VICTORY, SND_DEFEAT, SND_HEAL, TARGET_COMBAT_SPEED
+from src.core.events import AudioCue, event_bus, DomainEvent, DamageDealtEvent, HealthRestoredEvent, StatusAppliedEvent, CombatLogEntry
+from src.config import TARGET_COMBAT_SPEED
+
+# Backward-compatibility shim for existing unit tests mocking audio playback
+class _LegacyPyxelAudioShim:
+    @staticmethod
+    def play(*args, **kwargs):
+        pass
+
+pyxel = _LegacyPyxelAudioShim
+
 from src.systems.abilities import Ability
 from src.systems.qte import (
     QTESequence,
@@ -106,6 +114,7 @@ class CombatSystem:
         self._enemy_death_hook_triggered = False
         self.completion_delay_ticks = 0
 
+        self.events: list[DomainEvent] = []
         self.current_tick: int = 0
         self.result: CombatResult = CombatResult.IN_PROGRESS
         self.combat_logs: list[str] = [
@@ -156,6 +165,18 @@ class CombatSystem:
 
         if normalize_speeds:
             self.normalize_speeds()
+
+
+    def emit_event(self, event: DomainEvent) -> None:
+        """Enqueue combat event locally and broadcast on global event bus."""
+        self.events.append(event)
+        event_bus.emit(event)
+
+    def drain_events(self) -> list[DomainEvent]:
+        """Drain and return queued combat events."""
+        events = list(self.events)
+        self.events.clear()
+        return events
 
     def is_active(self) -> bool:
         """Return True if combat is still ongoing."""
@@ -343,12 +364,12 @@ class CombatSystem:
             if not self.player.is_alive:
                 self.result = CombatResult.PLAYER_DEFEAT
                 self.combat_logs.append(_t("combat_player_defeat", player=self.player.name))
-                audio.play_sfx(SND_DEFEAT)
+                event_bus.emit_audio(AudioCue.DEFEAT)
             else:
                 self.result = CombatResult.PLAYER_VICTORY
                 self.combat_logs.append(_t("combat_enemy_defeat", enemy=self.enemy.name))
                 self._distribute_rewards()
-                audio.play_sfx(SND_VICTORY)  # Sound 4: Victory fanfare
+                event_bus.emit_audio(AudioCue.VICTORY)  # Sound 4: Victory fanfare
             return True
         elif not self.player.is_alive:
             self.arcane_reservoir_charges = 0
@@ -356,7 +377,7 @@ class CombatSystem:
             self.player.evade_charges = 0
             self.result = CombatResult.PLAYER_DEFEAT
             self.combat_logs.append(_t("combat_player_defeat", player=self.player.name))
-            audio.play_sfx(SND_DEFEAT)  # Sound 5: Defeat sting
+            event_bus.emit_audio(AudioCue.DEFEAT)  # Sound 5: Defeat sting
             return True
         return False
 
@@ -647,7 +668,9 @@ class CombatSystem:
             self.combat_logs.append(f"[Tick {self.current_tick}] {log_str}")
             self.combat_logs.extend(self._deferred_attack_proc_logs)
             self._deferred_attack_proc_logs.clear()
-            audio.play_sfx(SND_CRIT if is_crit else SND_HIT)
+            event_bus.emit_audio(AudioCue.CRIT if is_crit else AudioCue.HIT)
+            if dmg_dealt > 0:
+                self.emit_event(DamageDealtEvent(source=self.player.name, target=self.enemy.name, amount=dmg_dealt, is_crit=is_crit, damage_type="ability"))
             self.queued_ability = None
         else:
             if self.player.has_status("blind") and self.rng.random() < 0.50:
@@ -663,7 +686,9 @@ class CombatSystem:
                 else:
                     self.combat_logs.append(
                         _t("combat_hit", actor=self.player.name, target=self.enemy.name, damage=dmg_dealt))
-                audio.play_sfx(SND_CRIT if is_crit else SND_HIT)
+                event_bus.emit_audio(AudioCue.CRIT if is_crit else AudioCue.HIT)
+                if dmg_dealt > 0:
+                    self.emit_event(DamageDealtEvent(source=self.player.name, target=self.enemy.name, amount=dmg_dealt, is_crit=is_crit, damage_type="physical"))
 
                 # Check on_hit_status for all equipped gear (weapons and armor)
                 for eq in self.player.inventory.equipment.values():
@@ -879,7 +904,7 @@ class CombatSystem:
             self.combat_logs.append(
                 _t("combat_enemy_skill_heal", enemy=self.enemy.name, healed=healed)
             )
-            audio.play_sfx(SND_HEAL)
+            event_bus.emit_audio(AudioCue.HEAL)
             return
 
         if skill is not None and skill.kind == "status":
@@ -931,7 +956,9 @@ class CombatSystem:
                 self._record_signature_proc("duelist_precision")
 
         # Audio feedback: Sound 1 (Crit) or Sound 0 (Hit)
-        audio.play_sfx(SND_CRIT if is_crit else SND_HIT)
+        event_bus.emit_audio(AudioCue.CRIT if is_crit else AudioCue.HIT)
+        if dmg_dealt > 0:
+            self.emit_event(DamageDealtEvent(source=self.enemy.name, target=self.player.name, amount=dmg_dealt, is_crit=is_crit, damage_type="physical"))
 
         if is_crit:
             self.combat_logs.append(_t("combat_crit", actor=self.enemy.name, target=self.player.name, damage=dmg_dealt))

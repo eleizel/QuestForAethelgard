@@ -6,8 +6,7 @@ import random
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Final
 
-from src.config import SND_CRIT, SND_HIT
-from src.core.audio import audio
+from src.core.events import AudioCue, event_bus
 
 if TYPE_CHECKING:
     from src.systems.combat import CombatSystem
@@ -144,9 +143,9 @@ def resolve_target(qte: QTESequence | None, score: int) -> str:
     target.tier = classify_qte_tier(clamped)
     target.feedback_frames = QTE_FEEDBACK_FRAMES
     if clamped >= 61:
-        audio.play_sfx(SND_CRIT)
+        event_bus.emit_audio(AudioCue.CRIT)
     elif clamped >= 21:
-        audio.play_sfx(SND_HIT)
+        event_bus.emit_audio(AudioCue.HIT)
     return target.tier
 
 
@@ -194,7 +193,7 @@ def finalize_qte_sequence(combat: CombatSystem) -> dict[str, object]:
         dealt = combat.damage_enemy(counter_raw)
         healed = combat.player.heal(max(1, dealt // 2)) if dealt > 0 else 0
         bonuses.append(_t("qte_bonus_counter", dmg=dealt, heal=healed))
-        audio.play_sfx(SND_CRIT)
+        event_bus.emit_audio(AudioCue.CRIT)
         combat._evaluate_battle_outcome()
 
     failed_buttons = sum(1 for t in qte.targets if t.score < 50)

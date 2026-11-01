@@ -25,7 +25,7 @@ from src.config import (
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
 )
-from src.core.audio import audio
+from src.ui.audio import audio
 from src.config import SND_CLICK
 from src.core.game_state import GameMode
 from src.core.i18n import i18n

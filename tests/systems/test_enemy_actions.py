@@ -4,7 +4,7 @@ import random
 from types import SimpleNamespace
 
 from src.config import COLOR_BLACK, COLOR_WHITE, COLOR_YELLOW
-from src.core.audio import audio
+from src.ui.audio import audio
 from src.core.i18n import i18n, t_choice
 from src.data.enemies import ENEMY_SKILLS, EnemySkill
 from src.entities.actor import Stats
