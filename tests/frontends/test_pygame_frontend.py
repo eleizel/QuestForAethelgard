@@ -144,6 +144,33 @@ def test_pygame_combat_view_and_qte():
     view.update(0.05, session)
     view.draw(surface, renderer, session)
 
+    # Test QTE sequence lifecycle and rendering
+    combat = session.state.combat
+    qte = combat.start_qte_sequence(count=3)
+    assert combat.is_qte_active()
+    assert qte.in_intro
+
+    # Draw during intro
+    view.draw(surface, renderer, session)
+
+    # Skip intro with SPACE
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE), session)
+    assert not qte.in_intro
+
+    # Draw during active button target
+    view.draw(surface, renderer, session)
+
+    # Resolve target button
+    cur_target = qte.current_target
+    assert cur_target is not None
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE), session)
+    assert cur_target.resolved
+
+    # Update through feedback pause
+    cur_target.feedback_frames = 0
+    view.update(0.016, session)
+    assert qte.current_index == 1
+
 
 def test_pygame_loot_view():
     session = GameSession()

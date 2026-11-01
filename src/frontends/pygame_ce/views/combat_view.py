@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 from typing import TYPE_CHECKING
 import pygame
 
@@ -45,14 +46,53 @@ class PygameCombatView(PygameView):
         combat = session.combat
 
         # If QTE is active, handle QTE key/mouse interaction
-        if combat.is_qte_active() and combat.qte:
-            if event.type == pygame.KEYDOWN and event.key in (pygame.K_SPACE, pygame.K_1, pygame.K_2, pygame.K_3):
-                # Resolve QTE target
-                combat.qte.resolve_active_button()
+        if combat.is_qte_active() and combat.active_qte:
+            qte = combat.active_qte
+            if qte.summary_active:
+                if (event.type == pygame.KEYDOWN and event.key in (pygame.K_SPACE, pygame.K_RETURN)) or \
+                   (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1):
+                    combat.dismiss_qte_summary()
+                    if not combat.is_qte_active() and not combat.is_active():
+                        session.update_combat()
                 return
-            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                combat.qte.resolve_active_button()
+
+            if qte.in_intro:
+                if (event.type == pygame.KEYDOWN and event.key in (pygame.K_SPACE, pygame.K_RETURN)) or \
+                   (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1):
+                    qte.intro_frames = 0
                 return
+
+            target = qte.current_target
+            if target is not None and not target.resolved:
+                if event.type == pygame.KEYDOWN:
+                    pressed_num = None
+                    if event.key in (pygame.K_1, pygame.K_KP1):
+                        pressed_num = 1
+                    elif event.key in (pygame.K_2, pygame.K_KP2):
+                        pressed_num = 2
+                    elif event.key in (pygame.K_3, pygame.K_KP3):
+                        pressed_num = 3
+                    elif event.key == pygame.K_SPACE:
+                        pressed_num = target.number
+
+                    if pressed_num is not None:
+                        if pressed_num == target.number:
+                            combat.resolve_qte_target(target.current_accuracy())
+                        else:
+                            combat.resolve_qte_target(0)
+                        return
+
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    tx = int(target.x * (960 / 256))
+                    ty = int(target.y * (540 / 256))
+                    tr = int(target.button_radius * 2.8) + 14
+                    dist = math.hypot(event.pos[0] - tx, event.pos[1] - ty)
+                    if dist <= tr:
+                        combat.resolve_qte_target(target.current_accuracy())
+                    else:
+                        combat.resolve_qte_target(0)
+                    return
+            return
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
@@ -127,8 +167,32 @@ class PygameCombatView(PygameView):
             return
 
         # Advance QTE if active
-        if session.combat.is_qte_active() and session.combat.qte:
-            session.combat.qte.update()
+        if session.combat.is_qte_active() and session.combat.active_qte:
+            qte = session.combat.active_qte
+            if qte.summary_active:
+                qte.summary_frames -= 1
+                if qte.summary_frames <= 0:
+                    session.combat.dismiss_qte_summary()
+                    if not session.combat.is_qte_active() and not session.combat.is_active():
+                        session.update_combat()
+                return
+
+            if qte.in_intro:
+                qte.intro_frames -= 1
+                return
+
+            target = qte.current_target
+            if target is None:
+                return
+
+            if target.resolved:
+                target.feedback_frames -= 1
+                if target.feedback_frames <= 0:
+                    session.combat.advance_qte_after_feedback()
+                return
+
+            if target.step_shrink():
+                session.combat.resolve_qte_target(0)
             return
 
         # Auto-step timer
@@ -223,12 +287,6 @@ class PygameCombatView(PygameView):
             es_text = " ".join([f"[{s.name.capitalize()}:{s.duration}t]" for s in enemy.statuses])
             renderer.draw_text(surface, es_text, e_x, 168, token=ThemeToken.TEXT_ALERT, size=11, bold=True)
 
-        # ---------------- QTE PROMPT BANNER ----------------
-        if combat.is_qte_active() and combat.qte:
-            qte_panel = pygame.Rect(surface_w // 2 - 160, 195, 320, 56)
-            renderer.draw_panel(surface, qte_panel, bg_token=ThemeToken.BG, border_token=ThemeToken.TEXT_ALERT, border_width=3, border_radius=8)
-            renderer.draw_text(surface, "TIMED DEFENSE: PARRY! [SPACE / CLICK]", qte_panel.centerx, qte_panel.centery - 8, token=ThemeToken.TEXT_HIGHLIGHT, size=14, bold=True, align="center")
-
         # ---------------- FLOATING POPUP NUMBERS ----------------
         for p in self.popups:
             font = renderer.get_font(size=20, bold=True)
@@ -268,3 +326,67 @@ class PygameCombatView(PygameView):
         recent_logs = combat.combat_logs[-5:] if combat.combat_logs else []
         for idx, line in enumerate(recent_logs):
             renderer.draw_text(surface, f"> {line}", log_rect.x + 20, log_rect.y + 36 + idx * 22, token=ThemeToken.TEXT_MUTED if idx < len(recent_logs) - 1 else ThemeToken.TEXT_NORMAL, size=12)
+
+        # ---------------- QTE MODAL OVERLAY ----------------
+        if combat.is_qte_active() and combat.active_qte:
+            self._draw_qte(surface, renderer, combat.active_qte)
+
+    def _draw_qte(self, surface: pygame.Surface, renderer: PygameRenderer, qte) -> None:
+        """Render darkened battle overlay with intro banner, shrinking rings, or summary."""
+        w, h = surface.get_width(), surface.get_height()
+
+        backdrop = pygame.Surface((w, h), pygame.SRCALPHA)
+        backdrop.fill((0, 0, 0, 160))
+        surface.blit(backdrop, (0, 0))
+
+        if qte.in_intro:
+            box = pygame.Rect(w // 2 - 250, 150, 500, 160)
+            renderer.draw_panel(surface, box, bg_token=ThemeToken.BG, border_token=ThemeToken.TEXT_ALERT, border_width=3, border_radius=8)
+            renderer.draw_text(surface, "¡CLASH OF MIGHT!", box.centerx, box.y + 20, token=ThemeToken.TEXT_HIGHLIGHT, size=20, bold=True, align="center")
+            renderer.draw_text(surface, "Elite / Boss Critical Technique Incoming!", box.centerx, box.y + 55, token=ThemeToken.TEXT_NORMAL, size=14, bold=True, align="center")
+            renderer.draw_text(surface, "Press [1, 2, 3] or [SPACE] as the outer ring meets the button!", box.centerx, box.y + 85, token=ThemeToken.ACCENT_PRIMARY, size=13, align="center")
+            renderer.draw_text(surface, "[Press SPACE or CLICK to Begin]", box.centerx, box.y + 120, token=ThemeToken.TEXT_MUTED, size=12, align="center")
+            return
+
+        if qte.summary_active:
+            box = pygame.Rect(w // 2 - 260, 140, 520, 190)
+            tier_token = ThemeToken.TEXT_HIGHLIGHT if qte.final_tier == "perfect" else (ThemeToken.ACCENT_PRIMARY if qte.final_tier == "amazing" else ThemeToken.BORDER_MUTED)
+            renderer.draw_panel(surface, box, bg_token=ThemeToken.BG, border_token=tier_token, border_width=3, border_radius=8)
+            renderer.draw_text(surface, "TECHNIQUE RESOLUTION", box.centerx, box.y + 16, token=ThemeToken.TEXT_HIGHLIGHT, size=18, bold=True, align="center")
+            renderer.draw_text(surface, f"{qte.final_tier.upper()} ({qte.final_score}%)", box.centerx, box.y + 44, token=tier_token, size=16, bold=True, align="center")
+
+            sy = box.y + 75
+            for b_line in qte.bonuses_applied[:4]:
+                renderer.draw_text(surface, f"* {b_line}", box.centerx, sy, token=ThemeToken.TEXT_NORMAL, size=12, bold=True, align="center")
+                sy += 20
+
+            renderer.draw_text(surface, "[Press SPACE or CLICK to Continue]", box.centerx, box.bottom - 26, token=ThemeToken.TEXT_MUTED, size=12, align="center")
+            return
+
+        target = qte.current_target
+        if target is None:
+            return
+
+        # Header step banner
+        step_banner = pygame.Rect(w // 2 - 190, 20, 380, 36)
+        renderer.draw_panel(surface, step_banner, bg_token=ThemeToken.BG, border_token=ThemeToken.ACCENT_PRIMARY, border_width=2, border_radius=6)
+        renderer.draw_text(surface, f"DEFENSE REACTION: {qte.current_index + 1} OF {len(qte.targets)}", step_banner.centerx, step_banner.centery - 7, token=ThemeToken.TEXT_HIGHLIGHT, size=13, bold=True, align="center")
+
+        tx = int(target.x * (w / 256))
+        ty = int(target.y * (h / 256))
+        br = int(target.button_radius * 2.8)
+
+        if not target.resolved:
+            acc = target.current_accuracy()
+            ring_col = (255, 236, 39) if acc >= 81 else ((0, 228, 255) if acc >= 61 else ((0, 231, 86) if acc >= 41 else (255, 255, 255)))
+            cr = max(br + 2, int(target.current_radius * 2.8))
+
+            pygame.draw.circle(surface, ring_col, (tx, ty), cr, width=3)
+            pygame.draw.circle(surface, (20, 24, 40), (tx, ty), br)
+            pygame.draw.circle(surface, (255, 236, 39), (tx, ty), br, width=2)
+            renderer.draw_text(surface, str(target.number), tx, ty - 10, token=ThemeToken.TEXT_HIGHLIGHT, size=20, bold=True, align="center")
+        else:
+            tier_col = (255, 236, 39) if target.tier == "perfect" else ((0, 228, 255) if target.tier == "amazing" else ((0, 231, 86) if target.tier in ("nice", "good") else (255, 80, 80)))
+            pygame.draw.circle(surface, (15, 15, 20), (tx, ty), br)
+            pygame.draw.circle(surface, tier_col, (tx, ty), br, width=3)
+            renderer.draw_text(surface, f"{target.tier.upper()} {target.score}%", tx, ty - 8, token=ThemeToken.TEXT_HIGHLIGHT, size=13, bold=True, align="center")
