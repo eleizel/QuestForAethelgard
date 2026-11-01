@@ -104,6 +104,14 @@ class GameSession:
         """Toggle character sheet overlay."""
         self.state.toggle_character()
 
+    def select_map_node(self, node_id: int) -> bool:
+        """Select a node on the exploration map and enter its encounter."""
+        return self.state.select_map_node(node_id)
+
+    def update_combat(self) -> None:
+        """Advance combat simulation and handle post-battle transitions."""
+        self.state.update_combat()
+
     def step_combat(self) -> CombatResult:
         """Advance combat simulation by one step."""
         if self.state.combat and self.state.combat.is_active():
