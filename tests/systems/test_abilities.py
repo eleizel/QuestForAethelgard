@@ -718,12 +718,12 @@ def test_duelist_precision_parry_diminishing_returns_and_flowing_steel(monkeypat
 
     # Signature alone = 15% Parry
     assert combat.get_player_parry_chance() == pytest.approx(0.15)
-    # + Riposte (20%) -> Signature drops to 10% -> 30% total
+    # + Riposte (20%) -> Signature drops to 9% (0.15 - 0.06) -> 29% total
     player.abilities.add_ability(get_ability_by_id("riposte"))
-    assert combat.get_player_parry_chance() == pytest.approx(0.30)
-    # + Whirlwind Defense (20%) -> Signature drops to 5% -> 45% total
+    assert combat.get_player_parry_chance() == pytest.approx(0.29)
+    # + Whirlwind Defense (20%) -> Signature drops to 3% (0.15 - 0.12) -> 43% total
     player.abilities.add_ability(get_ability_by_id("whirlwind_defense"))
-    assert combat.get_player_parry_chance() == pytest.approx(0.45)
+    assert combat.get_player_parry_chance() == pytest.approx(0.43)
 
     # Parrying an attack halves damage and arms Flowing Steel
     player.abilities.passive.clear()

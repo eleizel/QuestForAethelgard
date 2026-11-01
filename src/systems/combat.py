@@ -225,7 +225,7 @@ class CombatSystem:
         has_whirlwind = any(ability.id == "whirlwind_defense" for ability in self.player.all_passives)
         parry_chance = (0.20 if has_riposte else 0.0) + (0.20 if has_whirlwind else 0.0)
         if self._has_signature("duelist_precision"):
-            sig_parry = 0.15 - (0.05 if has_riposte else 0.0) - (0.05 if has_whirlwind else 0.0)
+            sig_parry = 0.15 - (0.06 if has_riposte else 0.0) - (0.06 if has_whirlwind else 0.0)
             parry_chance += max(0.0, sig_parry)
         return parry_chance
 
@@ -283,7 +283,7 @@ class CombatSystem:
                         if early_stacks > 0 and dmg > 0:
                             dmg_per_stack = max(1, dmg // max(1, s.stacks))
                             early_dmg = min(dmg, early_stacks * dmg_per_stack)
-                            heal_amt = max(1, int(early_dmg * 0.25))
+                            heal_amt = max(1, int(early_dmg * 0.20))
                             healed = self.player.heal(heal_amt)
                             if healed:
                                 self.combat_logs.append(
@@ -826,7 +826,7 @@ class CombatSystem:
                             _t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name)
                         )
             if signature_id == "paladin_oath":
-                self.player.heal(max(1, int(damage * 0.10)))
+                self.player.heal(max(1, int(damage * 0.15)))
             elif signature_id == "duelist_precision":
                 self.player.heal(max(1, int(damage * 0.10)))
                 self.player_gauge = min(100, self.player_gauge + 5)
