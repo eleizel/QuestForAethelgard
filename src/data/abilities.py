@@ -215,9 +215,10 @@ def modify_blood_frenzy(actor: Actor, stats: Stats) -> Stats:
 
 
 def hook_toxic_blood(actor: Actor, raw_damage: int) -> int:
-    """Take 25% less damage while the current enemy is poisoned."""
+    """Take 25% less damage while the current enemy is poisoned, and heal 5% Max HP when struck."""
     combat = getattr(actor, "combat_ref", None)
     if combat and combat.enemy.has_status("poison"):
+        actor.heal(max(1, int(actor.max_hp * 0.05)))
         return max(1, int(raw_damage * 0.75))
     return raw_damage
 
@@ -711,7 +712,7 @@ STANDARD_ABILITIES: list[Ability] = [
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
             affinities=("venomancer",)),
     Ability(id="toxic_blood", name="Toxic Blood",
-            description="Take 25% less damage while your enemy is poisoned.",
+            description="Take 25% less damage while enemy is poisoned, and heal 5% Max HP when struck.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
             on_damage_taken_hook=hook_toxic_blood, affinities=("venomancer",)),
     Ability(id="venomous_extraction", name="Venomous Extraction",

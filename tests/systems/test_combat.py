@@ -349,7 +349,7 @@ def test_berserker_rage_threshold_and_heal(base_player, base_enemy, monkeypatch)
     # Lifesteal: 100 * (0.10 + 0.20 * (55/100)) = 21 HP
     # Plus Deathless Onslaught bonus heal: min(50, 30) = 30 HP
     # 45 + 21 + 30 = 96 HP
-    assert base_player.current_hp == 86
+    assert base_player.current_hp == 91
 
 
 def test_speed_normalization_preserves_ratio_and_caps_tick_rate(base_player, base_enemy, monkeypatch):

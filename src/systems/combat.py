@@ -305,7 +305,7 @@ class CombatSystem:
                         app_ticks = s.stack_tick_counts[0] if s.stack_tick_counts else 0
                         s.stack_tick_counts = [app_ticks + 1]
                         # Venomancer leeches 25% of all poison damage
-                        tick_heal = max(1, int(dmg * 0.25))
+                        tick_heal = max(1, int(dmg * 0.30))
                         healed_tick = self.player.heal(tick_heal)
                         if healed_tick:
                             self.combat_logs.append(
@@ -789,7 +789,7 @@ class CombatSystem:
 
         if dmg_dealt > 0 and self._has_signature("berserker_rage"):
             missing_hp_pct = max(0.0, min(1.0, 1.0 - (self.player.current_hp / max(1, self.player.max_hp))))
-            lifesteal_pct = 0.08 + 0.12 * missing_hp_pct
+            lifesteal_pct = 0.12 + 0.18 * missing_hp_pct
             lifesteal_heal = max(1, int(dmg_dealt * lifesteal_pct))
             healed = self.player.heal(lifesteal_heal)
             if healed:
