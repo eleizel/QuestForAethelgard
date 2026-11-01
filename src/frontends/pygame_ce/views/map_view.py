@@ -9,6 +9,7 @@ import pygame
 from src.core.game_state import GameMode
 from src.core.theme import ThemeToken
 from src.systems.map_gen import NodeType
+from src.frontends.pygame_ce.asset_manager import assets
 from src.frontends.pygame_ce.views.base import PygameView
 
 if TYPE_CHECKING:
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 
 
 class PygameMapView(PygameView):
-    """Visualizes the Spire node tree with interactive navigation and top HUD."""
+    """Visualizes the Spire node tree over 16-bit SNES biome vistas with interactive navigation and top HUD."""
 
     NODE_COLORS: dict[NodeType, tuple[int, int, int]] = {
         NodeType.COMBAT: (220, 50, 60),      # Crimson
@@ -31,9 +32,9 @@ class PygameMapView(PygameView):
     }
 
     def __init__(self) -> None:
-        self.scroll_y: float = 0.0
         self.pulse_timer: float = 0.0
         self._hovered_node_id: int | None = None
+        self._hovered_btn: str | None = None
 
     def _get_node_screen_pos(self, node: MapNode, total_floors: int, surface_w: int, surface_h: int) -> tuple[int, int]:
         """Compute pixel position for a node with comfortable layout spacing."""
@@ -45,7 +46,6 @@ class PygameMapView(PygameView):
         y = content_bottom - int((node.floor / max(1, total_floors - 1)) * span_h)
 
         if node.floor == total_floors - 1:
-            # Boss node is horizontally centered
             return surface_w // 2, y
 
         lane_span = surface_w - 240
@@ -68,39 +68,72 @@ class PygameMapView(PygameView):
                 session.toggle_inventory()
             elif event.key == pygame.K_c:
                 session.toggle_character()
-            # Numeric shortcuts for available nodes
             elif event.key in (pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4):
                 idx = event.key - pygame.K_1
                 if 0 <= idx < len(available):
                     session.select_map_node(available[idx].id)
 
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            pos = event.pos
+
+            # Top HUD Buttons
+            inv_btn = pygame.Rect(630, 10, 95, 32)
+            char_btn = pygame.Rect(735, 10, 105, 32)
+            esc_btn = pygame.Rect(850, 10, 95, 32)
+
+            if inv_btn.collidepoint(pos):
+                session.toggle_inventory()
+                return
+            elif char_btn.collidepoint(pos):
+                session.toggle_character()
+                return
+            elif esc_btn.collidepoint(pos):
+                session.reset_to_title()
+                return
+
             if self._hovered_node_id is not None:
                 session.select_map_node(self._hovered_node_id)
 
     def update(self, dt: float, session: GameSession) -> None:
-        """Update pulse timer and check mouse hover over nodes."""
+        """Update pulse timer and check mouse hover over nodes and buttons."""
         self.pulse_timer += dt
+        pos = pygame.mouse.get_pos()
+
+        inv_btn = pygame.Rect(630, 10, 95, 32)
+        char_btn = pygame.Rect(735, 10, 105, 32)
+        esc_btn = pygame.Rect(850, 10, 95, 32)
+
+        if inv_btn.collidepoint(pos):
+            self._hovered_btn = "inv"
+        elif char_btn.collidepoint(pos):
+            self._hovered_btn = "char"
+        elif esc_btn.collidepoint(pos):
+            self._hovered_btn = "esc"
+        else:
+            self._hovered_btn = None
+
         if not session.state.map_graph:
             self._hovered_node_id = None
             return
 
-        mouse_pos = pygame.mouse.get_pos()
         total_floors = len(session.state.map_graph.floors)
         available = session.state.map_graph.available_nodes
 
         self._hovered_node_id = None
         for node in available:
             nx, ny = self._get_node_screen_pos(node, total_floors, 960, 540)
-            dist_sq = (mouse_pos[0] - nx) ** 2 + (mouse_pos[1] - ny) ** 2
+            dist_sq = (pos[0] - nx) ** 2 + (pos[1] - ny) ** 2
             if dist_sq <= 18 * 18:
                 self._hovered_node_id = node.id
                 break
 
     def draw(self, surface: pygame.Surface, renderer: PygameRenderer, session: GameSession) -> None:
-        """Render Spire map graph, connectors, and top status HUD."""
+        """Render Spire map graph over 16-bit SNES biome vista with top status HUD."""
         surface_w = surface.get_width()
         surface_h = surface.get_height()
+
+        biome = getattr(session.state, "current_biome", "cathedral")
+        assets.draw_background(surface, biome, vignette_alpha=145)
 
         # Top HUD Bar
         hud_rect = pygame.Rect(0, 0, surface_w, 52)
@@ -117,16 +150,16 @@ class PygameMapView(PygameView):
         # Player name & class
         renderer.draw_text(
             surface,
-            f"{player.name.upper()} (LVL {player.level})",
-            24,
+            f"{player.name.upper()} (LVL {player.level} {player.class_id.capitalize()})",
+            20,
             16,
             token=ThemeToken.TEXT_HIGHLIGHT,
-            size=16,
+            size=14,
             bold=True,
         )
 
         # Health bar
-        hp_bar_rect = pygame.Rect(230, 16, 160, 20)
+        hp_bar_rect = pygame.Rect(260, 15, 130, 22)
         renderer.draw_progress_bar(
             surface,
             hp_bar_rect,
@@ -139,25 +172,34 @@ class PygameMapView(PygameView):
         # Gold & Floor
         renderer.draw_text(
             surface,
-            f"GOLD: {player.gold}G",
-            420,
-            16,
+            f"{player.gold}G",
+            405,
+            17,
             token=ThemeToken.TEXT_HIGHLIGHT,
-            size=15,
+            size=14,
             bold=True,
         )
 
-        act_text = f"ACT {session.state.act} - FLOOR {session.state.floor}"
+        act_text = f"ACT {session.state.act} - F{session.state.floor}"
         renderer.draw_text(
             surface,
             act_text,
-            surface_w - 24,
-            16,
+            475,
+            17,
             token=ThemeToken.TEXT_MUTED,
-            size=15,
+            size=13,
             bold=True,
-            align="right",
         )
+
+        # Interactive HUD Action Buttons
+        inv_btn = pygame.Rect(630, 10, 95, 32)
+        renderer.draw_button(surface, inv_btn, "[I] POUCH", is_hovered=(self._hovered_btn == "inv"), accent_token=ThemeToken.ACCENT_PRIMARY, font_size=11)
+
+        char_btn = pygame.Rect(735, 10, 105, 32)
+        renderer.draw_button(surface, char_btn, "[C] STATS", is_hovered=(self._hovered_btn == "char"), accent_token=ThemeToken.ACCENT_SECONDARY, font_size=11)
+
+        esc_btn = pygame.Rect(850, 10, 95, 32)
+        renderer.draw_button(surface, esc_btn, "[ESC] QUIT", is_hovered=(self._hovered_btn == "esc"), accent_token=ThemeToken.BORDER_MUTED, font_size=11)
 
         # Draw Node Tree
         map_graph = session.state.map_graph
@@ -166,7 +208,7 @@ class PygameMapView(PygameView):
 
         total_floors = len(map_graph.floors)
 
-        # 1. Draw Connecting Paths
+        # 1. Connecting Paths
         for floor_nodes in map_graph.floors:
             for node in floor_nodes:
                 nx, ny = self._get_node_screen_pos(node, total_floors, surface_w, surface_h)
@@ -182,7 +224,7 @@ class PygameMapView(PygameView):
                         )
                         pygame.draw.line(surface, line_color, (nx, ny), (ox, oy), 2 if is_active_path else 1)
 
-        # 2. Draw Nodes
+        # 2. Nodes
         pulse_scale = 1.0 + 0.15 * math.sin(self.pulse_timer * 6.0)
 
         for floor_nodes in map_graph.floors:
@@ -196,46 +238,23 @@ class PygameMapView(PygameView):
                 elif node.visited:
                     radius = 11
 
-                # Outer ring for current/available node
                 if node.available:
                     pygame.draw.circle(surface, (255, 236, 39), (nx, ny), radius + 4, width=2)
 
-                # Node fill
                 fill_color = base_color if (node.available or node.visited) else (50, 55, 65)
                 pygame.draw.circle(surface, fill_color, (nx, ny), radius)
-
-                # Inner border
                 pygame.draw.circle(surface, (20, 20, 25), (nx, ny), radius, width=1)
 
-                # Label icon letter
                 icon_letter = node.node_type.name[0]
                 text_col = ThemeToken.TEXT_NORMAL if (node.available or node.visited) else ThemeToken.TEXT_MUTED
-                renderer.draw_text(
-                    surface,
-                    icon_letter,
-                    nx,
-                    ny - 7,
-                    token=text_col,
-                    size=12,
-                    bold=True,
-                    align="center",
-                )
+                renderer.draw_text(surface, icon_letter, nx, ny - 7, token=text_col, size=12, bold=True, align="center")
 
-        # 3. Tooltip for hovered node
+        # 3. Tooltip
         if self._hovered_node_id is not None:
             h_node = map_graph.nodes_by_id.get(self._hovered_node_id)
             if h_node:
                 mouse_pos = pygame.mouse.get_pos()
-                tip_text = f"{h_node.node_type.value} [CLICK or Key]"
+                tip_text = f"{h_node.node_type.value} [CLICK / 1-4]"
                 tip_rect = pygame.Rect(mouse_pos[0] + 12, mouse_pos[1] - 28, 160, 26)
                 renderer.draw_panel(surface, tip_rect, border_token=ThemeToken.ACCENT_PRIMARY)
-                renderer.draw_text(
-                    surface,
-                    tip_text,
-                    tip_rect.centerx,
-                    tip_rect.centery - 7,
-                    token=ThemeToken.TEXT_HIGHLIGHT,
-                    size=12,
-                    bold=True,
-                    align="center",
-                )
+                renderer.draw_text(surface, tip_text, tip_rect.centerx, tip_rect.centery - 7, token=ThemeToken.TEXT_HIGHLIGHT, size=12, bold=True, align="center")

@@ -261,7 +261,8 @@ All 6 promoted classes are calibrated to an Act 3 victory rate between **40% and
   ```powershell
   pyxel edit assets/game.pyxres
   ```
-- Pygame-CE generates procedural 8-bit sound waveforms directly in memory for audio cues.
+- Pygame-CE client uses authentic 16-bit Super Nintendo (SNES) pixel art backgrounds (`assets/backgrounds/`) rendered in the Golden Age RPG aesthetic (*Secret of Evermore*, *Terranigma*, *Super Castlevania IV*).
+- Pygame-CE generates procedural sound waveforms directly in memory for audio cues.
 
 ---
 

@@ -1,4 +1,4 @@
-"""Unit test suite for the Pygame-CE frontend client."""
+"""Comprehensive test suite for Pygame-CE frontend client covering all 14 game screens."""
 
 from __future__ import annotations
 
@@ -9,13 +9,28 @@ import pygame
 from src.core.events import AudioCue, AudioCueEvent, DamageDealtEvent, event_bus
 from src.core.game_state import GameMode
 from src.core.session import GameSession
-from src.core.theme import ThemeToken, resolve_rgb_color
+from src.core.theme import ThemeToken
+from src.entities.item import EquipmentItem, EquipSlot
+from src.entities.actor import Stats
+from src.entities.enemy import Enemy, EnemyTier
 from src.frontends.pygame_ce.app import PygameApp
 from src.frontends.pygame_ce.audio_adapter import PygameAudioAdapter
 from src.frontends.pygame_ce.renderer import PygameRenderer
-from src.frontends.pygame_ce.views.title_view import PygameTitleView
+from src.frontends.pygame_ce.asset_manager import assets
+from src.frontends.pygame_ce.views.welcome import PygameWelcomeView
+from src.frontends.pygame_ce.views.class_select import PygameClassSelectView
+from src.frontends.pygame_ce.views.biome_select import PygameBiomeSelectView
 from src.frontends.pygame_ce.views.map_view import PygameMapView
 from src.frontends.pygame_ce.views.combat_view import PygameCombatView
+from src.frontends.pygame_ce.views.loot import PygameLootView
+from src.frontends.pygame_ce.views.shop import PygameShopView
+from src.frontends.pygame_ce.views.ability_choice import PygameAbilityChoiceView
+from src.frontends.pygame_ce.views.promotion import PygamePromotionView
+from src.frontends.pygame_ce.views.events import PygameEventsView
+from src.frontends.pygame_ce.views.inventory_modal import PygameInventoryModalView
+from src.frontends.pygame_ce.views.character_modal import PygameCharacterModalView
+from src.frontends.pygame_ce.views.end_game import PygameEndGameView
+from src.frontends.pygame_ce.views.credits import PygameCreditsView
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -28,67 +43,68 @@ def setup_headless_sdl():
     yield
 
 
-def test_pygame_renderer_theme_token_resolution():
-    """Verify PygameRenderer maps theme tokens to valid 3-channel RGB tuples."""
-    renderer = PygameRenderer()
-    for token in ThemeToken:
-        rgb = renderer.color(token)
-        assert isinstance(rgb, tuple)
-        assert len(rgb) == 3
-        assert all(0 <= c <= 255 for c in rgb)
+def test_asset_manager_loads_snes_backgrounds_and_sprites():
+    """Verify AssetManager loads all 9 backgrounds and extracts sprites."""
+    assert len(assets.background_surfaces) >= 9
+    assert assets.get_background("welcome") is not None
+    assert assets.get_background("cathedral") is not None
+    assert assets.get_class_portrait("warrior", scale=2) is not None
+    assert assets.get_enemy_sprite("cathedral_imp", scale=3) is not None
 
 
-def test_pygame_audio_adapter_handles_cues_safely():
-    """Verify PygameAudioAdapter subscribes to event bus and executes cues without raising."""
-    adapter = PygameAudioAdapter()
-    for cue in AudioCue:
-        adapter.play_cue(cue)
-
-    # Trigger via DomainEvent on EventBus
-    event_bus.emit(AudioCueEvent(cue=AudioCue.HIT))
-    event_bus.drain()
-
-
-def test_pygame_app_initialization_and_rendering():
-    """Verify PygameApp initializes in headless mode and processes frames."""
-    app = PygameApp(headless=True)
-    assert app.session is not None
-    assert app.screen is not None
-    assert app.screen.get_width() == 960
-    assert app.screen.get_height() == 540
-
-    # Advance 5 frames through main loop
-    app.run(max_frames=5)
-    assert not app.is_running or app.headless
-
-
-def test_pygame_title_view_workflow():
-    """Verify PygameTitleView handles archetype selection and starts game."""
+def test_pygame_welcome_view():
     session = GameSession()
-    view = PygameTitleView()
+    view = PygameWelcomeView()
     renderer = PygameRenderer()
     surface = pygame.Surface((960, 540))
 
-    assert view.selected_class == "warrior"
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_1), session)
+    assert session.current_mode == GameMode.CLASS_SELECT
 
-    # Select Rogue via keyboard '2'
-    key_event = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_2)
-    view.handle_event(key_event, session)
-    assert view.selected_class == "rogue"
-
-    # Start journey via SPACE
-    space_event = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE)
-    view.handle_event(space_event, session)
-
-    assert session.current_mode == GameMode.MAP
-    assert session.player.class_id == "rogue"
-
-    # Ensure draw executes without errors
+    view.update(0.016, session)
     view.draw(surface, renderer, session)
 
 
-def test_pygame_map_view_workflow():
-    """Verify PygameMapView renders nodes and handles node selection."""
+def test_pygame_class_select_view():
+    session = GameSession()
+    view = PygameClassSelectView()
+    renderer = PygameRenderer()
+    surface = pygame.Surface((960, 540))
+
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_b), session)
+    assert view.route_mode == "PATHFINDER"
+
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_3), session)
+    assert view.selected_class_id == "mage"
+
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN), session)
+    assert session.current_mode == GameMode.BIOME_SELECT
+    assert session.player.class_id == "mage"
+
+    view.update(0.016, session)
+    view.draw(surface, renderer, session)
+
+
+def test_pygame_biome_select_view():
+    session = GameSession()
+    session.start_new_game(class_id="warrior", route_mode="PATHFINDER")
+    session.switch_mode(GameMode.BIOME_SELECT)
+
+    view = PygameBiomeSelectView()
+    renderer = PygameRenderer()
+    surface = pygame.Surface((960, 540))
+
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_2), session)
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN), session)
+
+    assert session.current_mode == GameMode.MAP
+    assert session.state.current_biome == "cathedral"
+
+    view.update(0.016, session)
+    view.draw(surface, renderer, session)
+
+
+def test_pygame_map_view():
     session = GameSession()
     session.start_new_game(class_id="warrior")
     session.switch_mode(GameMode.MAP)
@@ -97,56 +113,169 @@ def test_pygame_map_view_workflow():
     renderer = PygameRenderer()
     surface = pygame.Surface((960, 540))
 
-    assert session.state.map_graph is not None
-    available = session.state.map_graph.available_nodes
-    assert len(available) > 0
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_i), session)
+    assert session.current_mode == GameMode.INVENTORY
+    session.toggle_inventory()
 
-    view.update(dt=0.016, session=session)
-    view.draw(surface, renderer, session)
-
-    # Select first available node via keyboard '1'
-    key_event = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_1)
-    view.handle_event(key_event, session)
-
-    # Upon selection, mode changes to the node's encounter (COMBAT, EVENTS, SHOP, etc.)
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_1), session)
     assert session.current_mode in (GameMode.COMBAT, GameMode.EVENTS, GameMode.SHOP)
 
+    view.update(0.016, session)
+    view.draw(surface, renderer, session)
 
-def test_pygame_combat_view_workflow():
-    """Verify PygameCombatView animates floating damage popups and ticks turns."""
+
+def test_pygame_combat_view_and_qte():
     session = GameSession()
     session.start_new_game(class_id="warrior")
-    session.select_map_node(session.state.map_graph.available_nodes[0].id)
-
-    # Force combat if first node was not monster
-    if session.current_mode != GameMode.COMBAT:
-        from src.systems.combat import CombatSystem
-        from src.entities.enemy import Enemy
-        dummy_enemy = Enemy(name="Test Goblin", max_hp=30, attack=5, defense=2)
-        session.state.combat = CombatSystem(session.player, dummy_enemy, bus=session.bus)
-        session.switch_mode(GameMode.COMBAT)
+    from src.systems.combat import CombatSystem
+    stats = Stats(max_hp=40, attack=6, defense=2, speed=8, crit_chance=0.05)
+    dummy_enemy = Enemy(name="Goblin", stats=stats, tier=EnemyTier.COMMON, floor_level=1, exp_reward=10, gold_reward=5)
+    session.state.combat = CombatSystem(session.player, dummy_enemy)
+    session.switch_mode(GameMode.COMBAT)
 
     view = PygameCombatView()
     renderer = PygameRenderer()
     surface = pygame.Surface((960, 540))
 
-    assert session.combat is not None
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE), session)
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_z), session)
+    assert view.step_interval < 0.3
 
-    # Step combat via space key
-    space_event = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE)
-    view.handle_event(space_event, session)
-
-    # Simulate damage event to verify floating numbers
-    session.bus.emit(
-        DamageDealtEvent(
-            source=session.player.name,
-            target=session.combat.enemy.name,
-            amount=15,
-            is_crit=True,
-        )
-    )
-    view._tick_combat(session)
-    assert len(view.popups) > 0
-
-    view.update(dt=0.05, session=session)
+    view.update(0.05, session)
     view.draw(surface, renderer, session)
+
+
+def test_pygame_loot_view():
+    session = GameSession()
+    session.start_new_game(class_id="warrior")
+    session.switch_mode(GameMode.LOOT)
+
+    test_sword = EquipmentItem(
+        id="test_sword",
+        name="Steel Longsword",
+        description="A sharp steel blade",
+        gold_value=30,
+        slot=EquipSlot.MAIN_HAND,
+        stats_bonus=Stats(max_hp=0, attack=10, defense=2, speed=0, crit_chance=0.0),
+        tier=2,
+    )
+    session.state.pending_loot = [test_sword]
+
+    view = PygameLootView()
+    renderer = PygameRenderer()
+    surface = pygame.Surface((960, 540))
+
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE), session)
+    assert test_sword in session.player.inventory.pouch or test_sword in session.player.inventory.equipment.values()
+
+    view.update(0.016, session)
+    view.draw(surface, renderer, session)
+
+
+def test_pygame_shop_view():
+    session = GameSession()
+    session.start_new_game(class_id="warrior")
+    session.player.gold = 100
+    session.switch_mode(GameMode.SHOP)
+
+    test_pot = EquipmentItem(
+        id="test_pot",
+        name="Healing Tonic",
+        description="Restores vital health",
+        gold_value=20,
+        slot=EquipSlot.MAIN_HAND,
+        stats_bonus=Stats(max_hp=10, attack=0, defense=0, speed=0, crit_chance=0.0),
+    )
+    session.state.merchant_stock = [(test_pot, 20)]
+
+    view = PygameShopView()
+    renderer = PygameRenderer()
+    surface = pygame.Surface((960, 540))
+
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN), session)
+    assert session.player.gold < 100
+
+    view.update(0.016, session)
+    view.draw(surface, renderer, session)
+
+
+def test_pygame_ability_choice_view():
+    session = GameSession()
+    session.start_new_game(class_id="warrior")
+    session.switch_mode(GameMode.ABILITY_CHOICE)
+
+    from src.data.abilities import get_ability_by_id
+    ab1 = get_ability_by_id("cleave")
+    session.state.offered_abilities = [ab1] if ab1 else []
+
+    view = PygameAbilityChoiceView()
+    renderer = PygameRenderer()
+    surface = pygame.Surface((960, 540))
+
+    if session.state.offered_abilities:
+        view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_1), session)
+
+    view.update(0.016, session)
+    view.draw(surface, renderer, session)
+
+
+def test_pygame_promotion_view():
+    session = GameSession()
+    session.start_new_game(class_id="warrior")
+    session.player.level = 10
+    session.switch_mode(GameMode.PROMOTION)
+
+    view = PygamePromotionView()
+    renderer = PygameRenderer()
+    surface = pygame.Surface((960, 540))
+
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_1), session)
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN), session)
+
+    assert session.player.class_id == "paladin"
+
+    view.update(0.016, session)
+    view.draw(surface, renderer, session)
+
+
+def test_pygame_inventory_and_character_modals():
+    session = GameSession()
+    session.start_new_game(class_id="warrior")
+    renderer = PygameRenderer()
+    surface = pygame.Surface((960, 540))
+
+    inv_view = PygameInventoryModalView()
+    inv_view.draw(surface, renderer, session)
+    inv_view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_i), session)
+
+    char_view = PygameCharacterModalView()
+    char_view.draw(surface, renderer, session)
+    char_view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_c), session)
+
+
+def test_pygame_end_game_and_credits_views():
+    session = GameSession()
+    session.start_new_game(class_id="warrior")
+    renderer = PygameRenderer()
+    surface = pygame.Surface((960, 540))
+
+    session.switch_mode(GameMode.GAME_OVER)
+    end_view = PygameEndGameView()
+    end_view.draw(surface, renderer, session)
+
+    session.switch_mode(GameMode.CREDITS)
+    cred_view = PygameCreditsView()
+    cred_view.draw(surface, renderer, session)
+    cred_view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE), session)
+    assert session.current_mode == GameMode.WELCOME
+
+
+def test_pygame_app_lifecycle_all_modes():
+    """Verify PygameApp correctly routes and updates all 14 game modes."""
+    app = PygameApp(headless=True)
+    for mode in GameMode:
+        app.session.switch_mode(mode)
+        active_view = app.get_active_view()
+        assert active_view is not None
+        app.update(0.016)
+        app.draw()

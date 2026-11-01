@@ -1,4 +1,4 @@
-"""Pygame-CE Master Application Controller."""
+"""Pygame-CE Master Application Controller supporting all 14 game screens with 16-bit SNES aesthetics."""
 
 from __future__ import annotations
 
@@ -12,9 +12,22 @@ from src.core.session import GameSession
 from src.frontends.pygame_ce.audio_adapter import PygameAudioAdapter
 from src.frontends.pygame_ce.renderer import PygameRenderer
 from src.frontends.pygame_ce.views.base import PygameView
-from src.frontends.pygame_ce.views.title_view import PygameTitleView
+
+# Views
+from src.frontends.pygame_ce.views.welcome import PygameWelcomeView
+from src.frontends.pygame_ce.views.class_select import PygameClassSelectView
+from src.frontends.pygame_ce.views.biome_select import PygameBiomeSelectView
 from src.frontends.pygame_ce.views.map_view import PygameMapView
 from src.frontends.pygame_ce.views.combat_view import PygameCombatView
+from src.frontends.pygame_ce.views.loot import PygameLootView
+from src.frontends.pygame_ce.views.shop import PygameShopView
+from src.frontends.pygame_ce.views.ability_choice import PygameAbilityChoiceView
+from src.frontends.pygame_ce.views.promotion import PygamePromotionView
+from src.frontends.pygame_ce.views.events import PygameEventsView
+from src.frontends.pygame_ce.views.inventory_modal import PygameInventoryModalView
+from src.frontends.pygame_ce.views.character_modal import PygameCharacterModalView
+from src.frontends.pygame_ce.views.end_game import PygameEndGameView
+from src.frontends.pygame_ce.views.credits import PygameCreditsView
 
 
 class PygameApp:
@@ -42,7 +55,7 @@ class PygameApp:
         if self.headless:
             self.screen: pygame.Surface = pygame.Surface((self.width, self.height))
         else:
-            pygame.display.set_caption("Quest for Aethelgard — Pygame-CE High-DPI Client")
+            pygame.display.set_caption("Quest for Aethelgard — 16-Bit SNES Golden Age Edition")
             self.screen = pygame.display.set_mode((self.width, self.height), pygame.DOUBLEBUF)
 
         self.clock: pygame.time.Clock = pygame.time.Clock()
@@ -50,22 +63,29 @@ class PygameApp:
         self.renderer: PygameRenderer = PygameRenderer()
         self.audio_adapter: PygameAudioAdapter = PygameAudioAdapter(bus=self.session.bus)
 
-        # Core View Registry
+        # Complete Registry for All 14 Operational Game Modes
         self.views: dict[GameMode, PygameView] = {
-            GameMode.WELCOME: PygameTitleView(),
+            GameMode.WELCOME: PygameWelcomeView(),
+            GameMode.CLASS_SELECT: PygameClassSelectView(),
+            GameMode.BIOME_SELECT: PygameBiomeSelectView(),
             GameMode.MAP: PygameMapView(),
             GameMode.COMBAT: PygameCombatView(),
+            GameMode.LOOT: PygameLootView(),
+            GameMode.SHOP: PygameShopView(),
+            GameMode.ABILITY_CHOICE: PygameAbilityChoiceView(),
+            GameMode.PROMOTION: PygamePromotionView(),
+            GameMode.EVENTS: PygameEventsView(),
+            GameMode.INVENTORY: PygameInventoryModalView(),
+            GameMode.CHARACTER: PygameCharacterModalView(),
+            GameMode.GAME_OVER: PygameEndGameView(),
+            GameMode.VICTORY: PygameEndGameView(),
+            GameMode.CREDITS: PygameCreditsView(),
         }
 
     def get_active_view(self) -> PygameView:
         """Resolve active view for the current GameSession operational mode."""
         mode = self.session.current_mode
-        if mode in self.views:
-            return self.views[mode]
-        elif mode in (GameMode.LOOT, GameMode.SHOP, GameMode.EVENTS):
-            # For encounter wrap-ups in vertical slice, map view gracefully handles state
-            return self.views[GameMode.MAP]
-        return self.views[GameMode.WELCOME]
+        return self.views.get(mode, self.views[GameMode.WELCOME])
 
     def handle_events(self) -> None:
         """Poll and dispatch Pygame window and input events."""
@@ -83,9 +103,15 @@ class PygameApp:
         active_view.update(dt, self.session)
 
     def draw(self) -> None:
-        """Render frame onto target surface."""
-        # Deep gothic dark background
-        self.screen.fill((12, 14, 20))
+        """Render active frame onto screen."""
+        self.screen.fill((10, 12, 16))
+
+        # If modal overlay is active (Inventory or Character), draw the underlying view first!
+        mode = self.session.current_mode
+        if mode in (GameMode.INVENTORY, GameMode.CHARACTER):
+            prev_mode = self.session.previous_mode
+            if prev_mode in self.views and prev_mode not in (GameMode.INVENTORY, GameMode.CHARACTER):
+                self.views[prev_mode].draw(self.screen, self.renderer, self.session)
 
         active_view = self.get_active_view()
         active_view.draw(self.screen, self.renderer, self.session)
@@ -99,7 +125,7 @@ class PygameApp:
         frames_rendered = 0
 
         while self.is_running:
-            dt = self.clock.tick(60) / 1000.0  # Cap at 60 FPS
+            dt = self.clock.tick(60) / 1000.0  # 60 FPS
             self.handle_events()
             self.update(dt)
             self.draw()
