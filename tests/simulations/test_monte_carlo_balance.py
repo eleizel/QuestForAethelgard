@@ -23,6 +23,7 @@ shared economy/event random stream before the first encounter.
 
 from __future__ import annotations
 
+import json
 import os
 import random
 import statistics
@@ -1314,6 +1315,45 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
                     # Reaching this state without the final boss indicates a malformed route graph.
                     break
 
+            equipped_items = {
+                slot.name: item.id
+                for slot, item in state.player.inventory.equipment.items()
+                if item is not None
+            }
+            equipped_tiers = {
+                slot.name: getattr(item, "tier", 1)
+                for slot, item in state.player.inventory.equipment.items()
+                if item is not None
+            }
+            build_summary = {
+                "class_id": state.player.class_id,
+                "signature_id": (
+                    state.player.signature_passive.id
+                    if state.player.signature_passive is not None
+                    else None
+                ),
+                "level": state.player.level,
+                "active_abilities": [a.id for a in state.player.abilities.active],
+                "passive_abilities": [p.id for p in state.player.abilities.passive],
+                "equipped_items": equipped_items,
+                "equipped_tiers": equipped_tiers,
+                "mean_equipment_tier": (
+                    statistics.mean(equipped_tiers.values())
+                    if equipped_tiers
+                    else 0.0
+                ),
+                "stats": {
+                    "max_hp": state.player.max_hp,
+                    "attack": state.player.effective_stats.attack,
+                    "defense": state.player.effective_stats.defense,
+                    "speed": state.player.effective_stats.speed,
+                    "crit_chance": round(state.player.effective_stats.crit_chance, 3),
+                },
+                "belt": [
+                    item.id for item in state.player.inventory.belt if item is not None
+                ],
+            }
+            metrics["build"] = build_summary
             metrics.update(
                 level=state.player.level,
                 hp_ratio=state.player.current_hp / max(1, state.player.max_hp),
@@ -1321,11 +1361,7 @@ def _simulate_trial(class_id: str, route_mode: str, seed: int, monkeypatch: Any)
                 experience=state.player.experience,
                 act_reached=state.act,
                 final_floor=state.floor,
-                signature_id=(
-                    state.player.signature_passive.id
-                    if state.player.signature_passive is not None
-                    else None
-                ),
+                signature_id=build_summary["signature_id"],
                 final_status=(
                     "victory"
                     if metrics["victory"]
@@ -1933,6 +1969,95 @@ def _print_detailed_tables(
                 f"{ci_low:.3f}..{ci_high:.3f},{path_better},{ties},{fate_better}"
             )
 
+    print("\n=== AN?LISIS DE PROMOCIONES: IMPACTO EN VICTORIA ===")
+    print("class,route,promotion,total_runs,victories,win%,act1_clears,act2_clears,act3_clears,mean_final_hp,mean_atk,mean_def")
+    for class_id, route, rows, _summary in summaries:
+        by_promo: dict[str, list[dict[str, Any]]] = {}
+        for row in rows:
+            promo = row.get("build", {}).get("class_id", class_id)
+            by_promo.setdefault(promo, []).append(row)
+        for promo, promo_rows in sorted(by_promo.items()):
+            n = len(promo_rows)
+            v = sum(r["victory"] for r in promo_rows)
+            a1 = sum(r["acts_cleared"] >= 1 for r in promo_rows)
+            a2 = sum(r["acts_cleared"] >= 2 for r in promo_rows)
+            a3 = sum(r["acts_cleared"] >= 3 for r in promo_rows)
+            stats_list = [r.get("build", {}).get("stats", {}) for r in promo_rows]
+            mean_hp = statistics.mean([s.get("max_hp", 0) for s in stats_list]) if stats_list else 0
+            mean_atk = statistics.mean([s.get("attack", 0) for s in stats_list]) if stats_list else 0
+            mean_def = statistics.mean([s.get("defense", 0) for s in stats_list]) if stats_list else 0
+            print(
+                f"{class_id},{route},{promo},{n},{v},{v / n:.1%},"
+                f"{a1 / n:.1%},{a2 / n:.1%},{a3 / n:.1%},"
+                f"{mean_hp:.1f},{mean_atk:.1f},{mean_def:.1f}"
+            )
+
+    print("\n=== HABILIDADES EQUIPADAS EN ACTO 2+ Y TASA DE VICTORIA ===")
+    print("class,route,ability_id,type,runs_equipped,victories,win%,act2_deaths,act3_deaths")
+    for class_id, route, rows, _summary in summaries:
+        act2_plus_rows = [r for r in rows if r.get("act_reached", 1) >= 2 or r["acts_cleared"] >= 1]
+        if not act2_plus_rows:
+            continue
+        ability_data: dict[str, dict[str, Any]] = {}
+        for r in act2_plus_rows:
+            build = r.get("build", {})
+            actives = build.get("active_abilities", [])
+            passives = build.get("passive_abilities", [])
+            sig = build.get("signature_id")
+            all_equipped = [(a, "active") for a in actives] + [(p, "passive") for p in passives]
+            if sig:
+                all_equipped.append((sig, "signature"))
+            for ab_id, ab_type in all_equipped:
+                entry = ability_data.setdefault(ab_id, {"type": ab_type, "runs": 0, "victories": 0, "act2_deaths": 0, "act3_deaths": 0})
+                entry["runs"] += 1
+                if r["victory"]:
+                    entry["victories"] += 1
+                elif r.get("death"):
+                    if r["death"].get("act") == 2:
+                        entry["act2_deaths"] += 1
+                    elif r["death"].get("act") == 3:
+                        entry["act3_deaths"] += 1
+        for ab_id, entry in sorted(ability_data.items(), key=lambda x: (-x[1]["runs"], x[0])):
+            win_pct = entry["victories"] / entry["runs"] if entry["runs"] else 0.0
+            print(
+                f"{class_id},{route},{ab_id},{entry['type']},{entry['runs']},{entry['victories']},"
+                f"{win_pct:.1%},{entry['act2_deaths']},{entry['act3_deaths']}"
+            )
+
+    print("\n=== TOP EQUIPAMIENTO EN PARTIDAS VICTORIOSAS ===")
+    print("class,route,slot,item_id,victories_equipped,pct_of_victories")
+    for class_id, route, rows, _summary in summaries:
+        victories = [r for r in rows if r["victory"]]
+        if not victories:
+            continue
+        gear_counts: dict[tuple[str, str], int] = {}
+        for r in victories:
+            equipped = r.get("build", {}).get("equipped_items", {})
+            for slot, item_id in equipped.items():
+                gear_counts[(slot, item_id)] = gear_counts.get((slot, item_id), 0) + 1
+        for (slot, item_id), count in sorted(gear_counts.items(), key=lambda x: (-x[1], x[0][0])):
+            pct = count / len(victories)
+            if pct >= 0.15:
+                print(f"{class_id},{route},{slot},{item_id},{count},{pct:.1%}")
+
+    print("\n=== MUESTRA DE BUILDS VICTORIOSAS (LOADOUTS REALES) ===")
+    for class_id, route, rows, _summary in summaries:
+        victories = [r for r in rows if r["victory"]]
+        if victories:
+            sample = victories[:2]
+            for i, r in enumerate(sample, 1):
+                b = r.get("build", {})
+                st = b.get("stats", {})
+                eq_str = "|".join(f"{s}:{item}" for s, item in sorted(b.get("equipped_items", {}).items()))
+                act_str = ",".join(b.get("active_abilities", []))
+                pas_str = ",".join(b.get("passive_abilities", []))
+                sig = b.get("signature_id", "none")
+                print(
+                    f"[{class_id.upper()} {route} #{i}] seed={r['seed']} promo={b.get('class_id')} sig={sig} "
+                    f"HP={st.get('max_hp')} ATK={st.get('attack')} DEF={st.get('defense')} SPD={st.get('speed')} "
+                    f"Actives=[{act_str}] Passives=[{pas_str}] Gear=[{eq_str}]"
+                )
+
 
 @pytest.mark.skipif(
     os.getenv("RUN_BALANCE_SIMULATION") != "1",
@@ -1991,6 +2116,35 @@ def test_monte_carlo_balance_by_class_and_route(monkeypatch: Any) -> None:
         paired_rows[class_id] = matched
 
     _print_detailed_tables(summaries, paired_rows)
+
+    export_path = os.getenv("AETHELGARD_MC_BUILDS_EXPORT", "reports/monte_carlo_builds.json")
+    try:
+        export_file = Path(export_path)
+        export_file.parent.mkdir(parents=True, exist_ok=True)
+        all_trials_data = []
+        for class_id, route_mode, rows, _ in summaries:
+            for row in rows:
+                all_trials_data.append({
+                    "class_id": class_id,
+                    "route_mode": route_mode,
+                    "seed": row["seed"],
+                    "victory": row["victory"],
+                    "acts_cleared": row["acts_cleared"],
+                    "act_reached": row["act_reached"],
+                    "final_floor": row["final_floor"],
+                    "final_status": row["final_status"],
+                    "death": row.get("death"),
+                    "build": row.get("build"),
+                    "fights": row["fights"],
+                    "combat_ticks": row["combat_ticks"],
+                    "damage_dealt": row["damage_dealt"],
+                    "damage_taken": row["damage_taken"],
+                })
+        with open(export_file, "w", encoding="utf-8") as f:
+            json.dump(all_trials_data, f, indent=2)
+        print(f"\n[MC] Detailed build telemetry exported to {export_file.resolve()}", flush=True)
+    except Exception as exc:
+        print(f"\n[MC] Warning: could not export build telemetry to {export_path}: {exc}", flush=True)
 
     assert len(summaries) == len(PLAYABLE_CLASSES) * len(ROUTE_MODES)
     assert all(0.0 <= summary["victory_rate"] <= 1.0 for _, _, _, summary in summaries)
