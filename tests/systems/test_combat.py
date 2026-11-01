@@ -239,12 +239,12 @@ def test_archmage_barrier_mechanics(base_player, base_enemy, monkeypatch):
     base_player.current_hp = 100
 
     combat = CombatSystem(player=base_player, enemy=base_enemy)
-    # 20% barrier of 100 max HP = 20 shield
-    assert base_player.shield == 20
+    # 15% barrier of 100 max HP = 15 shield
+    assert base_player.shield == 15
 
-    # Enemy hits player for 15 damage
+    # Enemy hits player for 10 damage: 15 - 10 = 5 shield
     combat.rng = MockRNG(random_val=0.5, uniform_val=1.0)
-    base_player.take_damage(15)
+    base_player.take_damage(10)
     assert base_player.shield == 5
     assert base_player.current_hp == 100
 
@@ -328,7 +328,7 @@ def test_berserker_rage_threshold_and_heal(base_player, base_enemy, monkeypatch)
 
     base_player.signature_passive = get_ability_by_id("berserker_rage")
     base_player.base_stats.hp = 100
-    base_player.current_hp = 45  # Under 50% max HP at start of combat
+    base_player.current_hp = 35  # At or under 40% max HP at start of combat
     base_player.base_stats.speed = 100
     base_player.base_stats.attack = 50
     base_enemy.base_stats.speed = 10
@@ -337,18 +337,49 @@ def test_berserker_rage_threshold_and_heal(base_player, base_enemy, monkeypatch)
     base_enemy.current_hp = 200
 
     combat = CombatSystem(player=base_player, enemy=base_enemy)
-    # Starts armed because HP <= 50%
+    # Starts armed because HP <= 40%
     assert combat.berserker_threshold_triggered is True
     assert combat.berserker_bonus_ready is True
 
     combat.rng = MockRNG(random_val=0.5, uniform_val=1.0)
     combat.step()
 
-    # Berserker double damage: 50 * 2 = 100 damage
+    # Threshold action: double damage (50 * 2 = 100), heals 22% max HP (22 HP).
+    # Active lifesteal is also applied (43% missing -> 16.45% lifesteal on 100 dmg = 16 HP).
     assert base_enemy.current_hp == 100
-    # Heal is half damage (50), but capped at 30% max HP (30 HP)
-    # 45 + 30 = 75 HP
-    assert base_player.current_hp == 75
+    assert base_player.current_hp == 73  # 35 + 22 + 16 = 73
+
+    # Subsequent action: normal damage (50), active lifesteal triggers.
+    # Missing HP = 27%. Lifesteal = 10% + 15% * 0.27 = 14.05%. 50 * 14.05% = 7 HP.
+    combat.player_gauge = 100
+    combat.enemy_gauge = 0
+    combat.step()
+    assert base_enemy.current_hp == 50
+    assert base_player.current_hp == 80  # 73 + 7 = 80
+
+
+def test_warlock_pact_burn_and_tick_heal(base_player, base_enemy, monkeypatch):
+    import pyxel
+    monkeypatch.setattr(pyxel, "play", lambda *args, **kwargs: None)
+
+    base_player.signature_passive = get_ability_by_id("warlock_pact")
+    base_player.base_stats.hp = 100
+    base_player.current_hp = 50
+    base_enemy.base_stats.hp = 200
+    base_enemy.current_hp = 200
+
+    combat = CombatSystem(player=base_player, enemy=base_enemy)
+
+    # Taking damage from an enemy action inflicts Burn
+    combat.enemy_actions_taken = 1
+    combat.on_player_damaged(previous_hp=60, actual_damage=10)
+    assert base_enemy.has_status("burn")
+
+    # Burn tick triggers damage and heals the Warlock for 35% of damage done
+    # Enemy HP 200, 1% burn = 2 damage. 35% of 2 = 0.7 -> max(1, 0) = 1 HP heal.
+    combat._process_status_ticks(base_enemy)
+    assert base_enemy.current_hp == 199
+    assert base_player.current_hp == 51
 
 
 def test_speed_normalization_preserves_ratio_and_caps_tick_rate(base_player, base_enemy, monkeypatch):
@@ -380,3 +411,37 @@ def test_speed_normalization_preserves_ratio_and_caps_tick_rate(base_player, bas
     # On tick 8 (4.0s at 1x speed), the faster combatant acts
     combat.step()
     assert combat.enemy_actions_taken == 1
+
+
+def test_shadow_step_gains_evade_on_active_skill_only(base_player, base_enemy, monkeypatch):
+    import pyxel
+    from src.data.abilities import get_ability_by_id
+
+    monkeypatch.setattr(pyxel, "play", lambda *args, **kwargs: None)
+    shadow_step = get_ability_by_id("shadow_step")
+    active_skill = get_ability_by_id("shadow_strike")
+    assert shadow_step is not None and active_skill is not None
+    base_player.abilities.add_ability(shadow_step)
+    base_player.abilities.add_ability(active_skill)
+
+    combat = CombatSystem(player=base_player, enemy=base_enemy)
+    # Combat start grants 1 evade charge
+    assert base_player.evade_charges == 1
+
+    # Consume the charge
+    assert base_player.take_damage(50) == 0
+    assert base_player.evade_charges == 0
+
+    # Basic attack with 100% crit does NOT grant evade
+    base_player.base_stats.crit_chance = 1.0
+    combat.player_gauge = 100
+    combat.enemy_gauge = 0
+    combat.step()
+    assert base_player.evade_charges == 0
+
+    # Active skill cast DOES grant evade
+    combat.queued_ability = active_skill
+    combat.player_gauge = 100
+    combat.enemy_gauge = 0
+    combat.step()
+    assert base_player.evade_charges == 1

@@ -299,13 +299,13 @@ def test_rogue_standard_effects(monkeypatch):
     assert getattr(player, "_next_strike_bonus", False) is False
     assert combat.damage_enemy(100) == 100
 
-    # Shadow Step updates the combat gauge through the combat reference.
+    # Shadow Step grants Evade charges that completely negate incoming damage.
     shadow_step = get_ability_by_id("shadow_step")
     assert shadow_step is not None
     player.abilities.add_ability(shadow_step)
-    combat.player_gauge = 10
-    player.take_damage(10)
-    assert combat.player_gauge == 25
+    player.evade_charges = 1
+    assert player.take_damage(50) == 0
+    assert player.evade_charges == 0
 
 
 def test_ability_registry_and_retrieval():
@@ -605,7 +605,24 @@ def test_toxic_blood_reduces_damage_while_enemy_is_poisoned():
     assert passive and poison
     player.abilities.add_ability(passive)
     enemy.apply_status(poison)
-    assert player.take_damage(100) == 90
+    assert player.take_damage(100) == 75
+
+
+def test_toxic_blood_poisons_attacker_and_reduces_damage():
+    from src.data.abilities import get_ability_by_id
+    from src.entities.enemy import EnemyTier
+    player = Player(name="ToxicBloodTest", class_id="rogue")
+    player.base_stats = Stats(100, 20, 0, 10, 0.0)
+    player.current_hp = 100
+    enemy = Enemy(name="UnpoisonedAttacker", stats=Stats(100, 10, 0, 10, 0.0),
+                  tier=EnemyTier.COMMON, floor_level=1, exp_reward=1, gold_reward=1)
+    CombatSystem(player, enemy)
+    passive = get_ability_by_id("toxic_blood")
+    assert passive
+    player.abilities.add_ability(passive)
+    assert not enemy.has_status("poison")
+    assert player.take_damage(100) == 75
+    assert enemy.has_status("poison")
 
 
 def test_dirty_tricks_and_hilt_strike_apply_control():
@@ -701,12 +718,12 @@ def test_duelist_precision_parry_diminishing_returns_and_flowing_steel(monkeypat
 
     # Signature alone = 15% Parry
     assert combat.get_player_parry_chance() == pytest.approx(0.15)
-    # + Riposte (20%) -> Signature drops to 10% -> 30% total
+    # + Riposte (20%) -> Signature drops to 8% (0.15 - 0.07) -> 28% total
     player.abilities.add_ability(get_ability_by_id("riposte"))
-    assert combat.get_player_parry_chance() == pytest.approx(0.30)
-    # + Whirlwind Defense (20%) -> Signature drops to 5% -> 45% total
+    assert combat.get_player_parry_chance() == pytest.approx(0.28)
+    # + Whirlwind Defense (20%) -> Signature drops to 1% (0.15 - 0.14) -> 41% total
     player.abilities.add_ability(get_ability_by_id("whirlwind_defense"))
-    assert combat.get_player_parry_chance() == pytest.approx(0.45)
+    assert combat.get_player_parry_chance() == pytest.approx(0.41)
 
     # Parrying an attack halves damage and arms Flowing Steel
     player.abilities.passive.clear()
@@ -719,11 +736,11 @@ def test_duelist_precision_parry_diminishing_returns_and_flowing_steel(monkeypat
     assert player.current_hp == 40  # 20 dmg halved to 10
     assert combat.duelist_flourish_armed is True
 
-    # Next basic attack fires 100 base + 75 Flowing Steel (heals 10% = 7 HP, +5 gauge)
+    # Next basic attack fires 100 base + 65 Flowing Steel (heals 10% = 6 HP, +5 gauge)
     combat.player_gauge = 100
     combat._execute_player_attack()
-    assert enemy.current_hp == 325
-    assert player.current_hp == 47
+    assert enemy.current_hp == 335
+    assert player.current_hp == 46
     assert combat.player_gauge == 5
 
 
