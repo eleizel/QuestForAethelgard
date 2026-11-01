@@ -345,17 +345,17 @@ def test_berserker_rage_threshold_and_heal(base_player, base_enemy, monkeypatch)
     combat.step()
 
     # Threshold action: double damage (50 * 2 = 100), heals 25% max HP (25 HP).
-    # Active lifesteal is NOT triggered on threshold action.
+    # Active lifesteal is also applied (40% missing -> 16% lifesteal on 100 dmg = 16 HP).
     assert base_enemy.current_hp == 100
-    assert base_player.current_hp == 60  # 35 + 25 = 60
+    assert base_player.current_hp == 76  # 35 + 25 + 16 = 76
 
     # Subsequent action: normal damage (50), active lifesteal triggers.
-    # Missing HP = 40%. Lifesteal = 10% + 15% * 0.40 = 16%. 50 * 16% = 8 HP.
+    # Missing HP = 24%. Lifesteal = 10% + 15% * 0.24 = 13.6%. 50 * 13.6% = 6 HP.
     combat.player_gauge = 100
     combat.enemy_gauge = 0
     combat.step()
     assert base_enemy.current_hp == 50
-    assert base_player.current_hp == 68  # 60 + 8 = 68
+    assert base_player.current_hp == 82  # 76 + 6 = 82
 
 
 def test_warlock_pact_burn_and_tick_heal(base_player, base_enemy, monkeypatch):

@@ -113,7 +113,7 @@ class CombatSystem:
         ]
         if (
             self._has_signature("berserker_rage")
-            and self.player.current_hp <= self.player.max_hp * 0.40
+            and self.player.current_hp <= self.player.max_hp * 0.45
         ):
             self.berserker_threshold_triggered = True
             self.berserker_bonus_ready = True
@@ -241,7 +241,7 @@ class CombatSystem:
             self._has_signature("berserker_rage")
             and not self.berserker_threshold_triggered
             and self.player.is_alive
-            and self.player.current_hp <= self.player.max_hp * 0.40
+            and self.player.current_hp <= self.player.max_hp * 0.45
         ):
             self.berserker_threshold_triggered = True
             self.berserker_bonus_ready = True
@@ -276,7 +276,7 @@ class CombatSystem:
                     self.combat_logs.append(log_str)
                     if s.id == "burn" and actor is self.enemy and self._has_signature("warlock_pact"):
                         if dmg > 0:
-                            heal_amt = max(1, int(dmg * 0.35))
+                            heal_amt = max(1, int(dmg * 0.18))
                             healed = self.player.heal(heal_amt)
                             if healed:
                                 self.combat_logs.append(
@@ -770,7 +770,7 @@ class CombatSystem:
             if healed:
                 self.combat_logs.append(_t("combat_deathless_onslaught_heal", actor=self.player.name, heal=healed))
 
-        if dmg_dealt > 0 and self._has_signature("berserker_rage") and not berserker_bonus_this_action:
+        if dmg_dealt > 0 and self._has_signature("berserker_rage"):
             missing_hp_pct = max(0.0, min(1.0, 1.0 - (self.player.current_hp / max(1, self.player.max_hp))))
             lifesteal_pct = 0.10 + 0.15 * missing_hp_pct
             lifesteal_heal = max(1, int(dmg_dealt * lifesteal_pct))
