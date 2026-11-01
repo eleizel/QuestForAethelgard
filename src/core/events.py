@@ -37,6 +37,34 @@ class AudioCueEvent(DomainEvent):
     cue: AudioCue
 
 
+@dataclass(frozen=True)
+class DamageDealtEvent(DomainEvent):
+    """Event emitted whenever damage is resolved in combat."""
+    source: str
+    target: str
+    amount: int
+    is_crit: bool = False
+    damage_type: str = "physical"
+
+
+@dataclass(frozen=True)
+class HealthRestoredEvent(DomainEvent):
+    """Event emitted whenever an actor recovers HP in combat."""
+    target: str
+    amount: int
+    current_hp: int = 0
+    max_hp: int = 0
+
+
+@dataclass(frozen=True)
+class StatusAppliedEvent(DomainEvent):
+    """Event emitted when a combat status effect is applied to an actor."""
+    target: str
+    status_id: str
+    status_name: str = ""
+    duration: int = 0
+
+
 class EventBus:
     """Drainable domain event queue with optional immediate subscriptions."""
 
@@ -74,3 +102,24 @@ class EventBus:
 
 # Default singleton instance for game sessions
 event_bus = EventBus()
+
+
+class CombatLogEntry(str):
+    """String subclass carrying structured metadata for multi-frontend rendering.
+    
+    Provides 100% backward compatibility as a standard Python str, while enabling
+    modern frontends to inspect log.key, log.params, and log.category without string parsing.
+    """
+
+    def __new__(
+        cls,
+        text: str,
+        key: str = "",
+        params: dict[str, Any] | None = None,
+        category: str = "combat",
+    ) -> CombatLogEntry:
+        instance = super().__new__(cls, text)
+        instance.key = key
+        instance.params = params or {}
+        instance.category = category
+        return instance

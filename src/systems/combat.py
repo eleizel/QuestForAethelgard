@@ -7,7 +7,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, Final
 
 
-from src.core.events import AudioCue, event_bus
+from src.core.events import AudioCue, event_bus, DomainEvent, DamageDealtEvent, HealthRestoredEvent, StatusAppliedEvent, CombatLogEntry
 from src.config import TARGET_COMBAT_SPEED
 
 # Backward-compatibility shim for existing unit tests mocking audio playback
@@ -114,6 +114,7 @@ class CombatSystem:
         self._enemy_death_hook_triggered = False
         self.completion_delay_ticks = 0
 
+        self.events: list[DomainEvent] = []
         self.current_tick: int = 0
         self.result: CombatResult = CombatResult.IN_PROGRESS
         self.combat_logs: list[str] = [
@@ -164,6 +165,18 @@ class CombatSystem:
 
         if normalize_speeds:
             self.normalize_speeds()
+
+
+    def emit_event(self, event: DomainEvent) -> None:
+        """Enqueue combat event locally and broadcast on global event bus."""
+        self.events.append(event)
+        event_bus.emit(event)
+
+    def drain_events(self) -> list[DomainEvent]:
+        """Drain and return queued combat events."""
+        events = list(self.events)
+        self.events.clear()
+        return events
 
     def is_active(self) -> bool:
         """Return True if combat is still ongoing."""
@@ -656,6 +669,8 @@ class CombatSystem:
             self.combat_logs.extend(self._deferred_attack_proc_logs)
             self._deferred_attack_proc_logs.clear()
             event_bus.emit_audio(AudioCue.CRIT if is_crit else AudioCue.HIT)
+            if dmg_dealt > 0:
+                self.emit_event(DamageDealtEvent(source=self.player.name, target=self.enemy.name, amount=dmg_dealt, is_crit=is_crit, damage_type="ability"))
             self.queued_ability = None
         else:
             if self.player.has_status("blind") and self.rng.random() < 0.50:
@@ -672,6 +687,8 @@ class CombatSystem:
                     self.combat_logs.append(
                         _t("combat_hit", actor=self.player.name, target=self.enemy.name, damage=dmg_dealt))
                 event_bus.emit_audio(AudioCue.CRIT if is_crit else AudioCue.HIT)
+                if dmg_dealt > 0:
+                    self.emit_event(DamageDealtEvent(source=self.player.name, target=self.enemy.name, amount=dmg_dealt, is_crit=is_crit, damage_type="physical"))
 
                 # Check on_hit_status for all equipped gear (weapons and armor)
                 for eq in self.player.inventory.equipment.values():
@@ -940,6 +957,8 @@ class CombatSystem:
 
         # Audio feedback: Sound 1 (Crit) or Sound 0 (Hit)
         event_bus.emit_audio(AudioCue.CRIT if is_crit else AudioCue.HIT)
+        if dmg_dealt > 0:
+            self.emit_event(DamageDealtEvent(source=self.enemy.name, target=self.player.name, amount=dmg_dealt, is_crit=is_crit, damage_type="physical"))
 
         if is_crit:
             self.combat_logs.append(_t("combat_crit", actor=self.enemy.name, target=self.player.name, damage=dmg_dealt))

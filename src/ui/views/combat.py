@@ -35,6 +35,7 @@ from src.systems.combat import ACTION_THRESHOLD
 from src.systems.inventory import MAX_BELT_SLOTS
 from src.tools.generate_assets import CLASS_SPRITE_COORDS
 from src.ui.renderer import Renderer
+from src.core.events import DamageDealtEvent
 from src.ui.views.base import View, CombatPopup, ENEMY_SPRITE_COORDS, SPEED_INTERVALS, SPEED_LABELS
 
 if TYPE_CHECKING:
@@ -62,29 +63,34 @@ class CombatView(View):
         new_p_hp = game_state.player.current_hp
         new_e_hp = combat.enemy.current_hp
 
+        events = combat.drain_events()
+        p_damage_events = [e for e in events if isinstance(e, DamageDealtEvent) and e.target == game_state.player.name]
+        is_player_crit = any(e.is_crit for e in p_damage_events)
+
         # Player damage / heal
         if new_p_hp < old_p_hp:
             dmg = old_p_hp - new_p_hp
-            is_crit = any("CRIT" in log or "CRÍTICO" in log for log in combat.combat_logs[-2:])
-            txt = f"-{dmg}!" if is_crit else f"-{dmg}"
-            col = COLOR_RED if is_crit else COLOR_PEACH
+            txt = f"-{dmg}!" if is_player_crit else f"-{dmg}"
+            col = COLOR_RED if is_player_crit else COLOR_PEACH
             self.popups.append(CombatPopup(x=62, y=44, text=txt, color=col))
             self.player_flash = 3
-            if is_crit:
+            if is_player_crit:
                 self.shake_frames = 5
         elif new_p_hp > old_p_hp:
             heal = new_p_hp - old_p_hp
             self.popups.append(CombatPopup(x=62, y=44, text=f"+{heal}", color=COLOR_LIME))
 
+        e_damage_events = [e for e in events if isinstance(e, DamageDealtEvent) and e.target == combat.enemy.name]
+        is_enemy_crit = any(e.is_crit for e in e_damage_events)
+
         # Enemy damage / heal
         if new_e_hp < old_e_hp:
             dmg = old_e_hp - new_e_hp
-            is_crit = any("CRIT" in log or "CRÍTICO" in log for log in combat.combat_logs[-2:])
-            txt = f"-{dmg}!" if is_crit else f"-{dmg}"
-            col = COLOR_YELLOW if is_crit else COLOR_WHITE
+            txt = f"-{dmg}!" if is_enemy_crit else f"-{dmg}"
+            col = COLOR_YELLOW if is_enemy_crit else COLOR_WHITE
             self.popups.append(CombatPopup(x=184, y=44, text=txt, color=col))
             self.enemy_flash = 3
-            if is_crit:
+            if is_enemy_crit:
                 self.shake_frames = 6
 
     def update(self, game_state: GameState) -> None:
