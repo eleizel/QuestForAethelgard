@@ -244,8 +244,33 @@ def test_pygame_inventory_and_character_modals():
     renderer = PygameRenderer()
     surface = pygame.Surface((960, 540))
 
+    test_helm = EquipmentItem(
+        id="test_helm",
+        name="Iron Helm",
+        description="Sturdy iron helmet",
+        gold_value=15,
+        slot=EquipSlot.HEAD,
+        stats_bonus=Stats(max_hp=5, attack=0, defense=3, speed=0, crit_chance=0.0),
+    )
+    session.player.inventory.pouch.append(test_helm)
+
     inv_view = PygameInventoryModalView()
     inv_view.draw(surface, renderer, session)
+
+    # Equip via key '1' (first pouch slot)
+    first_pouch_idx = len(session.player.inventory.pouch) - 1
+    # Trigger mouse click on the pouch item
+    pouch_click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(550, 130 + first_pouch_idx * 30 + 10))
+    inv_view.handle_event(pouch_click, session)
+    assert session.player.inventory.equipment[EquipSlot.HEAD] is not None
+    assert session.player.inventory.equipment[EquipSlot.HEAD].id == "test_helm"
+
+    # Unequip by clicking on HEAD slot (index 0 in EQUIP_SLOT_ORDER)
+    head_slot_click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(150, 130 + 10))
+    inv_view.handle_event(head_slot_click, session)
+    assert session.player.inventory.equipment[EquipSlot.HEAD] is None
+
+    # Toggle modal closed
     inv_view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_i), session)
 
     char_view = PygameCharacterModalView()

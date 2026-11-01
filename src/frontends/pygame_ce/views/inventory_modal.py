@@ -7,7 +7,7 @@ import pygame
 
 from src.core.game_state import GameMode
 from src.core.theme import ThemeToken
-from src.entities.item import EquipSlot, EquipmentItem
+from src.entities.item import EquipSlot, EquipmentItem, ConsumableItem
 from src.frontends.pygame_ce.views.base import PygameView
 
 if TYPE_CHECKING:
@@ -26,30 +26,62 @@ class PygameInventoryModalView(PygameView):
     def __init__(self) -> None:
         pass
 
+    def _activate_pouch_item(self, idx: int, player, inv) -> None:
+        if idx >= len(inv.pouch):
+            return
+        item = inv.pouch[idx]
+        if isinstance(item, EquipmentItem):
+            inv.equip_from_pouch(idx, player)
+        elif isinstance(item, ConsumableItem):
+            empty_belt = next((b for b in range(len(inv.belt)) if inv.belt[b] is None), None)
+            if empty_belt is not None:
+                inv.assign_pouch_to_belt(idx, empty_belt)
+            else:
+                inv.use_from_pouch(idx, player)
+
     def handle_event(self, event: pygame.event.Event, session: GameSession) -> None:
-        if event.type == pygame.KEYDOWN and event.key in (pygame.K_i, pygame.K_ESCAPE):
-            session.toggle_inventory()
+        player = session.player
+        inv = player.inventory
+
+        if event.type == pygame.KEYDOWN:
+            if event.key in (pygame.K_i, pygame.K_ESCAPE):
+                session.toggle_inventory()
+                return
+            elif pygame.K_1 <= event.key <= pygame.K_9:
+                p_idx = event.key - pygame.K_1
+                self._activate_pouch_item(p_idx, player, inv)
+                return
+            elif event.key == pygame.K_0:
+                self._activate_pouch_item(9, player, inv)
+                return
 
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             pos = event.pos
-            close_btn = pygame.Rect(840, 45, 36, 36)
+            close_btn = pygame.Rect(850, 45, 36, 36)
             if close_btn.collidepoint(pos):
                 session.toggle_inventory()
                 return
 
-            player = session.player
-            inv = player.inventory
-
             for idx in range(len(inv.pouch)):
                 item_rect = pygame.Rect(520, 130 + idx * 30, 340, 26)
                 if item_rect.collidepoint(pos):
-                    inv.equip_item(idx, player)
+                    self._activate_pouch_item(idx, player, inv)
                     return
 
             for idx, slot in enumerate(self.EQUIP_SLOT_ORDER):
                 slot_rect = pygame.Rect(100, 130 + idx * 38, 380, 32)
-                if slot_rect.collidepoint(pos) and slot in inv.equipment:
-                    inv.unequip_item(slot, player)
+                if slot_rect.collidepoint(pos) and inv.equipment.get(slot) is not None:
+                    inv.unequip_to_pouch(slot)
+                    return
+
+            belt_y = 445
+            for b_idx in range(3):
+                b_rect = pygame.Rect(240 + b_idx * 160, belt_y, 140, 28)
+                if b_rect.collidepoint(pos):
+                    if b_idx < len(inv.belt) and inv.belt[b_idx] is not None:
+                        if len(inv.pouch) < 10:
+                            inv.pouch.append(inv.belt[b_idx])
+                            inv.belt[b_idx] = None
                     return
 
     def update(self, dt: float, session: GameSession) -> None:
