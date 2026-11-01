@@ -798,7 +798,7 @@ class CombatSystem:
                 )
                 self._record_signature_proc("berserker_rage")
 
-        if (not is_basic_attack or is_crit) and any(a.id == "shadow_step" for a in self.player.all_passives):
+        if not is_basic_attack and any(a.id == "shadow_step" for a in self.player.all_passives):
             if getattr(self.player, "evade_charges", 0) < 2:
                 self.player.evade_charges = getattr(self.player, "evade_charges", 0) + 1
                 self.combat_logs.append(

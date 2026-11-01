@@ -381,3 +381,37 @@ def test_speed_normalization_preserves_ratio_and_caps_tick_rate(base_player, bas
     # On tick 8 (4.0s at 1x speed), the faster combatant acts
     combat.step()
     assert combat.enemy_actions_taken == 1
+
+
+def test_shadow_step_gains_evade_on_active_skill_only(base_player, base_enemy, monkeypatch):
+    import pyxel
+    from src.data.abilities import get_ability_by_id
+
+    monkeypatch.setattr(pyxel, "play", lambda *args, **kwargs: None)
+    shadow_step = get_ability_by_id("shadow_step")
+    active_skill = get_ability_by_id("shadow_strike")
+    assert shadow_step is not None and active_skill is not None
+    base_player.abilities.add_ability(shadow_step)
+    base_player.abilities.add_ability(active_skill)
+
+    combat = CombatSystem(player=base_player, enemy=base_enemy)
+    # Combat start grants 1 evade charge
+    assert base_player.evade_charges == 1
+
+    # Consume the charge
+    assert base_player.take_damage(50) == 0
+    assert base_player.evade_charges == 0
+
+    # Basic attack with 100% crit does NOT grant evade
+    base_player.base_stats.crit_chance = 1.0
+    combat.player_gauge = 100
+    combat.enemy_gauge = 0
+    combat.step()
+    assert base_player.evade_charges == 0
+
+    # Active skill cast DOES grant evade
+    combat.queued_ability = active_skill
+    combat.player_gauge = 100
+    combat.enemy_gauge = 0
+    combat.step()
+    assert base_player.evade_charges == 1

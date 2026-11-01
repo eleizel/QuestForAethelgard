@@ -712,7 +712,7 @@ STANDARD_ABILITIES: list[Ability] = [
             description="Critical hits empower your next damaging strike by 25%.", ability_type=AbilityType.PASSIVE,
             rarity=AbilityRarity.STANDARD, required_class="rogue",
             on_attack_dealt_hook=hook_exposed_weakness, affinities=("duelist",)),
-    Ability(id="shadow_step", name="Shadow Step", description="Begin combat with 1 Evade. Crits or active skills grant +1 Evade (max 2). Negates incoming hits.",
+    Ability(id="shadow_step", name="Shadow Step", description="Begin combat with 1 Evade. Casting active skills grants +1 Evade (max 2). Negates incoming hits.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue"),
 
     Ability(id="venomous_accumulation", name="Venomous Accumulation",

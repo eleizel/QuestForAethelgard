@@ -401,7 +401,7 @@ TRANSLATIONS_EN = {
     "ability_exposed_weakness_name": "Exposed Weakness",
     "ability_exposed_weakness_desc": "Critical hits empower your next damaging strike by 25%.",
     "ability_shadow_step_name": "Shadow Step",
-    "ability_shadow_step_desc": "Begin combat with 1 Evade charge. Landing a critical strike or casting an active skill grants 1 Evade charge (up to 2). An Evade charge is consumed to completely negate an incoming hit.",
+    "ability_shadow_step_desc": "Begin combat with 1 Evade charge. Casting an active skill grants 1 Evade charge (up to 2). An Evade charge is consumed to completely negate an incoming hit.",
     "ability_fireball_name": "Fireball",
     "ability_fireball_desc": "High-impact blast dealing 185% ATK fire damage.",
     "ability_chain_lightning_name": "Chain Lightning",

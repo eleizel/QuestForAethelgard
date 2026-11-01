@@ -401,7 +401,7 @@ TRANSLATIONS_ES = {
     "ability_exposed_weakness_name": "Punto Debil",
     "ability_exposed_weakness_desc": "Los críticos potencian un 25% tu siguiente golpe que inflija daño.",
     "ability_shadow_step_name": "Paso Sombrio",
-    "ability_shadow_step_desc": "Comienza el combate con 1 carga de Evasi?n. Asestar un golpe cr?tico o usar una habilidad activa otorga 1 carga de Evasi?n (hasta 2). Se consume una carga para anular por completo un golpe recibido.",
+    "ability_shadow_step_desc": "Comienza el combate con 1 carga de Evasión. Usar una habilidad activa otorga 1 carga de Evasión (hasta 2). Se consume una carga para anular por completo un golpe recibido.",
     "ability_fireball_name": "Bola de Fuego",
     "ability_fireball_desc": "Estallido igneo que inflige 185% ATQ dano de fuego.",
     "ability_chain_lightning_name": "Cadena de Rayos",
