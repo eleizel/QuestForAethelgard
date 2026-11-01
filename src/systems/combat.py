@@ -113,7 +113,7 @@ class CombatSystem:
         ]
         if (
             self._has_signature("berserker_rage")
-            and self.player.current_hp <= self.player.max_hp * 0.50
+            and self.player.current_hp <= self.player.max_hp * 0.40
         ):
             self.berserker_threshold_triggered = True
             self.berserker_bonus_ready = True
@@ -241,7 +241,7 @@ class CombatSystem:
             self._has_signature("berserker_rage")
             and not self.berserker_threshold_triggered
             and self.player.is_alive
-            and self.player.current_hp <= self.player.max_hp * 0.50
+            and self.player.current_hp <= self.player.max_hp * 0.40
         ):
             self.berserker_threshold_triggered = True
             self.berserker_bonus_ready = True
@@ -272,29 +272,12 @@ class CombatSystem:
             if s.trigger == StatusTrigger.ON_TICK:
                 if s.on_tick_hook:
                     previous_hp = actor.current_hp
-                    burn_early_stacks = 0
-                    burn_early_damage = 0
-                    if s.id == "burn" and actor is self.enemy and self._has_signature("warlock_pact"):
-                        if len(s.stack_tick_counts) < s.stacks:
-                            s.stack_tick_counts.extend([0] * (s.stacks - len(s.stack_tick_counts)))
-                        burn_damage_per_stack = max(1, actor.max_hp * s.potency // 100)
-                        burn_early_damage = sum(
-                            min(
-                                burn_damage_per_stack,
-                                max(0, actor.current_hp - index * burn_damage_per_stack),
-                            )
-                            for index, ticks in enumerate(s.stack_tick_counts[:s.stacks])
-                            if ticks < 2
-                        )
                     log_str, dmg = s.on_tick_hook(self, actor, s)
                     self.combat_logs.append(log_str)
-                    if s.id == "burn":
-                        if len(s.stack_tick_counts) < s.stacks:
-                            s.stack_tick_counts.extend([0] * (s.stacks - len(s.stack_tick_counts)))
-                        for index in range(s.stacks):
-                            s.stack_tick_counts[index] += 1
-                        if burn_early_stacks and dmg > 0:
-                            healed = self.player.heal(min(dmg, burn_early_damage) // 2)
+                    if s.id == "burn" and actor is self.enemy and self._has_signature("warlock_pact"):
+                        if dmg > 0:
+                            heal_amt = max(1, int(dmg * 0.35))
+                            healed = self.player.heal(heal_amt)
                             if healed:
                                 self.combat_logs.append(
                                     _t("combat_daemonic_pact_heal", actor=self.player.name, heal=healed)
@@ -782,14 +765,14 @@ class CombatSystem:
         self._berserker_bonus_damage_active = False
         if berserker_bonus_this_action and dmg_dealt > 0:
             self.berserker_bonus_ready = False
-            heal_cap = int(self.player.max_hp * 0.30)
+            heal_cap = int(self.player.max_hp * 0.25)
             healed = self.player.heal(min(dmg_dealt // 2, heal_cap))
             if healed:
                 self.combat_logs.append(_t("combat_deathless_onslaught_heal", actor=self.player.name, heal=healed))
 
-        if dmg_dealt > 0 and self._has_signature("berserker_rage"):
+        if dmg_dealt > 0 and self._has_signature("berserker_rage") and not berserker_bonus_this_action:
             missing_hp_pct = max(0.0, min(1.0, 1.0 - (self.player.current_hp / max(1, self.player.max_hp))))
-            lifesteal_pct = 0.12 + 0.18 * missing_hp_pct
+            lifesteal_pct = 0.10 + 0.15 * missing_hp_pct
             lifesteal_heal = max(1, int(dmg_dealt * lifesteal_pct))
             healed = self.player.heal(lifesteal_heal)
             if healed:

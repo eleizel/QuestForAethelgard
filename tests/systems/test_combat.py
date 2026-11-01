@@ -328,7 +328,7 @@ def test_berserker_rage_threshold_and_heal(base_player, base_enemy, monkeypatch)
 
     base_player.signature_passive = get_ability_by_id("berserker_rage")
     base_player.base_stats.hp = 100
-    base_player.current_hp = 45  # Under 50% max HP at start of combat
+    base_player.current_hp = 35  # At or under 40% max HP at start of combat
     base_player.base_stats.speed = 100
     base_player.base_stats.attack = 50
     base_enemy.base_stats.speed = 10
@@ -337,19 +337,49 @@ def test_berserker_rage_threshold_and_heal(base_player, base_enemy, monkeypatch)
     base_enemy.current_hp = 200
 
     combat = CombatSystem(player=base_player, enemy=base_enemy)
-    # Starts armed because HP <= 50%
+    # Starts armed because HP <= 40%
     assert combat.berserker_threshold_triggered is True
     assert combat.berserker_bonus_ready is True
 
     combat.rng = MockRNG(random_val=0.5, uniform_val=1.0)
     combat.step()
 
-    # Berserker double damage: 50 * 2 = 100 damage
+    # Threshold action: double damage (50 * 2 = 100), heals 25% max HP (25 HP).
+    # Active lifesteal is NOT triggered on threshold action.
     assert base_enemy.current_hp == 100
-    # Lifesteal: 100 * (0.10 + 0.20 * (55/100)) = 21 HP
-    # Plus Deathless Onslaught bonus heal: min(50, 30) = 30 HP
-    # 45 + 21 + 30 = 96 HP
-    assert base_player.current_hp == 91
+    assert base_player.current_hp == 60  # 35 + 25 = 60
+
+    # Subsequent action: normal damage (50), active lifesteal triggers.
+    # Missing HP = 40%. Lifesteal = 10% + 15% * 0.40 = 16%. 50 * 16% = 8 HP.
+    combat.player_gauge = 100
+    combat.enemy_gauge = 0
+    combat.step()
+    assert base_enemy.current_hp == 50
+    assert base_player.current_hp == 68  # 60 + 8 = 68
+
+
+def test_warlock_pact_burn_and_tick_heal(base_player, base_enemy, monkeypatch):
+    import pyxel
+    monkeypatch.setattr(pyxel, "play", lambda *args, **kwargs: None)
+
+    base_player.signature_passive = get_ability_by_id("warlock_pact")
+    base_player.base_stats.hp = 100
+    base_player.current_hp = 50
+    base_enemy.base_stats.hp = 200
+    base_enemy.current_hp = 200
+
+    combat = CombatSystem(player=base_player, enemy=base_enemy)
+
+    # Taking damage from an enemy action inflicts Burn
+    combat.enemy_actions_taken = 1
+    combat.on_player_damaged(previous_hp=60, actual_damage=10)
+    assert base_enemy.has_status("burn")
+
+    # Burn tick triggers damage and heals the Warlock for 35% of damage done
+    # Enemy HP 200, 1% burn = 2 damage. 35% of 2 = 0.7 -> max(1, 0) = 1 HP heal.
+    combat._process_status_ticks(base_enemy)
+    assert base_enemy.current_hp == 199
+    assert base_player.current_hp == 51
 
 
 def test_speed_normalization_preserves_ratio_and_caps_tick_rate(base_player, base_enemy, monkeypatch):

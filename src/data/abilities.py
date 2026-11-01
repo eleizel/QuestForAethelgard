@@ -839,7 +839,7 @@ SIGNATURE_ABILITIES: list[Ability] = [
             "Basic attacks add a crit-capable 50% ATK strike that heals for 10% of its damage.",
             AbilityType.PASSIVE, AbilityRarity.EPIC),
     Ability("berserker_rage", "Deathless Onslaught",
-            "Attacks gain 10%-30% lifesteal (scales with missing HP). Once per combat below 50% HP, gain double damage action and 30% HP heal.",
+            "Attacks gain 10%-25% lifesteal (scales with missing HP). Once per combat at or below 40% HP, gain double damage action and 25% HP heal.",
             AbilityType.PASSIVE, AbilityRarity.EPIC),
     Ability("venomancer_mastery", "Perfect Toxin",
             "Enemies start combat with 2 stacks of Poison. First tick of each application detonates for +200% damage and heals you for 20% of it.",
@@ -851,7 +851,7 @@ SIGNATURE_ABILITIES: list[Ability] = [
             "Start with 15% Max HP shield. Active skills other than Arcane Bolt refresh it. Active skills gain +10% damage (max 50%).",
             AbilityType.PASSIVE, AbilityRarity.EPIC),
     Ability("warlock_pact", "Daemonic Pact",
-            "Taking damage burns the enemy once per enemy action. The first two ticks of each Burn stack heal half their damage.",
+            "Taking damage burns the enemy once per enemy action. Every tick of Burn heals the Warlock for 35% of damage dealt.",
             AbilityType.PASSIVE, AbilityRarity.EPIC),
 ]
 
