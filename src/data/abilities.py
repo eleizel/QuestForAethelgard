@@ -215,11 +215,19 @@ def modify_blood_frenzy(actor: Actor, stats: Stats) -> Stats:
 
 
 def hook_toxic_blood(actor: Actor, raw_damage: int) -> int:
-    """Take 25% less damage while the current enemy is poisoned, and heal 5% Max HP when struck."""
+    """Take 25% less damage while the current enemy is poisoned, and heal 5% Max HP when struck.
+    Also infects the attacker with Poison if they are not currently poisoned."""
     combat = getattr(actor, "combat_ref", None)
-    if combat and combat.enemy.has_status("poison"):
-        actor.heal(max(1, int(actor.max_hp * 0.05)))
-        return max(1, int(raw_damage * 0.75))
+    if combat and combat.enemy.is_alive:
+        if not combat.enemy.has_status("poison"):
+            from src.systems.status import get_status_by_id
+            attack = actor.effective_stats.attack
+            poison = get_status_by_id("poison", duration=4, potency=max(1, int(attack * 0.15)), max_stacks=3)
+            if poison:
+                combat.enemy.apply_status(poison)
+        if combat.enemy.has_status("poison"):
+            actor.heal(max(1, int(actor.max_hp * 0.05)))
+            return max(1, int(raw_damage * 0.75))
     return raw_damage
 
 

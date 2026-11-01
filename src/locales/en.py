@@ -385,7 +385,7 @@ TRANSLATIONS_EN = {
     "ability_venomous_accumulation_name": "Venomous Accumulation",
     "ability_venomous_accumulation_desc": "Poison applications stack up to 3 times and refresh its 5-tick duration.",
     "ability_toxic_blood_name": "Toxic Blood",
-    "ability_toxic_blood_desc": "Take 25% less damage while your enemy is poisoned.",
+    "ability_toxic_blood_desc": "Take 25% less damage while your enemy is poisoned. When struck, heal 5% Max HP and poison the attacker if they are unpoisoned.",
     "ability_venomous_extraction_name": "Venomous Extraction",
     "ability_venomous_extraction_desc": "Deals 60% ATK plus 30% ATK per Poison stack, then consumes Poison. 4-turn cooldown.",
     "ability_riposte_name": "Riposte",

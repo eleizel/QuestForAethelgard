@@ -385,7 +385,7 @@ TRANSLATIONS_ES = {
     "ability_venomous_accumulation_name": "Veneno Acumulativo",
     "ability_venomous_accumulation_desc": "Las aplicaciones de veneno se acumulan hasta 3 cargas y renuevan su duración de 5 pulsos.",
     "ability_toxic_blood_name": "Sangre Tóxica",
-    "ability_toxic_blood_desc": "Recibes un 25% menos de da?o mientras el rival est? envenenado.",
+    "ability_toxic_blood_desc": "Recibes un 25% menos de daño mientras el rival esté envenenado. Al recibir un golpe, te sanas un 5% de Salud Máxima y envenenas al atacante si no lo está.",
     "ability_venomous_extraction_name": "Extracción Venenosa",
     "ability_venomous_extraction_desc": "Inflige 60% ATQ más 30% ATQ por carga de veneno y lo consume. Enfriamiento: 4 turnos.",
     "ability_riposte_name": "Riposte",

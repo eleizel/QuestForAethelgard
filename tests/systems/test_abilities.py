@@ -608,6 +608,23 @@ def test_toxic_blood_reduces_damage_while_enemy_is_poisoned():
     assert player.take_damage(100) == 75
 
 
+def test_toxic_blood_poisons_attacker_and_reduces_damage():
+    from src.data.abilities import get_ability_by_id
+    from src.entities.enemy import EnemyTier
+    player = Player(name="ToxicBloodTest", class_id="rogue")
+    player.base_stats = Stats(100, 20, 0, 10, 0.0)
+    player.current_hp = 100
+    enemy = Enemy(name="UnpoisonedAttacker", stats=Stats(100, 10, 0, 10, 0.0),
+                  tier=EnemyTier.COMMON, floor_level=1, exp_reward=1, gold_reward=1)
+    CombatSystem(player, enemy)
+    passive = get_ability_by_id("toxic_blood")
+    assert passive
+    player.abilities.add_ability(passive)
+    assert not enemy.has_status("poison")
+    assert player.take_damage(100) == 75
+    assert enemy.has_status("poison")
+
+
 def test_dirty_tricks_and_hilt_strike_apply_control():
     from src.data.abilities import get_ability_by_id
     from src.entities.enemy import EnemyTier
