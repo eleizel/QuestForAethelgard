@@ -836,7 +836,7 @@ EPIC_ABILITIES: list[Ability] = [
 
 SIGNATURE_ABILITIES: list[Ability] = [
     Ability("paladin_oath", "Consecrated Strikes",
-            "Basic attacks add a crit-capable 50% ATK strike that heals for 15% of its damage.",
+            "Basic attacks add a crit-capable 50% ATK strike that heals for 18% of its damage.",
             AbilityType.PASSIVE, AbilityRarity.EPIC),
     Ability("berserker_rage", "Deathless Onslaught",
             "Attacks gain 10%-25% lifesteal (scales with missing HP). Once per combat at or below 46% HP, gain double damage action and 22% HP heal.",
@@ -845,13 +845,13 @@ SIGNATURE_ABILITIES: list[Ability] = [
             "Enemies start combat with 2 stacks of Poison. First tick of each application detonates for +200% damage and heals you for 20% of it.",
             AbilityType.PASSIVE, AbilityRarity.EPIC),
     Ability("duelist_precision", "Flowing Steel",
-            "15% innate Parry chance (-6% per equipped Parry stance). Parrying, consuming a stance, or landing a primary-hit Crit arms Flowing Steel: your next basic attack adds a 75% ATK crit-capable hit that heals 10% of damage dealt and grants +5 gauge.",
+            "15% innate Parry chance (-7% per equipped Parry stance). Parrying, consuming a stance, or landing a primary-hit Crit arms Flowing Steel: your next basic attack adds a 65% ATK crit-capable hit that heals 10% of damage dealt and grants +5 gauge.",
             AbilityType.PASSIVE, AbilityRarity.EPIC),
     Ability("archmage_focus", "Arcane Momentum",
             "Start with 15% Max HP shield. Active skills other than Arcane Bolt refresh it. Active skills gain +10% damage (max 50%).",
             AbilityType.PASSIVE, AbilityRarity.EPIC),
     Ability("warlock_pact", "Daemonic Pact",
-            "Taking damage burns the enemy once per enemy action. The first 2 ticks of each Burn stack heal 20% of their damage.",
+            "Taking damage burns the enemy once per enemy action. The first tick of each Burn stack heals 30% of its damage.",
             AbilityType.PASSIVE, AbilityRarity.EPIC),
 ]
 

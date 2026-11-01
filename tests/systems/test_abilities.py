@@ -718,12 +718,12 @@ def test_duelist_precision_parry_diminishing_returns_and_flowing_steel(monkeypat
 
     # Signature alone = 15% Parry
     assert combat.get_player_parry_chance() == pytest.approx(0.15)
-    # + Riposte (20%) -> Signature drops to 9% (0.15 - 0.06) -> 29% total
+    # + Riposte (20%) -> Signature drops to 8% (0.15 - 0.07) -> 28% total
     player.abilities.add_ability(get_ability_by_id("riposte"))
-    assert combat.get_player_parry_chance() == pytest.approx(0.29)
-    # + Whirlwind Defense (20%) -> Signature drops to 3% (0.15 - 0.12) -> 43% total
+    assert combat.get_player_parry_chance() == pytest.approx(0.28)
+    # + Whirlwind Defense (20%) -> Signature drops to 1% (0.15 - 0.14) -> 41% total
     player.abilities.add_ability(get_ability_by_id("whirlwind_defense"))
-    assert combat.get_player_parry_chance() == pytest.approx(0.43)
+    assert combat.get_player_parry_chance() == pytest.approx(0.41)
 
     # Parrying an attack halves damage and arms Flowing Steel
     player.abilities.passive.clear()
@@ -736,11 +736,11 @@ def test_duelist_precision_parry_diminishing_returns_and_flowing_steel(monkeypat
     assert player.current_hp == 40  # 20 dmg halved to 10
     assert combat.duelist_flourish_armed is True
 
-    # Next basic attack fires 100 base + 75 Flowing Steel (heals 10% = 7 HP, +5 gauge)
+    # Next basic attack fires 100 base + 65 Flowing Steel (heals 10% = 6 HP, +5 gauge)
     combat.player_gauge = 100
     combat._execute_player_attack()
-    assert enemy.current_hp == 325
-    assert player.current_hp == 47
+    assert enemy.current_hp == 335
+    assert player.current_hp == 46
     assert combat.player_gauge == 5
 
 

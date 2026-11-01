@@ -730,7 +730,7 @@ TRANSLATIONS_EN = {
     "ability_venomancer_mastery_name": "Perfect Toxin",
     "ability_venomancer_mastery_desc": "Enemies start combat with 2 stacks of Poison. The first Poison tick of each application detonates for 200% extra damage ignoring defense, and heals you for 20% of the damage.",
     "ability_duelist_precision_name": "Flowing Steel",
-    "ability_duelist_precision_desc": "15% innate Parry chance (-6% per equipped Parry stance). Parrying, consuming a stance, or landing a primary-hit Crit arms Flowing Steel: your next basic attack adds a 75% ATK crit-capable hit that heals 10% of damage dealt and grants +5 gauge.",
+    "ability_duelist_precision_desc": "15% innate Parry chance (-7% per equipped Parry stance). Parrying, consuming a stance, or landing a primary-hit Crit arms Flowing Steel: your next basic attack adds a 75% ATK crit-capable hit that heals 10% of damage dealt and grants +5 gauge.",
     "ability_archmage_focus_name": "Arcane Momentum",
     "ability_archmage_focus_desc": "Begin combat with a barrier shielding 15% Max HP. Casting any active skill other than Arcane Bolt refreshes the barrier to 15% Max HP. Archmage skills gain 10% damage per cast (up to 50%).",
     "ability_warlock_pact_name": "Daemonic Pact",

@@ -225,7 +225,7 @@ class CombatSystem:
         has_whirlwind = any(ability.id == "whirlwind_defense" for ability in self.player.all_passives)
         parry_chance = (0.20 if has_riposte else 0.0) + (0.20 if has_whirlwind else 0.0)
         if self._has_signature("duelist_precision"):
-            sig_parry = 0.15 - (0.06 if has_riposte else 0.0) - (0.06 if has_whirlwind else 0.0)
+            sig_parry = 0.15 - (0.07 if has_riposte else 0.0) - (0.07 if has_whirlwind else 0.0)
             parry_chance += max(0.0, sig_parry)
         return parry_chance
 
@@ -277,13 +277,13 @@ class CombatSystem:
                     if s.id == "burn" and actor is self.enemy and self._has_signature("warlock_pact"):
                         if len(s.stack_tick_counts) < s.stacks:
                             s.stack_tick_counts.extend([0] * (s.stacks - len(s.stack_tick_counts)))
-                        early_stacks = sum(1 for ticks in s.stack_tick_counts[:s.stacks] if ticks < 2)
+                        early_stacks = sum(1 for ticks in s.stack_tick_counts[:s.stacks] if ticks < 1)
                         for index in range(s.stacks):
                             s.stack_tick_counts[index] += 1
                         if early_stacks > 0 and dmg > 0:
                             dmg_per_stack = max(1, dmg // max(1, s.stacks))
                             early_dmg = min(dmg, early_stacks * dmg_per_stack)
-                            heal_amt = max(1, int(early_dmg * 0.20))
+                            heal_amt = max(1, int(early_dmg * 0.30))
                             healed = self.player.heal(heal_amt)
                             if healed:
                                 self.combat_logs.append(
@@ -752,7 +752,7 @@ class CombatSystem:
         if duelist_flourish_ready and dmg_dealt > 0:
             # The extra strike applies weapon on-hit effects, heals 10%, and grants +5 gauge.
             if self.enemy.is_alive:
-                extra_damage, extra_crit = self._signature_bonus_hit(0.75, "duelist_precision")
+                extra_damage, extra_crit = self._signature_bonus_hit(0.65, "duelist_precision")
                 dmg_dealt += extra_damage
                 is_crit = is_crit or extra_crit
         elif duelist_flourish_ready:
@@ -826,7 +826,7 @@ class CombatSystem:
                             _t("combat_status_applied", target=self.enemy.name, effect=effect.localized_name)
                         )
             if signature_id == "paladin_oath":
-                self.player.heal(max(1, int(damage * 0.15)))
+                self.player.heal(max(1, int(damage * 0.18)))
             elif signature_id == "duelist_precision":
                 self.player.heal(max(1, int(damage * 0.10)))
                 self.player_gauge = min(100, self.player_gauge + 5)
