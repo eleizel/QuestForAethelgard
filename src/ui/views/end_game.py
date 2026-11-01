@@ -23,7 +23,7 @@ from src.config import (
     COLOR_YELLOW,
     SCREEN_WIDTH, SND_VICTORY, SND_DEFEAT, SND_CLICK,
 )
-from src.core.audio import audio
+from src.ui.audio import audio
 from src.core.i18n import i18n
 from src.ui.renderer import Renderer
 from src.ui.views.base import View

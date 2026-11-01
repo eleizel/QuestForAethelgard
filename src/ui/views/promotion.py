@@ -27,7 +27,7 @@ from src.config import (
     SND_CLICK,
     SND_VICTORY, COLOR_PURPLE, COLOR_PINK,
 )
-from src.core.audio import audio
+from src.ui.audio import audio
 from src.core.game_state import GameMode
 from src.systems.progression_service import ProgressionService
 from src.core.i18n import i18n

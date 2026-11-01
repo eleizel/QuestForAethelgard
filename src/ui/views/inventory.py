@@ -19,7 +19,7 @@ from src.config import (
     COLOR_WHITE,
     COLOR_YELLOW,
 )
-from src.core.audio import audio
+from src.ui.audio import audio
 from src.core.i18n import i18n, t
 from src.systems.inventory import MAX_BELT_SLOTS, MAX_POUCH_SLOTS, EquipSlot
 from src.ui.renderer import Renderer

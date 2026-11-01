@@ -14,13 +14,9 @@ SRC_ROOT = Path(__file__).resolve().parent.parent / "src"
 # Directories that must remain strictly pure domain logic
 DOMAIN_DIRS = ["entities", "data", "systems", "core"]
 
-# Files that currently have known presentation/audio coupling and are scheduled for decoupling:
-# - src/core/audio.py: Pyxel audio driver (Target: Phase 1 Adapter Pattern)
-# - src/core/engine.py: Pyxel game loop runner (Target: Phase 6 Multi-Frontend Facade)
-KNOWN_LEGACY_EXCEPTIONS = {
-    "src/core/audio.py": "Scheduled for Phase 1 (AudioAdapter)",
-    "src/core/engine.py": "Scheduled for Phase 6 (GameSession Facade / Engine decoupling)",
-}
+# All domain files in src/core, src/entities, src/systems, and src/data are 100% decoupled.
+# Zero legacy exceptions remain.
+KNOWN_LEGACY_EXCEPTIONS: dict[str, str] = {}
 
 FORBIDDEN_MODULES = ("pyxel", "pygame", "src.ui")
 

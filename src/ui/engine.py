@@ -7,6 +7,7 @@ import os
 import pyxel
 
 from src.config import BG_COLOR, FPS, RESOURCE_PATH, SCREEN_HEIGHT, SCREEN_WIDTH, WINDOW_TITLE
+from src.core.session import GameSession
 from src.core.game_state import GameState
 from src.ui.renderer import Renderer
 from src.ui.views import ViewManager
@@ -37,7 +38,8 @@ class Engine:
             except (RuntimeError, ValueError) as e:
                 print(f"Warning: Could not load resource file {abs_resource_path}: {e}")
 
-        self.game_state: GameState = GameState()
+        self.session: GameSession = GameSession()
+        self.game_state: GameState = self.session.state
         self.renderer: Renderer = Renderer()
         self.view_manager: ViewManager = ViewManager()
 

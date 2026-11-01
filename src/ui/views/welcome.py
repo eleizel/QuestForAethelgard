@@ -20,7 +20,7 @@ from src.config import (
     COLOR_YELLOW,
     SCREEN_WIDTH,
 )
-from src.core.audio import audio
+from src.ui.audio import audio
 from src.core.game_state import GameMode
 from src.core.i18n import i18n, t
 from src.ui.renderer import Renderer
@@ -208,7 +208,7 @@ class WelcomeView(View):
             text_col=COLOR_YELLOW,
         )
 
-        from src.core.audio import audio
+        from src.ui.audio import audio
         # Music Toggle Button [MUS]
         m_col = COLOR_YELLOW if audio.music_enabled else COLOR_GRAY
         m_border = COLOR_YELLOW if audio.music_enabled else COLOR_NAVY

@@ -25,7 +25,7 @@ from src.config import (
     COLOR_YELLOW,
     SCREEN_WIDTH,
 )
-from src.core.audio import audio
+from src.ui.audio import audio
 from src.config import SND_CLICK, SND_HEAL
 from src.entities.enemy import EnemyTier
 from src.core.i18n import t

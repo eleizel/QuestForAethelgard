@@ -26,7 +26,7 @@ from src.config import (
     SCREEN_WIDTH,
 )
 from src.config import SND_CLICK, SND_DOOR
-from src.core.audio import audio
+from src.ui.audio import audio
 from src.core.game_state import GameMode
 from src.core.i18n import i18n, t
 from src.systems.inventory import MAX_POUCH_SLOTS

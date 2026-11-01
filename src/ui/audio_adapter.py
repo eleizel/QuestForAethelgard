@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from src.core.events import AudioCue, AudioCueEvent, event_bus
-from src.core.audio import audio
+from src.ui.audio import audio
 from src.config import (
     SND_HIT,
     SND_CRIT,
