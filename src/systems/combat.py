@@ -275,8 +275,15 @@ class CombatSystem:
                     log_str, dmg = s.on_tick_hook(self, actor, s)
                     self.combat_logs.append(log_str)
                     if s.id == "burn" and actor is self.enemy and self._has_signature("warlock_pact"):
-                        if dmg > 0:
-                            heal_amt = max(1, int(dmg * 0.18))
+                        if len(s.stack_tick_counts) < s.stacks:
+                            s.stack_tick_counts.extend([0] * (s.stacks - len(s.stack_tick_counts)))
+                        early_stacks = sum(1 for ticks in s.stack_tick_counts[:s.stacks] if ticks < 3)
+                        for index in range(s.stacks):
+                            s.stack_tick_counts[index] += 1
+                        if early_stacks > 0 and dmg > 0:
+                            dmg_per_stack = max(1, dmg // max(1, s.stacks))
+                            early_dmg = min(dmg, early_stacks * dmg_per_stack)
+                            heal_amt = max(1, int(early_dmg * 0.40))
                             healed = self.player.heal(heal_amt)
                             if healed:
                                 self.combat_logs.append(
@@ -765,7 +772,7 @@ class CombatSystem:
         self._berserker_bonus_damage_active = False
         if berserker_bonus_this_action and dmg_dealt > 0:
             self.berserker_bonus_ready = False
-            heal_cap = int(self.player.max_hp * 0.25)
+            heal_cap = int(self.player.max_hp * 0.28)
             healed = self.player.heal(min(dmg_dealt // 2, heal_cap))
             if healed:
                 self.combat_logs.append(_t("combat_deathless_onslaught_heal", actor=self.player.name, heal=healed))
