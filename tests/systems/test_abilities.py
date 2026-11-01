@@ -299,13 +299,13 @@ def test_rogue_standard_effects(monkeypatch):
     assert getattr(player, "_next_strike_bonus", False) is False
     assert combat.damage_enemy(100) == 100
 
-    # Shadow Step updates the combat gauge through the combat reference.
+    # Shadow Step grants Evade charges that completely negate incoming damage.
     shadow_step = get_ability_by_id("shadow_step")
     assert shadow_step is not None
     player.abilities.add_ability(shadow_step)
-    combat.player_gauge = 10
-    player.take_damage(10)
-    assert combat.player_gauge == 25
+    player.evade_charges = 1
+    assert player.take_damage(50) == 0
+    assert player.evade_charges == 0
 
 
 def test_ability_registry_and_retrieval():
@@ -605,7 +605,7 @@ def test_toxic_blood_reduces_damage_while_enemy_is_poisoned():
     assert passive and poison
     player.abilities.add_ability(passive)
     enemy.apply_status(poison)
-    assert player.take_damage(100) == 90
+    assert player.take_damage(100) == 75
 
 
 def test_dirty_tricks_and_hilt_strike_apply_control():

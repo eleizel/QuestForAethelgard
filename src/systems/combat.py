@@ -122,13 +122,19 @@ class CombatSystem:
             self.combat_logs.append(_t("combat_deathless_onslaught_ready", actor=self.player.name))
 
         if self._has_signature("archmage_focus"):
-            self.player.shield = int(self.player.max_hp * 0.20)
+            self.player.shield = int(self.player.max_hp * 0.15)
             self._record_signature_proc("archmage_focus")
             self.combat_logs.append(
                 _t("combat_archmage_barrier_active", actor=self.player.name, shield=self.player.shield)
             )
         else:
             self.player.shield = 0
+
+        if any(a.id == "shadow_step" for a in self.player.all_passives):
+            self.player.evade_charges = 1
+            self.combat_logs.append(_t("combat_shadow_step_ready", actor=self.player.name))
+        else:
+            self.player.evade_charges = 0
 
         if self._has_signature("venomancer_mastery") and self.enemy.is_alive:
             from src.systems.status import get_status_by_id
@@ -305,6 +311,11 @@ class CombatSystem:
                             self.combat_logs.append(
                                 _t("combat_perfect_toxin", target=actor.name, damage=detonation)
                             )
+                            healed = self.player.heal(max(1, int(detonation * 0.20)))
+                            if healed:
+                                self.combat_logs.append(
+                                    _t("combat_perfect_toxin_heal", actor=self.player.name, heal=healed)
+                                )
                             self._record_signature_proc("venomancer_mastery")
                     if actor is self.enemy and actor.current_hp < previous_hp:
                         self._check_enemy_threshold_hooks(previous_hp, actor.current_hp)
@@ -330,6 +341,7 @@ class CombatSystem:
             self._trigger_enemy_death_hook()
             self.arcane_reservoir_charges = 0
             self.player.shield = 0
+            self.player.evade_charges = 0
             if not self.player.is_alive:
                 self.result = CombatResult.PLAYER_DEFEAT
                 self.combat_logs.append(_t("combat_player_defeat", player=self.player.name))
@@ -343,6 +355,7 @@ class CombatSystem:
         elif not self.player.is_alive:
             self.arcane_reservoir_charges = 0
             self.player.shield = 0
+            self.player.evade_charges = 0
             self.result = CombatResult.PLAYER_DEFEAT
             self.combat_logs.append(_t("combat_player_defeat", player=self.player.name))
             audio.play_sfx(SND_DEFEAT)  # Sound 5: Defeat sting
@@ -587,6 +600,15 @@ class CombatSystem:
                     del self.cooldowns[ab_id]
 
         if self.queued_ability:
+            if self._has_signature("archmage_focus") and self.queued_ability.id != "arcane_bolt":
+                target_shield = int(self.player.max_hp * 0.15)
+                if self.player.shield < target_shield:
+                    self.player.shield = target_shield
+                    self._record_signature_proc("archmage_focus")
+                    self.combat_logs.append(
+                        _t("combat_archmage_barrier_refreshed", actor=self.player.name, shield=self.player.shield)
+                    )
+
             # Set this specific ability's cooldown
             if self.queued_ability.cooldown > 0:
                 self.cooldowns[self.queued_ability.id] = self.queued_ability.cooldown
@@ -754,6 +776,24 @@ class CombatSystem:
             healed = self.player.heal(min(dmg_dealt // 2, heal_cap))
             if healed:
                 self.combat_logs.append(_t("combat_deathless_onslaught_heal", actor=self.player.name, heal=healed))
+
+        if dmg_dealt > 0 and self._has_signature("berserker_rage"):
+            missing_hp_pct = max(0.0, min(1.0, 1.0 - (self.player.current_hp / max(1, self.player.max_hp))))
+            lifesteal_pct = 0.10 + 0.20 * missing_hp_pct
+            lifesteal_heal = max(1, int(dmg_dealt * lifesteal_pct))
+            healed = self.player.heal(lifesteal_heal)
+            if healed:
+                self.combat_logs.append(
+                    _t("combat_berserker_lifesteal", actor=self.player.name, heal=healed)
+                )
+                self._record_signature_proc("berserker_rage")
+
+        if (not is_basic_attack or is_crit) and any(a.id == "shadow_step" for a in self.player.all_passives):
+            if getattr(self.player, "evade_charges", 0) < 2:
+                self.player.evade_charges = getattr(self.player, "evade_charges", 0) + 1
+                self.combat_logs.append(
+                    _t("combat_shadow_step_gained", actor=self.player.name, stacks=self.player.evade_charges)
+                )
 
         if self.player.abilities.has_veterans_instincts and is_crit:
             self.player_gauge = min(100, self.player_gauge + 20)

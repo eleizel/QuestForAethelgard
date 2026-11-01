@@ -35,6 +35,7 @@ class Player(Actor):
         self.signature_passive = None
         self.promotion_due = False
         self.shield: int = 0
+        self.evade_charges: int = 0
 
         from src.data.abilities import get_ability_by_id
         for ab_id in class_def.starting_abilities:
@@ -96,6 +97,16 @@ class Player(Actor):
 
     def take_damage(self, raw_damage: int, defense_penetration: float = 0.0) -> int:
         """Apply damage mitigated by defense and passive abilities."""
+        if getattr(self, "evade_charges", 0) > 0 and raw_damage > 0:
+            self.evade_charges -= 1
+            combat = getattr(self, "combat_ref", None)
+            if combat:
+                from src.core.i18n import t
+                combat.combat_logs.append(
+                    t("combat_shadow_step_evaded", actor=self.name, remaining=self.evade_charges)
+                )
+            return 0
+
         from src.core.math_utils import calculate_damage
         previous_hp = self.current_hp
         if getattr(self, "_reckless_assault_vulnerable", False):
@@ -137,11 +148,7 @@ class Player(Actor):
         actual_damage = min(self.current_hp, mitigated)
         self.current_hp -= actual_damage
 
-        # Shadow Step triggers only when the player actually loses HP, not on fully mitigated hits.
-        if actual_damage > 0 and any(a.id == "shadow_step" for a in self.all_passives):
-            combat = getattr(self, "combat_ref", None)
-            if combat:
-                combat.player_gauge = min(100, combat.player_gauge + 15)
+
 
         if actual_damage > 0 and self.consume_stance("riposte") and self.is_alive:
             combat = getattr(self, "combat_ref", None)

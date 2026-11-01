@@ -215,10 +215,10 @@ def modify_blood_frenzy(actor: Actor, stats: Stats) -> Stats:
 
 
 def hook_toxic_blood(actor: Actor, raw_damage: int) -> int:
-    """Take 10% less damage while the current enemy is poisoned."""
+    """Take 25% less damage while the current enemy is poisoned."""
     combat = getattr(actor, "combat_ref", None)
     if combat and combat.enemy.has_status("poison"):
-        return max(1, int(raw_damage * 0.90))
+        return max(1, int(raw_damage * 0.75))
     return raw_damage
 
 
@@ -617,6 +617,14 @@ def hook_phoenix_rebirth(actor: Actor, raw_damage: int) -> int:
     if actor.current_hp - raw_damage <= 0 and not getattr(actor, "_phoenix_used", False):
         setattr(actor, "_phoenix_used", True)
         actor.current_hp = int(actor.max_hp * 0.30)
+        shield_amount = int(actor.max_hp * 0.15)
+        actor.shield = max(getattr(actor, "shield", 0), shield_amount)
+        combat = getattr(actor, "combat_ref", None)
+        if combat:
+            from src.core.i18n import t
+            combat.combat_logs.append(
+                t("combat_phoenix_rebirth", actor=actor.name, hp=actor.current_hp, shield=shield_amount)
+            )
         return 0
     return raw_damage
 
@@ -695,7 +703,7 @@ STANDARD_ABILITIES: list[Ability] = [
             description="Critical hits empower your next damaging strike by 25%.", ability_type=AbilityType.PASSIVE,
             rarity=AbilityRarity.STANDARD, required_class="rogue",
             on_attack_dealt_hook=hook_exposed_weakness, affinities=("duelist",)),
-    Ability(id="shadow_step", name="Shadow Step", description="When you lose HP, gain 15 player action gauge.",
+    Ability(id="shadow_step", name="Shadow Step", description="Begin combat with 1 Evade. Crits or active skills grant +1 Evade (max 2). Negates incoming hits.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue"),
 
     Ability(id="venomous_accumulation", name="Venomous Accumulation",
@@ -703,7 +711,7 @@ STANDARD_ABILITIES: list[Ability] = [
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
             affinities=("venomancer",)),
     Ability(id="toxic_blood", name="Toxic Blood",
-            description="Take 10% less damage while your enemy is poisoned.",
+            description="Take 25% less damage while your enemy is poisoned.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.STANDARD, required_class="rogue",
             on_damage_taken_hook=hook_toxic_blood, affinities=("venomancer",)),
     Ability(id="venomous_extraction", name="Venomous Extraction",
@@ -812,7 +820,7 @@ EPIC_ABILITIES: list[Ability] = [
     Ability(id="time_dilation", name="Time Dilation", description="+15% ATK, +15% Speed, +15% Crit Chance.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.EPIC, required_class="mage",
             modify_stats_hook=modify_time_dilation),
-    Ability(id="phoenix_rebirth", name="Phoenix Rebirth", description="Once per combat, lethal blow heals to 30% HP.",
+    Ability(id="phoenix_rebirth", name="Phoenix Rebirth", description="Once per combat, lethal blow heals to 30% HP and grants a 15% Max HP shield.",
             ability_type=AbilityType.PASSIVE, rarity=AbilityRarity.EPIC, required_class="mage",
             on_damage_taken_hook=hook_phoenix_rebirth),
 ]
@@ -822,16 +830,16 @@ SIGNATURE_ABILITIES: list[Ability] = [
             "Basic attacks add a crit-capable 50% ATK strike that heals for 10% of its damage.",
             AbilityType.PASSIVE, AbilityRarity.EPIC),
     Ability("berserker_rage", "Deathless Onslaught",
-            "Once per combat below 30% HP, gain a bonus action. Your next damaging action deals double damage and heals for half, up to 25% max HP.",
+            "Attacks gain 10%-30% lifesteal (scales with missing HP). Once per combat below 50% HP, gain double damage action and 30% HP heal.",
             AbilityType.PASSIVE, AbilityRarity.EPIC),
     Ability("venomancer_mastery", "Perfect Toxin",
-            "Enemies start combat with 2 stacks of Poison. The first Poison tick of each application detonates for an additional 200% damage, ignoring defense.",
+            "Enemies start combat with 2 stacks of Poison. First tick of each application detonates for +200% damage and heals you for 20% of it.",
             AbilityType.PASSIVE, AbilityRarity.EPIC),
     Ability("duelist_precision", "Flowing Steel",
             "15% innate Parry chance (-5% per equipped Parry stance). Parrying, consuming a stance, or landing a primary-hit Crit arms Flowing Steel: your next basic attack adds a 75% ATK crit-capable hit that heals 10% of damage dealt and grants +5 gauge.",
             AbilityType.PASSIVE, AbilityRarity.EPIC),
     Ability("archmage_focus", "Arcane Momentum",
-            "Archmage and hybrid active skills gain 10% damage per cast, stacking up to 50% for the combat.",
+            "Start with 15% Max HP shield. Active skills other than Arcane Bolt refresh it. Active skills gain +10% damage (max 50%).",
             AbilityType.PASSIVE, AbilityRarity.EPIC),
     Ability("warlock_pact", "Daemonic Pact",
             "Taking damage burns the enemy once per enemy action. The first two ticks of each Burn stack heal half their damage.",

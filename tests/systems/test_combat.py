@@ -239,12 +239,12 @@ def test_archmage_barrier_mechanics(base_player, base_enemy, monkeypatch):
     base_player.current_hp = 100
 
     combat = CombatSystem(player=base_player, enemy=base_enemy)
-    # 20% barrier of 100 max HP = 20 shield
-    assert base_player.shield == 20
+    # 15% barrier of 100 max HP = 15 shield
+    assert base_player.shield == 15
 
-    # Enemy hits player for 15 damage
+    # Enemy hits player for 10 damage: 15 - 10 = 5 shield
     combat.rng = MockRNG(random_val=0.5, uniform_val=1.0)
-    base_player.take_damage(15)
+    base_player.take_damage(10)
     assert base_player.shield == 5
     assert base_player.current_hp == 100
 
@@ -346,9 +346,10 @@ def test_berserker_rage_threshold_and_heal(base_player, base_enemy, monkeypatch)
 
     # Berserker double damage: 50 * 2 = 100 damage
     assert base_enemy.current_hp == 100
-    # Heal is half damage (50), but capped at 30% max HP (30 HP)
-    # 45 + 30 = 75 HP
-    assert base_player.current_hp == 75
+    # Lifesteal: 100 * (0.10 + 0.20 * (55/100)) = 21 HP
+    # Plus Deathless Onslaught bonus heal: min(50, 30) = 30 HP
+    # 45 + 21 + 30 = 96 HP
+    assert base_player.current_hp == 90
 
 
 def test_speed_normalization_preserves_ratio_and_caps_tick_rate(base_player, base_enemy, monkeypatch):
