@@ -271,3 +271,35 @@ class GameState:
             from src.core.save_manager import save_manager
             save_manager.delete_save()
             self.switch_mode(GameMode.GAME_OVER)
+
+    def reset_to_title(self) -> None:
+        """Reset session to title screen (WELCOME mode), clearing active run data."""
+        self.player = Player(name="Sir Aethelgard")
+        self.map_graph = None
+        self.current_mode = GameMode.WELCOME
+        self.previous_mode = GameMode.WELCOME
+        self.combat = None
+        self.current_event = None
+        self.current_event_text = ""
+        self.floor = 1
+        self.act = 1
+        self.biome_route_mode = "FATE"
+        self.current_biome = "arboretum"
+        self.pending_loot = []
+        self.merchant_stock = []
+        self.last_gold_earned = 0
+        self.last_exp_earned = 0
+        self.promotion_return_mode = None
+        self.overlay_return_modes.clear()
+
+    def can_open_overlay(self) -> bool:
+        """Check if modal overlays (Inventory, Character Sheet) are permitted."""
+        overlay_modes = (
+            GameMode.MAP, GameMode.COMBAT, GameMode.EVENTS, GameMode.INVENTORY,
+            GameMode.CHARACTER, GameMode.LOOT, GameMode.SHOP,
+        )
+        if self.current_mode not in overlay_modes:
+            return False
+        if self.current_mode == GameMode.COMBAT and self.combat is not None and self.combat.is_qte_active():
+            return False
+        return True

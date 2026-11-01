@@ -45,7 +45,7 @@ class EndGameView(View):
         if pyxel.btnp(pyxel.KEY_RETURN) or pyxel.btnp(pyxel.KEY_SPACE) or Renderer.is_clicked(btn_x, btn_y, btn_w, btn_h):
             audio.play_sfx(SND_CLICK)
             self._played_end_sound = False
-            game_state.__init__()
+            game_state.reset_to_title()
 
     def _draw_bold_letter(self, x: int, y: int, char: str, col: int) -> int:
         """Render chunky 6x9 retro title characters for headlines with drop-shadow."""

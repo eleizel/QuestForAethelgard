@@ -29,6 +29,7 @@ from src.config import (
 )
 from src.core.audio import audio
 from src.core.game_state import GameMode
+from src.systems.progression_service import ProgressionService
 from src.core.i18n import i18n
 from src.ui.renderer import Renderer
 from src.ui.views.base import View
@@ -57,21 +58,14 @@ class PromotionView(View):
             self.selected_index = index
             audio.play_sfx(SND_CLICK)
             return False
-        if game_state.player.promote(class_id):
-            audio.play_sfx(SND_VICTORY)
+        res = ProgressionService.promote_class(game_state.player, class_id)
+        if res.success:
             game_state.switch_mode(GameMode.ABILITY_CHOICE)
             return True
         return False
 
     def _recommended_class(self, game_state: GameState) -> str:
-        promotions = game_state.player.available_promotions()
-        scores = {class_id: 0 for class_id in promotions}
-        for ability in (*game_state.player.abilities.active, *game_state.player.abilities.passive):
-            for class_id in promotions:
-                scores[class_id] += ability.affinities.count(class_id)
-        if not scores:
-            return ""
-        return max(promotions, key=lambda cid: (scores[cid], -promotions.index(cid)))
+        return ProgressionService.get_recommended_promotion(game_state.player)
 
     def update(self, game_state: GameState) -> None:
         promotions = game_state.player.available_promotions()

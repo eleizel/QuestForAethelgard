@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import pyxel
 
+from src.systems.shop_service import ShopService
 from src.config import (
     COLOR_BLACK,
     COLOR_BROWN,
@@ -98,7 +99,7 @@ class ShopView(View):
             pouch = game_state.player.inventory.pouch
             if pouch and 0 <= self.sell_cursor < len(pouch):
                 item = pouch[self.sell_cursor]
-                sell_val = max(5, item.gold_value // 2)
+                sell_val = ShopService.calculate_sell_price(item)
                 return item, sell_val, False
         return None, 0, False
 
@@ -159,23 +160,11 @@ class ShopView(View):
                 self.buy_cursor = min(max(0, len(stock) - 1), self.buy_cursor + 1)
 
             if len(stock) > 0 and buy_triggered:
-                if 0 <= self.buy_cursor < len(stock):
-                    item, price = stock[self.buy_cursor]
-                    if game_state.player.gold < price:
-                        self.feedback_msg = t("shop_no_gold")
-                        self.feedback_success = False
-                    elif len(game_state.player.inventory.pouch) >= MAX_POUCH_SLOTS:
-                        self.feedback_msg = t("msg_pouch_full")
-                        self.feedback_success = False
-                    else:
-                        game_state.player.gold -= price
-                        game_state.player.inventory.add_to_pouch(item)
-                        stock.pop(self.buy_cursor)
-                        audio.play_sfx(SND_CLICK)
-                        self.feedback_msg = t("shop_purchased", item=item.localized_name)
-                        self.feedback_success = True
-                        if self.buy_cursor >= len(stock):
-                            self.buy_cursor = max(0, len(stock) - 1)
+                res = ShopService.buy_item(game_state.player, stock, self.buy_cursor)
+                self.feedback_msg = res.message
+                self.feedback_success = res.success
+                if res.success and self.buy_cursor >= len(stock):
+                    self.buy_cursor = max(0, len(stock) - 1)
 
         # ---------------------------------------------------------------------
         # SELL TAB LOGIC
@@ -206,17 +195,11 @@ class ShopView(View):
                 self.sell_cursor = min(max(0, len(pouch) - 1), self.sell_cursor + 1)
 
             if len(pouch) > 0 and sell_triggered:
-                if 0 <= self.sell_cursor < len(pouch):
-                    item = pouch[self.sell_cursor]
-                    sell_value = max(5, item.gold_value // 2)
-                    popped = game_state.player.inventory.remove_from_pouch(self.sell_cursor)
-                    if popped:
-                        game_state.player.gold += sell_value
-                        audio.play_sfx(SND_CLICK)
-                        self.feedback_msg = t("shop_sold", item=popped.localized_name, val=sell_value)
-                        self.feedback_success = True
-                        if self.sell_cursor >= len(game_state.player.inventory.pouch):
-                            self.sell_cursor = max(0, len(game_state.player.inventory.pouch) - 1)
+                res = ShopService.sell_item(game_state.player, self.sell_cursor)
+                self.feedback_msg = res.message
+                self.feedback_success = res.success
+                if res.success and self.sell_cursor >= len(game_state.player.inventory.pouch):
+                    self.sell_cursor = max(0, len(game_state.player.inventory.pouch) - 1)
 
     def _draw_merchant_scene(self, vx: int, vy: int, vw: int, vh: int) -> None:
         """Render the atmospheric shopkeeper alcove with wall shelves, lantern, counter, and merchant."""
