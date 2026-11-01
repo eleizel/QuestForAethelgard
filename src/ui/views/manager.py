@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import pyxel
 
 from src.core.game_state import GameMode
+from src.ui.audio_adapter import audio_adapter
 from src.ui.renderer import Renderer
 from src.ui.views.ability_choice import AbilityChoiceView
 from src.ui.views.base import View
@@ -30,6 +31,7 @@ class ViewManager:
     """Manages view selection and delegates update/render calls."""
 
     def __init__(self) -> None:
+        audio_adapter.attach()
         self.views: dict[GameMode, View] = {
             GameMode.WELCOME: WelcomeView(),
             GameMode.CLASS_SELECT: ClassSelectView(),

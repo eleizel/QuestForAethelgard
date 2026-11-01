@@ -15,11 +15,9 @@ SRC_ROOT = Path(__file__).resolve().parent.parent / "src"
 DOMAIN_DIRS = ["entities", "data", "systems", "core"]
 
 # Files that currently have known presentation/audio coupling and are scheduled for decoupling:
-# - src/systems/combat.py: imports pyxel for audio cues (Target: Phase 1)
 # - src/core/audio.py: Pyxel audio driver (Target: Phase 1 Adapter Pattern)
 # - src/core/engine.py: Pyxel game loop runner (Target: Phase 6 Multi-Frontend Facade)
 KNOWN_LEGACY_EXCEPTIONS = {
-    "src/systems/combat.py": "Scheduled for Phase 1 (Observer Pattern / AudioCue events)",
     "src/core/audio.py": "Scheduled for Phase 1 (AudioAdapter)",
     "src/core/engine.py": "Scheduled for Phase 6 (GameSession Facade / Engine decoupling)",
 }
