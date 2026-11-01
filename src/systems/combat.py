@@ -304,6 +304,14 @@ class CombatSystem:
                         self.venom_poison_ticks += 1
                         app_ticks = s.stack_tick_counts[0] if s.stack_tick_counts else 0
                         s.stack_tick_counts = [app_ticks + 1]
+                        # Venomancer leeches 25% of all poison damage
+                        tick_heal = max(1, int(dmg * 0.25))
+                        healed_tick = self.player.heal(tick_heal)
+                        if healed_tick:
+                            self.combat_logs.append(
+                                _t("combat_venom_leech_heal", actor=self.player.name, heal=healed_tick)
+                            )
+
                         if app_ticks == 0 and dmg > 0 and actor.is_alive:
                             detonation = min(actor.current_hp, max(0, dmg * 2))
                             actor.current_hp -= detonation
@@ -311,7 +319,7 @@ class CombatSystem:
                             self.combat_logs.append(
                                 _t("combat_perfect_toxin", target=actor.name, damage=detonation)
                             )
-                            healed = self.player.heal(max(1, int(detonation * 0.20)))
+                            healed = self.player.heal(max(1, int(detonation * 0.50)))
                             if healed:
                                 self.combat_logs.append(
                                     _t("combat_perfect_toxin_heal", actor=self.player.name, heal=healed)
@@ -601,9 +609,11 @@ class CombatSystem:
 
         if self.queued_ability:
             if self._has_signature("archmage_focus") and self.queued_ability.id != "arcane_bolt":
-                target_shield = int(self.player.max_hp * 0.15)
-                if self.player.shield < target_shield:
-                    self.player.shield = target_shield
+                refresh_amount = int(self.player.max_hp * 0.08)
+                cap_shield = int(self.player.max_hp * 0.15)
+                new_shield = min(cap_shield, self.player.shield + refresh_amount)
+                if new_shield > self.player.shield:
+                    self.player.shield = new_shield
                     self._record_signature_proc("archmage_focus")
                     self.combat_logs.append(
                         _t("combat_archmage_barrier_refreshed", actor=self.player.name, shield=self.player.shield)
@@ -779,7 +789,7 @@ class CombatSystem:
 
         if dmg_dealt > 0 and self._has_signature("berserker_rage"):
             missing_hp_pct = max(0.0, min(1.0, 1.0 - (self.player.current_hp / max(1, self.player.max_hp))))
-            lifesteal_pct = 0.10 + 0.20 * missing_hp_pct
+            lifesteal_pct = 0.08 + 0.12 * missing_hp_pct
             lifesteal_heal = max(1, int(dmg_dealt * lifesteal_pct))
             healed = self.player.heal(lifesteal_heal)
             if healed:

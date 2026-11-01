@@ -739,6 +739,7 @@ TRANSLATIONS_ES = {
     "combat_archmage_barrier_active": "¡La Barrera Arcana de {actor} se activa con {shield} de escudo!",
     "combat_berserker_lifesteal": "{actor} absorbe {heal} PV con furia sedienta de sangre.",
     "combat_perfect_toxin_heal": "{actor} absorbe {heal} PV de la detonaci?n venenosa.",
+    "combat_venom_leech_heal": "{actor} drena {heal} PV del veneno residual.",
     "combat_archmage_barrier_refreshed": "?La barrera arcana de {actor} se restaura a {shield} de escudo!",
     "combat_shadow_step_ready": "{actor} se desliza entre las sombras con 1 carga de Evasi?n.",
     "combat_shadow_step_gained": "?{actor} danza entre sombras y gana 1 carga de Evasi?n! ({stacks} en total)",

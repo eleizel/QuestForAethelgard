@@ -739,6 +739,7 @@ TRANSLATIONS_EN = {
     "combat_archmage_barrier_active": "{actor}'s Arcane Barrier activates with {shield} shield!",
     "combat_berserker_lifesteal": "{actor} siphons {heal} HP with bloodthirsty fury.",
     "combat_perfect_toxin_heal": "{actor} absorbs {heal} HP from the venomous explosion.",
+    "combat_venom_leech_heal": "{actor} leeches {heal} HP from lingering venom.",
     "combat_archmage_barrier_refreshed": "{actor}'s Arcane Barrier is restored to {shield} shield!",
     "combat_shadow_step_ready": "{actor} slips into the shadows with 1 Evade charge.",
     "combat_shadow_step_gained": "{actor} dances through shadows, gaining an Evade charge! ({stacks} total)",
