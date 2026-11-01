@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from src.entities.enemy import EnemyTier, generate_enemy
 from src.entities.player import Player
+from src.core.fsm import GameStateMachine
 from src.systems.combat import CombatResult, CombatSystem
 from src.systems.inventory import Item
 from src.systems.map_gen import MapGraph, MapNode, NodeType, generate_spire_map
@@ -40,6 +41,7 @@ class GameState:
     """Master state container managing active subsystems and screen transitions."""
 
     def __init__(self) -> None:
+        self.fsm: GameStateMachine = GameStateMachine(initial_mode=GameMode.WELCOME)
         self.player: Player = Player(name="Sir Aethelgard")
         self.map_graph: MapGraph | None = None
         self.current_mode: GameMode = GameMode.WELCOME
@@ -146,9 +148,10 @@ class GameState:
             save_manager.save_game(self)
 
     def switch_mode(self, new_mode: GameMode) -> None:
-        """Transition the active game mode."""
-        self.previous_mode = self.current_mode
-        self.current_mode = new_mode
+        """Transition the active game mode using the state machine."""
+        self.fsm.transition_to(self, new_mode, force=True)
+        self.previous_mode = self.fsm.previous_mode
+        self.current_mode = self.fsm.current_mode
 
     def _toggle_menu_overlay(self, target: GameMode) -> None:
         """Open an inventory or character overlay, or return to its previous view."""
@@ -274,6 +277,7 @@ class GameState:
 
     def reset_to_title(self) -> None:
         """Reset session to title screen (WELCOME mode), clearing active run data."""
+        self.fsm = GameStateMachine(initial_mode=GameMode.WELCOME)
         self.player = Player(name="Sir Aethelgard")
         self.map_graph = None
         self.current_mode = GameMode.WELCOME
@@ -294,12 +298,4 @@ class GameState:
 
     def can_open_overlay(self) -> bool:
         """Check if modal overlays (Inventory, Character Sheet) are permitted."""
-        overlay_modes = (
-            GameMode.MAP, GameMode.COMBAT, GameMode.EVENTS, GameMode.INVENTORY,
-            GameMode.CHARACTER, GameMode.LOOT, GameMode.SHOP,
-        )
-        if self.current_mode not in overlay_modes:
-            return False
-        if self.current_mode == GameMode.COMBAT and self.combat is not None and self.combat.is_qte_active():
-            return False
-        return True
+        return self.fsm.can_open_overlay(self)
