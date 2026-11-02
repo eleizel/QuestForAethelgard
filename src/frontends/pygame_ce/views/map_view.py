@@ -64,9 +64,9 @@ class PygameMapView(PygameView):
         self._hovered_node_id: int | None = None
         self._hovered_btn: str | None = None
 
-        # Interactive Button Rects
-        self.char_btn_rect = pygame.Rect(728, 12, 100, 32)
-        self.inv_btn_rect = pygame.Rect(836, 12, 100, 32)
+        # Interactive Button Rects (inset from frame edges to prevent corner overlap)
+        self.char_btn_rect = pygame.Rect(716, 12, 98, 32)
+        self.inv_btn_rect = pygame.Rect(824, 12, 98, 32)
 
     def _get_node_screen_pos(self, node: MapNode, total_floors: int, surface_w: int, surface_h: int) -> tuple[int, int]:
         """Compute pixel position for a node with comfortable layout spacing within center viewport."""
@@ -221,7 +221,7 @@ class PygameMapView(PygameView):
         # =========================================================================
         # 2. ACT & BIOME NAMEPLATE BADGE (Top-Left inside Map)
         # =========================================================================
-        badge_rect = pygame.Rect(20, 68, 280, 48)
+        badge_rect = pygame.Rect(26, 72, 330, 48)
         badge_bg = pygame.Surface((badge_rect.width, badge_rect.height), pygame.SRCALPHA)
         badge_bg.fill((16, 14, 24, 215))
         surface.blit(badge_bg, badge_rect.topleft)
@@ -233,17 +233,17 @@ class PygameMapView(PygameView):
         else:
             pygame.draw.rect(surface, (218, 165, 32), badge_rect, width=2, border_radius=4)
 
-        # Biome Icon
+        # Biome Icon (inset from left corner filigree)
         biome_icon = assets.get_biome_icon(current_biome_id, size=(34, 34))
         if biome_icon:
-            surface.blit(biome_icon, (badge_rect.x + 8, badge_rect.y + 7))
+            surface.blit(biome_icon, (badge_rect.x + 20, badge_rect.y + 7))
 
         # Act & Biome Name Text
         act_title = f"Act {session.state.act}: {biome_def.name if biome_def else 'The Unknown'}"
         renderer.draw_text(
             surface,
             act_title,
-            badge_rect.x + 48,
+            badge_rect.x + 62,
             badge_rect.y + 8,
             token=ThemeToken.TEXT_HIGHLIGHT,
             size=14,
@@ -253,7 +253,7 @@ class PygameMapView(PygameView):
         renderer.draw_text(
             surface,
             "Select a path [1-4]",
-            badge_rect.x + 48,
+            badge_rect.x + 62,
             badge_rect.y + 26,
             token=ThemeToken.TEXT_MUTED,
             size=12,
@@ -387,8 +387,8 @@ class PygameMapView(PygameView):
         else:
             pygame.draw.rect(surface, (218, 165, 32), hud_rect, width=2, border_radius=4)
 
-        # 4A. Character Headshot Bust (Neck up)
-        bust_rect = pygame.Rect(hud_rect.x + 8, hud_rect.y + 5, 36, 36)
+        # 4A. Character Headshot Bust (Neck up, inset from left corner filigree)
+        bust_rect = pygame.Rect(hud_rect.x + 28, hud_rect.y + 5, 36, 36)
         bust_surf = assets.get_bust_portrait(player.class_id, size=(36, 36))
         if bust_surf:
             surface.blit(bust_surf, bust_rect.topleft)
@@ -396,7 +396,7 @@ class PygameMapView(PygameView):
             pygame.draw.rect(surface, (218, 165, 32), bust_rect, width=1, border_radius=3)
 
         # 4B. Name, Class, Level
-        info_x = bust_rect.right + 10
+        info_x = bust_rect.right + 12
         name_part = f"{player.name}"
         class_part = f" ({player.class_id.capitalize()})"
         lvl_part = f" Lv.{player.level}"
@@ -426,7 +426,7 @@ class PygameMapView(PygameView):
 
         # EXP Bar
         exp_bar_x = r_exp.right + 8
-        exp_bar_rect = pygame.Rect(exp_bar_x, hud_rect.y + 28, 110, 10)
+        exp_bar_rect = pygame.Rect(exp_bar_x, hud_rect.y + 28, 100, 10)
         pygame.draw.rect(surface, (30, 32, 45), exp_bar_rect, border_radius=2)
         exp_ratio = min(1.0, max(0.0, exp_curr / exp_next))
         if exp_ratio > 0:
@@ -435,7 +435,7 @@ class PygameMapView(PygameView):
         pygame.draw.rect(surface, (150, 155, 175), exp_bar_rect, width=1, border_radius=2)
 
         # Vertical Divider
-        div1_x = exp_bar_rect.right + 18
+        div1_x = exp_bar_rect.right + 16
         renderer.draw_text(surface, "|", div1_x, hud_rect.y + 16, token=ThemeToken.BORDER_MUTED, size=14, font_variant="alagard")
 
         # 4D. Gold
@@ -452,7 +452,7 @@ class PygameMapView(PygameView):
         )
 
         # Vertical Divider
-        div2_x = gold_x + 110
+        div2_x = gold_x + 95
         renderer.draw_text(surface, "|", div2_x, hud_rect.y + 16, token=ThemeToken.BORDER_MUTED, size=14, font_variant="alagard")
 
         # 4E. Floor
@@ -525,10 +525,12 @@ class PygameMapView(PygameView):
         else:
             pygame.draw.rect(surface, (218, 165, 32), legend_rect, width=2, border_radius=4)
 
-        # 7 items evenly spaced
-        slot_w = legend_rect.width // len(self.LEGEND_ITEMS)
+        # 7 items evenly spaced with horizontal padding to keep frame corners clear
+        pad_x = 44
+        usable_w = legend_rect.width - 2 * pad_x
+        slot_w = usable_w / len(self.LEGEND_ITEMS)
         for i, (n_type, label) in enumerate(self.LEGEND_ITEMS):
-            slot_center_x = legend_rect.x + int((i + 0.5) * slot_w)
+            slot_center_x = legend_rect.x + pad_x + int((i + 0.5) * slot_w)
             icon = assets.get_node_icon(n_type, size=(22, 22))
 
             # Compute width of icon + label to center them together
@@ -543,7 +545,7 @@ class PygameMapView(PygameView):
 
             # Divider line between items (except after the last one)
             if i < len(self.LEGEND_ITEMS) - 1:
-                div_x = legend_rect.x + (i + 1) * slot_w
+                div_x = legend_rect.x + pad_x + int((i + 1) * slot_w)
                 pygame.draw.line(
                     surface,
                     (90, 85, 110),
