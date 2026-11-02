@@ -365,10 +365,8 @@ class AssetManager:
     ) -> pygame.Surface:
         """Scale an ornate frame to arbitrary width and height using 9-slice tiling/stretching."""
         w, h = src_surf.get_size()
-        # Scale margin down if target dimensions are small
-        m = min(margin, target_w // 3, target_h // 3)
-        if m <= 0:
-            m = min(margin, target_w // 2, target_h // 2)
+        # Scale margin down if target dimensions are small (use // 2 to support narrow bars)
+        m = min(margin, target_w // 2, target_h // 2)
         if m <= 0:
             return pygame.transform.scale(src_surf, (target_w, target_h))
 

@@ -221,29 +221,29 @@ class PygameMapView(PygameView):
         # =========================================================================
         # 2. ACT & BIOME NAMEPLATE BADGE (Top-Left inside Map)
         # =========================================================================
-        badge_rect = pygame.Rect(26, 72, 330, 48)
+        badge_rect = pygame.Rect(26, 72, 350, 48)
         badge_bg = pygame.Surface((badge_rect.width, badge_rect.height), pygame.SRCALPHA)
         badge_bg.fill((16, 14, 24, 215))
         surface.blit(badge_bg, badge_rect.topleft)
 
-        # Gold frame around badge
-        badge_frame = assets.get_9slice_frame("frame_button_gold", badge_rect.width, badge_rect.height, margin=14)
+        # Gold frame around badge (margin=23 to keep native crisp corner)
+        badge_frame = assets.get_9slice_frame("frame_button_gold", badge_rect.width, badge_rect.height, margin=23)
         if badge_frame:
             surface.blit(badge_frame, badge_rect.topleft)
         else:
             pygame.draw.rect(surface, (218, 165, 32), badge_rect, width=2, border_radius=4)
 
-        # Biome Icon (inset from left corner filigree)
+        # Biome Icon (leftmost part precisely aligned with the last straight point of the inner horizontal line at x=24)
         biome_icon = assets.get_biome_icon(current_biome_id, size=(34, 34))
         if biome_icon:
-            surface.blit(biome_icon, (badge_rect.x + 20, badge_rect.y + 7))
+            surface.blit(biome_icon, (badge_rect.x + 24, badge_rect.y + 7))
 
         # Act & Biome Name Text
         act_title = f"Act {session.state.act}: {biome_def.name if biome_def else 'The Unknown'}"
         renderer.draw_text(
             surface,
             act_title,
-            badge_rect.x + 62,
+            badge_rect.x + 68,
             badge_rect.y + 8,
             token=ThemeToken.TEXT_HIGHLIGHT,
             size=14,
@@ -253,7 +253,7 @@ class PygameMapView(PygameView):
         renderer.draw_text(
             surface,
             "Select a path [1-4]",
-            badge_rect.x + 62,
+            badge_rect.x + 68,
             badge_rect.y + 26,
             token=ThemeToken.TEXT_MUTED,
             size=12,
@@ -380,23 +380,21 @@ class PygameMapView(PygameView):
         hud_bg.fill((18, 15, 24, 240))
         surface.blit(hud_bg, hud_rect.topleft)
 
-        # 9-slice clean gold frame
-        hud_frame = assets.get_9slice_frame("frame_gold_clean", hud_rect.width, hud_rect.height, margin=16)
+        # 9-slice clean gold frame (margin=23 to keep native crisp corner)
+        hud_frame = assets.get_9slice_frame("frame_gold_clean", hud_rect.width, hud_rect.height, margin=23)
         if hud_frame:
             surface.blit(hud_frame, hud_rect.topleft)
         else:
             pygame.draw.rect(surface, (218, 165, 32), hud_rect, width=2, border_radius=4)
 
-        # 4A. Character Headshot Bust (Neck up, inset from left corner filigree)
-        bust_rect = pygame.Rect(hud_rect.x + 28, hud_rect.y + 5, 36, 36)
+        # 4A. Character Headshot Bust (leftmost part precisely aligned with the last straight point of the inner horizontal line at x=24)
+        bust_rect = pygame.Rect(hud_rect.x + 24, hud_rect.y + 5, 36, 36)
         bust_surf = assets.get_bust_portrait(player.class_id, size=(36, 36))
         if bust_surf:
             surface.blit(bust_surf, bust_rect.topleft)
-            # Gold filigree border around bust
-            pygame.draw.rect(surface, (218, 165, 32), bust_rect, width=1, border_radius=3)
 
         # 4B. Name, Class, Level
-        info_x = bust_rect.right + 12
+        info_x = bust_rect.right + 10
         name_part = f"{player.name}"
         class_part = f" ({player.class_id.capitalize()})"
         lvl_part = f" Lv.{player.level}"
@@ -519,7 +517,7 @@ class PygameMapView(PygameView):
         leg_bg.fill((18, 15, 24, 240))
         surface.blit(leg_bg, legend_rect.topleft)
 
-        leg_frame = assets.get_9slice_frame("frame_gold_clean", legend_rect.width, legend_rect.height, margin=16)
+        leg_frame = assets.get_9slice_frame("frame_gold_clean", legend_rect.width, legend_rect.height, margin=23)
         if leg_frame:
             surface.blit(leg_frame, legend_rect.topleft)
         else:
