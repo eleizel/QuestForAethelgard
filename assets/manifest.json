@@ -1,14 +1,15 @@
 {
-  "name": "Quest for Aethelgard",
-  "short_name": "Aethelgard",
-  "description": "A gothic retro chiptune dungeon crawler built with Pyxel.",
+  "name": "Quest for Aethelgard — 16-Bit SNES Golden Age Edition",
+  "short_name": "Aethelgard 16-Bit",
+  "description": "A gothic retro 16-bit SNES tactical RPG and dungeon crawler built with Pygame-CE.",
   "id": "./index.html",
   "start_url": "./index.html",
   "scope": "./",
   "display": "fullscreen",
-  "orientation": "portrait",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#0b0e14",
+  "theme_color": "#0b0e14",
   "icons": [
     {
       "src": "icon-192.png",
@@ -34,13 +35,13 @@
       "src": "Welcome.png",
       "sizes": "916x916",
       "type": "image/png",
-      "form_factor": "narrow"
+      "form_factor": "wide"
     },
     {
       "src": "Choose.png",
       "sizes": "916x916",
       "type": "image/png",
-      "form_factor": "narrow"
+      "form_factor": "wide"
     },
     {
       "src": "Combat.png",
@@ -52,7 +53,7 @@
       "src": "Map.png",
       "sizes": "916x916",
       "type": "image/png",
-      "form_factor": "narrow"
+      "form_factor": "wide"
     },
     {
       "src": "Store.png",

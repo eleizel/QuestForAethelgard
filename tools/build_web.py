@@ -4,8 +4,9 @@ Builds both:
 1. Root (`/`): 16-bit Super Nintendo Golden Age Edition (Pygame-CE via Pygbag WASM)
 2. Subpath (`/pyxel/`): 8-bit Retro Classic Edition (Pyxel via Pyodide WASM)
 
-Disables the on-screen virtual game pad across both distributions and injects
-cross-edition switching links and PWA manifest metadata.
+Disables the on-screen virtual game pad across both distributions, enforces
+landscape orientation metadata and PWA manifest configurations, and provides
+responsive portrait rotation guidance for mobile browsers.
 """
 
 from __future__ import annotations
@@ -89,8 +90,21 @@ def build_pygame_web(dist_web: Path) -> None:
         flags=re.IGNORECASE,
     )
 
-    # Disable virtual gamepad / mobile joysticks & style canvas
-    no_gamepad_css = """
+    # Set dark gothic background in python preloader
+    html = html.replace('platform.document.body.style.background = "#7f7f7f"', 'platform.document.body.style.background = "#0b0e14"')
+
+    # Landscape, PWA, and meta enhancements for 16-Bit SNES Edition
+    landscape_head_tags = """
+    <!-- PWA & Mobile Landscape Directives -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="screen-orientation" content="landscape">
+    <meta name="x5-orientation" content="landscape">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    """
+
+    # Disable virtual gamepad, style background & canvas, and provide portrait rotation prompt
+    landscape_and_ui_css = """
     <!-- Disable Virtual Gamepad and Embedded Diagnostic Overlays -->
     <style>
         #pyxel-gamepad-cross, #pyxel-gamepad-button,
@@ -101,15 +115,163 @@ def build_pygame_web(dist_web: Path) -> None:
             visibility: hidden !important;
             pointer-events: none !important;
         }
+
+        body {
+            background-color: #0b0e14 !important;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        /* Portrait orientation guidance prompt */
+        #portrait-prompt {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(11, 14, 20, 0.96);
+            backdrop-filter: blur(8px);
+            z-index: 9999998;
+            color: #e2e8f0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 24px;
+            box-sizing: border-box;
+        }
+
+        @media screen and (orientation: portrait) and (max-device-width: 1024px) {
+            #portrait-prompt {
+                display: flex !important;
+            }
+        }
+
+        .rotate-anim-icon {
+            font-size: 52px;
+            margin-bottom: 18px;
+            display: inline-block;
+            animation: phone-rotate 2.4s infinite ease-in-out;
+        }
+
+        @keyframes phone-rotate {
+            0%, 15% { transform: rotate(0deg); }
+            50%, 65% { transform: rotate(-90deg); }
+            100% { transform: rotate(0deg); }
+        }
+
+        .prompt-title {
+            font-size: 21px;
+            font-weight: 700;
+            color: #ffd700;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .prompt-desc {
+            font-size: 14px;
+            color: #cbd5e0;
+            max-width: 320px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .btn-prompt-landscape {
+            background: #2b6cb0;
+            color: #ffffff;
+            border: 1px solid #4299e1;
+            border-radius: 8px;
+            padding: 11px 22px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            transition: background 0.2s;
+        }
+
+        .btn-prompt-landscape:hover {
+            background: #3182ce;
+        }
+
+        .btn-prompt-dismiss {
+            margin-top: 16px;
+            background: transparent;
+            border: none;
+            color: #718096;
+            font-size: 12px;
+            cursor: pointer;
+            text-decoration: underline;
+        }
     </style>
+    """
+
+    landscape_ui_elements = """
+    <!-- Mobile Portrait Guidance Overlay -->
+    <div id="portrait-prompt">
+        <div class="rotate-anim-icon">📱</div>
+        <div class="prompt-title">Rotate to Landscape</div>
+        <div class="prompt-desc">Quest for Aethelgard 16-Bit Edition is designed for widescreen landscape. Please turn your device horizontally for the optimal view.</div>
+        <button class="btn-prompt-landscape" onclick="toggleLandscapeFullscreen()">⛶ Fullscreen Landscape</button>
+        <button class="btn-prompt-dismiss" onclick="document.getElementById('portrait-prompt').style.display='none'">Continue in Portrait</button>
+    </div>
+
+    <!-- Landscape Fullscreen Toggle Button -->
+    <button id="fullscreen-btn" onclick="toggleLandscapeFullscreen()" style="position:fixed; bottom:12px; left:14px; z-index:999999; background:rgba(20,24,36,0.92); color:#63b3ed; border:1px solid #4299e1; border-radius:6px; padding:7px 13px; font-family:'Segoe UI',system-ui,sans-serif; font-size:12px; font-weight:bold; cursor:pointer; box-shadow:0 3px 8px rgba(0,0,0,0.6); transition:all 0.2s;" onmouseover="this.style.background='#2c3652';this.style.borderColor='#90cdf4'" onmouseout="this.style.background='rgba(20,24,36,0.92)';this.style.borderColor='#4299e1'">⛶ Landscape Fullscreen</button>
+
     <!-- Cross-Edition Navigation Link -->
     <a id="retro-edition-btn" href="pyxel/" style="position:fixed; bottom:12px; right:14px; z-index:999999; background:rgba(20,24,36,0.92); color:#ffd700; border:1px solid #e2a829; border-radius:6px; padding:7px 13px; font-family:'Segoe UI',system-ui,sans-serif; font-size:12px; font-weight:bold; text-decoration:none; box-shadow:0 3px 8px rgba(0,0,0,0.6); transition:all 0.2s;" onmouseover="this.style.background='#2c3652';this.style.borderColor='#ffea75'" onmouseout="this.style.background='rgba(20,24,36,0.92)';this.style.borderColor='#e2a829'">🕹️ Switch to 8-Bit Pyxel Edition</a>
+
+    <!-- Landscape Orientation Locking & Resizing Script -->
+    <script>
+        async function lockLandscape() {
+            try {
+                if (screen.orientation && screen.orientation.lock) {
+                    await screen.orientation.lock('landscape');
+                }
+            } catch (err) {}
+        }
+
+        async function toggleLandscapeFullscreen() {
+            const doc = document.documentElement;
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (doc.requestFullscreen) {
+                    await doc.requestFullscreen().catch(() => {});
+                } else if (doc.webkitRequestFullscreen) {
+                    await doc.webkitRequestFullscreen().catch(() => {});
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    await document.exitFullscreen().catch(() => {});
+                } else if (document.webkitExitFullscreen) {
+                    await document.webkitExitFullscreen().catch(() => {});
+                }
+            }
+            lockLandscape();
+        }
+
+        // Lock landscape on first user engagement (click/touch)
+        window.addEventListener('click', lockLandscape, { passive: true });
+        window.addEventListener('touchstart', lockLandscape, { passive: true });
+
+        // Auto-retrigger Pygbag layout adjustment on orientation flip
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                if (typeof window_resize === 'function') {
+                    window_resize();
+                }
+            }, 250);
+        });
+    </script>
     """
 
     if "</head>" in html:
-        html = html.replace("</head>", f"{no_gamepad_css}\n</head>", 1)
+        html = html.replace("</head>", f"{landscape_head_tags}\n{landscape_and_ui_css}\n</head>", 1)
     else:
-        html += no_gamepad_css
+        html += landscape_head_tags + landscape_and_ui_css
+
+    if "</body>" in html:
+        html = html.replace("</body>", f"{landscape_ui_elements}\n</body>", 1)
+    else:
+        html += landscape_ui_elements
 
     index_file.write_text(html, encoding="utf-8")
     print("    [OK] Pygame-CE Web Edition built and patched.")
