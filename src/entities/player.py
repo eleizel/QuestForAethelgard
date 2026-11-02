@@ -197,7 +197,7 @@ class Player(Actor):
             self.promotion_due = True
 
     def _check_ability_milestone(self) -> None:
-        if self.level in (4, 8, 12, 16):
+        if self.level in (2, 4, 6, 8, 12, 14, 16, 18):
             self.pending_ability_choices.append("STANDARD")
         elif self.level in (10, 20):
             self.pending_ability_choices.append("EPIC")

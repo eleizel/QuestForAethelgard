@@ -24,11 +24,22 @@ class PygameEventsView(PygameView):
     def handle_event(self, event: pygame.event.Event, session: GameSession) -> None:
         if event.type == pygame.KEYDOWN:
             if event.key in (pygame.K_SPACE, pygame.K_RETURN, pygame.K_ESCAPE):
-                session.state.continue_after_rewards()
+                self._exit_events(session)
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             cont_rect = pygame.Rect(380, 430, 200, 42)
             if cont_rect.collidepoint(event.pos):
-                session.state.continue_after_rewards()
+                self._exit_events(session)
+
+    def _exit_events(self, session: GameSession) -> None:
+        from src.systems.loot_service import LootService
+        next_mode = LootService.resolve_exit_mode(session.player)
+        if next_mode == GameMode.PROMOTION:
+            if session.state.begin_promotion(GameMode.EVENTS):
+                return
+        elif next_mode == GameMode.ABILITY_CHOICE:
+            session.state.switch_mode(GameMode.ABILITY_CHOICE)
+            return
+        session.state.continue_after_rewards()
 
     def update(self, dt: float, session: GameSession) -> None:
         pos = pygame.mouse.get_pos()

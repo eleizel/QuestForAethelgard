@@ -48,8 +48,10 @@ class PygameRenderer:
             self._fonts[key] = font
         return self._fonts[key]
 
-    def color(self, token: ThemeToken) -> tuple[int, int, int]:
-        """Resolve RGB color tuple from semantic theme token."""
+    def color(self, token: ThemeToken | tuple[int, int, int]) -> tuple[int, int, int]:
+        """Resolve RGB color tuple from semantic theme token or raw RGB tuple."""
+        if isinstance(token, (tuple, list)):
+            return (token[0], token[1], token[2])
         return resolve_rgb_color(token)
 
     def draw_text(
@@ -58,15 +60,17 @@ class PygameRenderer:
         text: str,
         x: int,
         y: int,
-        token: ThemeToken = ThemeToken.TEXT_NORMAL,
+        token: ThemeToken | tuple[int, int, int] = ThemeToken.TEXT_NORMAL,
         size: int = 16,
         bold: bool = False,
         align: Literal["left", "center", "right"] = "left",
         font_variant: Literal["alagard", "body", "default"] = "alagard",
+        color: tuple[int, int, int] | None = None,
     ) -> pygame.Rect:
         """Render 16-bit pixel font text on surface with horizontal alignment."""
         font = self.get_font(size=size, bold=bold, variant=font_variant)
-        rendered = font.render(text, True, self.color(token))
+        text_color = color if color is not None else self.color(token)
+        rendered = font.render(text, True, text_color)
         rect = rendered.get_rect()
 
         if align == "center":

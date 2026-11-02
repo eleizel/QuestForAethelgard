@@ -390,6 +390,26 @@ class AssetManager:
         self.sprite_cache[cache_key] = scaled
         return scaled
 
+    def get_ability_icon(self, ability_id: str, size: tuple[int, int] = (32, 32)) -> pygame.Surface | None:
+        """Extract a 16x16 retro ability tile from Bank 1 and scale it nearest-neighbor."""
+        aid = ability_id.lower()
+        cache_key = f"ability_icon_{aid}_{size}"
+        if cache_key in self.sprite_cache:
+            return self.sprite_cache[cache_key]
+
+        bank_surf = self.get_ui_component("pyxel_bank1")
+        if bank_surf is None:
+            return None
+
+        from src.tools.generate_assets import ABILITY_ICON_COORDS
+        u, v = ABILITY_ICON_COORDS.get(aid, ABILITY_ICON_COORDS.get("default", (64, 80)))
+
+        tile_surf = pygame.Surface((16, 16), pygame.SRCALPHA)
+        tile_surf.blit(bank_surf, (0, 0), (u, v, 16, 16))
+        scaled = pygame.transform.scale(tile_surf, size)
+        self.sprite_cache[cache_key] = scaled
+        return scaled
+
     def get_combat_arena_bg(self, biome_id: str, size: tuple[int, int] | None = None) -> pygame.Surface | None:
         """Retrieve 16-bit SNES combat arena background with foreground battle platform."""
         bid = biome_id.lower()
@@ -599,4 +619,19 @@ class AssetManager:
 
 
 # Global singleton helper
+    def draw_frame(
+        self,
+        surface: pygame.Surface,
+        name: str,
+        rect: pygame.Rect,
+        margin: int = 54,
+        draw_center: bool = True,
+    ) -> None:
+        frame = self.get_9slice_frame(name, rect.width, rect.height, margin=margin, draw_center=draw_center)
+        if frame:
+            surface.blit(frame, rect.topleft)
+        else:
+            pygame.draw.rect(surface, (218, 165, 32), rect, width=2, border_radius=4)
+
+
 assets = AssetManager()

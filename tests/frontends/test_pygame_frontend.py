@@ -347,3 +347,74 @@ def test_pygame_app_fullscreen_and_maximized_flags():
     event_f11 = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_F11, mod=0)
     pygame.event.post(event_f11)
     app.handle_events()
+
+
+def test_ability_draft_milestones():
+    from src.entities.player import Player
+    p = Player(name="Sir Aethelgard")
+    levels = []
+    for lvl in range(2, 21):
+        p.level = lvl
+        p._check_ability_milestone()
+        if p.pending_ability_choices:
+            levels.append((lvl, p.pending_ability_choices.pop(0)))
+    assert levels == [
+        (2, "STANDARD"),
+        (4, "STANDARD"),
+        (6, "STANDARD"),
+        (8, "STANDARD"),
+        (10, "EPIC"),
+        (12, "STANDARD"),
+        (14, "STANDARD"),
+        (16, "STANDARD"),
+        (18, "STANDARD"),
+        (20, "EPIC"),
+    ]
+
+
+def test_pygame_ability_choice_dynamic_generation_and_replacement():
+    session = GameSession()
+    session.start_new_game(class_id="warrior")
+    session.player.level = 4
+    session.player.pending_ability_choices = ["STANDARD"]
+    session.switch_mode(GameMode.ABILITY_CHOICE)
+
+    view = PygameAbilityChoiceView()
+    renderer = PygameRenderer()
+    surface = pygame.Surface((960, 540))
+
+    view.update(0.016, session)
+    assert len(view.choices) == 2
+
+    # Click card 1
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_1), session)
+    # If chosen was active ability, warrior already has 2 starting active abilities (cross_cut, mend_wound), so replace_mode triggers!
+    if view.selected_ability and view.selected_ability.ability_type.name == "ACTIVE":
+        assert view.replace_mode is True
+        # Replace slot 0
+        view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_1), session)
+        assert view.replace_mode is False
+
+    view.draw(surface, renderer, session)
+
+
+def test_level_10_promotion_to_epic_draft_flow():
+    session = GameSession()
+    session.start_new_game(class_id="warrior")
+    session.player.level = 10
+    session.player.promotion_due = True
+    session.player.pending_ability_choices = ["EPIC"]
+    session.switch_mode(GameMode.PROMOTION)
+
+    view = PygamePromotionView()
+    renderer = PygameRenderer()
+    surface = pygame.Surface((960, 540))
+
+    # Select Paladin and confirm
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_1), session)
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN), session)
+
+    assert session.player.class_id == "paladin"
+    # Promotion must route immediately to ABILITY_CHOICE for Level 10 Epic draft
+    assert session.current_mode == GameMode.ABILITY_CHOICE
+    assert session.player.pending_ability_choices[0] == "EPIC"
