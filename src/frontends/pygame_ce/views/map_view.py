@@ -106,6 +106,17 @@ class PygameMapView(PygameView):
                     session.select_map_node(available[idx].id)
 
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            total_floors = len(session.state.map_graph.floors)
+            for node in available:
+                nx, ny = self._get_node_screen_pos(node, total_floors, 960, 540)
+                radius = 24 if node.node_type == NodeType.BOSS else 18
+                hit_radius = radius + 14  # Generous touch target for mobile fingers (~32-38px)
+                dist_sq = (event.pos[0] - nx) ** 2 + (event.pos[1] - ny) ** 2
+                if dist_sq <= hit_radius * hit_radius:
+                    self._hovered_node_id = node.id
+                    session.select_map_node(node.id)
+                    return
+
             if self._hovered_node_id is not None:
                 session.select_map_node(self._hovered_node_id)
 
