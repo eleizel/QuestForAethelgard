@@ -16,7 +16,9 @@
   },
   "ui_components": {
     "frames": {
-      "gold_ornate": "assets/ui/frame_gold_ornate.png"
+      "gold_ornate": "assets/ui/frame_gold_ornate.png",
+      "gold_clean": "assets/ui/frame_gold_clean.png",
+      "button_gold": "assets/ui/frame_button_gold.png"
     },
     "banners": {
       "title_logo": "assets/ui/title_logo.png"

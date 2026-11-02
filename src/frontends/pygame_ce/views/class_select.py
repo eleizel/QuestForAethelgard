@@ -1,6 +1,7 @@
 """Pygame-CE Class Selection & Route Customization View.
 
 Authentic 16-bit Super Nintendo Golden Age RPG design (Secret of Evermore, Terranigma, Chrono Trigger).
+Features scalable 9-slice gold ornate frames, authentic Alagard retro pixel font, and unified golden class crests.
 """
 
 from __future__ import annotations
@@ -134,9 +135,9 @@ class PygameClassSelectView(PygameView):
 
         w = surface.get_width()
 
-        # 2. Ornate Top Header Plaque
-        header_rect = pygame.Rect(w // 2 - 250, 14, 500, 56)
-        self._draw_ornate_panel(surface, header_rect, bg_color=(12, 10, 20, 235), border_color=(212, 163, 60), double_border=True)
+        # 2. Ornate Top Header Plaque (9-slice gold clean frame)
+        header_rect = pygame.Rect(w // 2 - 270, 14, 540, 56)
+        self._draw_9slice_panel(surface, header_rect, margin=24)
 
         renderer.draw_text(
             surface,
@@ -144,18 +145,20 @@ class PygameClassSelectView(PygameView):
             w // 2,
             24,
             token=ThemeToken.TEXT_HIGHLIGHT,
-            size=18,
+            size=22,
             bold=True,
             align="center",
+            font_variant="alagard",
         )
         renderer.draw_text(
             surface,
             "Each archetype possesses distinct stat masteries and promotions at Level 10.",
             w // 2,
-            46,
+            47,
             token=ThemeToken.TEXT_MUTED,
-            size=11,
+            size=13,
             align="center",
+            font_variant="alagard",
         )
 
         # 3. Top Gallery: 3 Class Cards (Warrior, Rogue, Mage)
@@ -165,38 +168,31 @@ class PygameClassSelectView(PygameView):
             is_selected = (self.selected_index == idx)
             is_hovered = (self._hovered_card == idx)
 
-            border_col = (255, 215, 0) if is_selected else ((200, 160, 80) if is_hovered else (80, 70, 95))
-            self._draw_ornate_panel(
-                surface,
-                card_rect,
-                bg_color=(18, 14, 28, 235) if is_selected else (14, 12, 22, 210),
-                border_color=border_col,
-                double_border=is_selected,
-                highlight=is_selected,
-            )
+            self._draw_9slice_panel(surface, card_rect, margin=24, highlight=is_selected, is_hovered=is_hovered)
 
-            # Sprite on pedestal (left)
+            # Sprite on pedestal (left) - now correctly facing right!
             sprite = assets.get_class_sprite(cid)
             if sprite:
                 target_w, target_h = 75, 96
                 scaled_sprite = pygame.transform.smoothscale(sprite, (target_w, target_h))
                 surface.blit(scaled_sprite, (card_rect.x + 12, card_rect.y + 10))
 
-            # Class Crest Icon + Name (right)
-            crest = assets.get_class_crest(cid, size=(28, 28))
+            # Unified Class Crest Icon + Name (right)
+            crest = assets.get_class_crest(cid, size=(32, 32))
             if crest:
-                surface.blit(crest, (card_rect.x + 98, card_rect.y + 26))
+                surface.blit(crest, (card_rect.x + 94, card_rect.y + 24))
 
             name_color = ThemeToken.TEXT_HIGHLIGHT if is_selected else ThemeToken.TEXT_NORMAL
             renderer.draw_text(
                 surface,
                 f"[{idx+1}] {cdef.localized_name}",
                 card_rect.x + 132,
-                card_rect.y + 30,
+                card_rect.y + 29,
                 token=name_color,
-                size=15,
+                size=18,
                 bold=True,
                 align="left",
+                font_variant="alagard",
             )
 
             # Role tag
@@ -204,53 +200,55 @@ class PygameClassSelectView(PygameView):
             renderer.draw_text(
                 surface,
                 role_text,
-                card_rect.x + 102,
-                card_rect.y + 64,
+                card_rect.x + 132,
+                card_rect.y + 57,
                 token=ThemeToken.TEXT_MUTED if not is_selected else ThemeToken.ACCENT_SECONDARY,
-                size=12,
+                size=14,
                 bold=is_selected,
                 align="left",
+                font_variant="alagard",
             )
 
-        # 4. Bottom Detail Panel
+        # 4. Bottom Detail Panel (9-slice gold frame)
         detail_rect = pygame.Rect(30, 206, 900, 256)
-        self._draw_ornate_panel(surface, detail_rect, bg_color=(12, 10, 22, 240), border_color=(200, 160, 60), double_border=True)
+        self._draw_9slice_panel(surface, detail_rect, margin=24)
 
         sel_cid = self.selected_class_id
         sel_cdef = CLASS_REGISTRY[sel_cid]
 
-        # 4a. Left column: Bust Portrait Frame
-        portrait_frame = pygame.Rect(46, 220, 150, 182)
-        self._draw_ornate_panel(surface, portrait_frame, bg_color=(8, 6, 14, 255), border_color=(180, 140, 50), double_border=True)
+        # 4a. Left column: Bust Portrait Frame (9-slice gold frame)
+        portrait_frame = pygame.Rect(48, 222, 146, 178)
+        self._draw_9slice_panel(surface, portrait_frame, margin=20)
 
         portrait = assets.get_class_portrait(sel_cid)
         if portrait:
-            # Fit inside portrait_frame nicely
-            target_pw, target_ph = 140, 172
+            target_pw, target_ph = 132, 164
             scaled_p = pygame.transform.smoothscale(portrait, (target_pw, target_ph))
             surface.blit(scaled_p, (portrait_frame.centerx - target_pw // 2, portrait_frame.centery - target_ph // 2))
 
         # Class Name & Role beneath portrait
-        tag_rect = pygame.Rect(46, 408, 150, 42)
-        self._draw_ornate_panel(surface, tag_rect, bg_color=(20, 16, 32, 240), border_color=(140, 110, 40))
+        tag_rect = pygame.Rect(48, 406, 146, 44)
+        self._draw_9slice_panel(surface, tag_rect, margin=16)
         renderer.draw_text(
             surface,
             sel_cdef.localized_name,
             tag_rect.centerx,
-            tag_rect.y + 6,
+            tag_rect.y + 7,
             token=ThemeToken.TEXT_HIGHLIGHT,
-            size=13,
+            size=16,
             bold=True,
             align="center",
+            font_variant="alagard",
         )
         renderer.draw_text(
             surface,
             CLASS_ROLES.get(sel_cid, ""),
             tag_rect.centerx,
-            tag_rect.y + 22,
+            tag_rect.y + 24,
             token=ThemeToken.TEXT_MUTED,
-            size=11,
+            size=13,
             align="center",
+            font_variant="alagard",
         )
 
         # 4b. Right Header & Description
@@ -260,23 +258,25 @@ class PygameClassSelectView(PygameView):
             216,
             222,
             token=ThemeToken.TEXT_HIGHLIGHT,
-            size=22,
+            size=24,
             bold=True,
             align="left",
+            font_variant="alagard",
         )
         renderer.draw_text(
             surface,
             sel_cdef.localized_description,
             216,
-            248,
+            250,
             token=ThemeToken.TEXT_NORMAL,
-            size=12,
+            size=15,
             align="left",
+            font_variant="alagard",
         )
 
-        # 4c. Sub-box 1: STARTING STATS
+        # 4c. Sub-box 1: STARTING STATS (9-slice gold frame)
         stats_rect = pygame.Rect(216, 276, 200, 174)
-        self._draw_sub_box(surface, renderer, stats_rect, "STARTING STATS")
+        self._draw_sub_box(surface, renderer, stats_rect, "< STARTING STATS >")
         b_stats = sel_cdef.base_stats
         stat_items = [
             ("hp", "HP", str(b_stats.max_hp)),
@@ -292,18 +292,19 @@ class PygameClassSelectView(PygameView):
                 surface.blit(icon, (stats_rect.x + 16, y_pos))
             renderer.draw_text(
                 surface,
-                f"{label.ljust(5)}: {val}",
+                f"{label.ljust(5)} : {val}",
                 stats_rect.x + 46,
-                y_pos + 2,
+                y_pos + 1,
                 token=ThemeToken.TEXT_NORMAL,
-                size=12,
+                size=15,
                 bold=True,
                 align="left",
+                font_variant="alagard",
             )
 
-        # 4d. Sub-box 2: GROWTH / LEVEL
+        # 4d. Sub-box 2: GROWTH / LEVEL (9-slice gold frame)
         growth_rect = pygame.Rect(430, 276, 200, 174)
-        self._draw_sub_box(surface, renderer, growth_rect, "GROWTH / LEVEL")
+        self._draw_sub_box(surface, renderer, growth_rect, "< GROWTH / LEVEL >")
         g_stats = sel_cdef.growth_per_level
         growth_items = [
             ("hp", "HP", f"+{g_stats.max_hp}"),
@@ -319,23 +320,24 @@ class PygameClassSelectView(PygameView):
                 surface.blit(icon, (growth_rect.x + 16, y_pos))
             renderer.draw_text(
                 surface,
-                f"{label.ljust(5)}: {val}",
+                f"{label.ljust(5)} : {val}",
                 growth_rect.x + 46,
-                y_pos + 2,
+                y_pos + 1,
                 token=ThemeToken.TEXT_NORMAL,
-                size=12,
+                size=15,
                 bold=True,
                 align="left",
+                font_variant="alagard",
             )
 
-        # 4e. Sub-box 3: PROMOTES TO
+        # 4e. Sub-box 3: PROMOTES TO (9-slice gold frame)
         promo_rect = pygame.Rect(644, 276, 270, 174)
-        self._draw_sub_box(surface, renderer, promo_rect, "PROMOTES TO")
+        self._draw_sub_box(surface, renderer, promo_rect, "< PROMOTES TO >")
         for p_idx, promo_cid in enumerate(sel_cdef.promotions[:2]):
-            badge_rect = pygame.Rect(promo_rect.x + 12, promo_rect.y + 36 + p_idx * 64, 246, 54)
-            self._draw_ornate_panel(surface, badge_rect, bg_color=(20, 16, 32, 220), border_color=(150, 120, 50))
+            badge_rect = pygame.Rect(promo_rect.x + 12, promo_rect.y + 36 + p_idx * 64, 246, 56)
+            self._draw_9slice_panel(surface, badge_rect, margin=20)
 
-            p_crest = assets.get_class_crest(promo_cid, size=(32, 32))
+            p_crest = assets.get_class_crest(promo_cid, size=(34, 34))
             if p_crest:
                 surface.blit(p_crest, (badge_rect.x + 12, badge_rect.y + 11))
 
@@ -344,26 +346,28 @@ class PygameClassSelectView(PygameView):
             renderer.draw_text(
                 surface,
                 p_name,
-                badge_rect.x + 54,
-                badge_rect.y + 10,
+                badge_rect.x + 56,
+                badge_rect.y + 9,
                 token=ThemeToken.TEXT_HIGHLIGHT,
-                size=14,
+                size=17,
                 bold=True,
                 align="left",
+                font_variant="alagard",
             )
 
             p_role = CLASS_ROLES.get(promo_cid, "[Promoted]")
             renderer.draw_text(
                 surface,
                 p_role,
-                badge_rect.x + 54,
-                badge_rect.y + 30,
+                badge_rect.x + 56,
+                badge_rect.y + 29,
                 token=ThemeToken.TEXT_MUTED,
-                size=11,
+                size=13,
                 align="left",
+                font_variant="alagard",
             )
 
-        # 5. Bottom Action Bar
+        # 5. Bottom Action Bar (9-slice buttons)
         back_rect = pygame.Rect(30, 476, 160, 44)
         self._draw_footer_button(
             surface,
@@ -374,7 +378,7 @@ class PygameClassSelectView(PygameView):
         )
 
         route_rect = pygame.Rect(280, 476, 400, 44)
-        route_text = f"[B] ROUTE: {self.route_mode}  ({'Procedural Tree' if self.route_mode == 'FATE' else 'Choice Matrix'})"
+        route_text = f"[B] ROUTE: {self.route_mode}"
         self._draw_footer_button(
             surface,
             renderer,
@@ -394,45 +398,36 @@ class PygameClassSelectView(PygameView):
             accent_gold=True,
         )
 
-    def _draw_ornate_panel(
+    def _draw_9slice_panel(
         self,
         surface: pygame.Surface,
         rect: pygame.Rect,
-        bg_color: tuple[int, int, int, int],
-        border_color: tuple[int, int, int],
-        double_border: bool = False,
+        margin: int = 24,
         highlight: bool = False,
+        is_hovered: bool = False,
     ) -> None:
-        """Draw a gothic ornate filigree panel with beveled corners and glowing border."""
-        # Background alpha fill
-        panel_surf = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
-        panel_surf.fill(bg_color)
-        surface.blit(panel_surf, (rect.x, rect.y))
-
-        # Outer border
-        pygame.draw.rect(surface, border_color, rect, width=2, border_radius=4)
-
-        if double_border:
-            inner_rect = rect.inflate(-6, -6)
-            inner_col = (border_color[0] // 2, border_color[1] // 2, border_color[2] // 2)
-            pygame.draw.rect(surface, inner_col, inner_rect, width=1, border_radius=2)
+        """Render ornate gold frame scaled via 9-slice to arbitrary dimensions."""
+        frame = assets.get_9slice_frame("frame_gold_clean", rect.width, rect.height, margin=margin)
+        if frame:
+            surface.blit(frame, (rect.x, rect.y))
 
         if highlight:
-            # Golden corner accents
-            corner_len = 8
-            gold = (255, 230, 120)
-            # Top-left
+            # Golden selection glow & corner flares
+            pygame.draw.rect(surface, (255, 220, 80), rect, width=2, border_radius=4)
+            inner_rect = rect.inflate(-6, -6)
+            pygame.draw.rect(surface, (255, 240, 160), inner_rect, width=1, border_radius=2)
+            corner_len = 10
+            gold = (255, 245, 180)
             pygame.draw.line(surface, gold, (rect.x, rect.y), (rect.x + corner_len, rect.y), 2)
             pygame.draw.line(surface, gold, (rect.x, rect.y), (rect.x, rect.y + corner_len), 2)
-            # Top-right
             pygame.draw.line(surface, gold, (rect.right - corner_len, rect.y), (rect.right, rect.y), 2)
             pygame.draw.line(surface, gold, (rect.right, rect.y), (rect.right, rect.y + corner_len), 2)
-            # Bottom-left
             pygame.draw.line(surface, gold, (rect.x, rect.bottom), (rect.x + corner_len, rect.bottom), 2)
             pygame.draw.line(surface, gold, (rect.x, rect.bottom - corner_len), (rect.x, rect.bottom), 2)
-            # Bottom-right
             pygame.draw.line(surface, gold, (rect.right - corner_len, rect.bottom), (rect.right, rect.bottom), 2)
             pygame.draw.line(surface, gold, (rect.right, rect.bottom - corner_len), (rect.right, rect.bottom), 2)
+        elif is_hovered:
+            pygame.draw.rect(surface, (200, 170, 100), rect, width=1, border_radius=4)
 
     def _draw_sub_box(
         self,
@@ -441,23 +436,24 @@ class PygameClassSelectView(PygameView):
         rect: pygame.Rect,
         title: str,
     ) -> None:
-        """Draw an inner sub-panel with gold title ribbon and filigree divider."""
-        self._draw_ornate_panel(surface, rect, bg_color=(16, 12, 24, 220), border_color=(120, 95, 45))
+        """Draw an inner sub-panel using 9-slice frame with gold title divider."""
+        self._draw_9slice_panel(surface, rect, margin=20)
 
         # Title ribbon divider
-        title_y = rect.y + 12
+        title_y = rect.y + 11
         renderer.draw_text(
             surface,
             title,
             rect.centerx,
             title_y,
             token=ThemeToken.TEXT_HIGHLIGHT,
-            size=12,
+            size=15,
             bold=True,
             align="center",
+            font_variant="alagard",
         )
         line_y = rect.y + 28
-        pygame.draw.line(surface, (160, 130, 50), (rect.x + 12, line_y), (rect.right - 12, line_y), 1)
+        pygame.draw.line(surface, (180, 150, 70), (rect.x + 14, line_y), (rect.right - 14, line_y), 1)
 
     def _draw_footer_button(
         self,
@@ -468,32 +464,17 @@ class PygameClassSelectView(PygameView):
         is_hovered: bool = False,
         accent_gold: bool = False,
     ) -> None:
-        """Draw a retro button matching the golden age gothic theme."""
-        if is_hovered:
-            border_col = (255, 230, 100) if accent_gold else (220, 220, 220)
-            bg_col = (36, 28, 52, 250)
-            text_tok = ThemeToken.TEXT_HIGHLIGHT
-        else:
-            border_col = (180, 140, 50) if accent_gold else (100, 90, 115)
-            bg_col = (20, 16, 30, 235)
-            text_tok = ThemeToken.TEXT_NORMAL
-
-        self._draw_ornate_panel(
-            surface,
-            rect,
-            bg_color=bg_col,
-            border_color=border_col,
-            double_border=True,
-            highlight=is_hovered,
-        )
-
+        """Draw a retro button matching the golden age gothic theme using 9-slice frame."""
+        self._draw_9slice_panel(surface, rect, margin=20, highlight=is_hovered, is_hovered=is_hovered)
+        text_tok = ThemeToken.TEXT_HIGHLIGHT if (is_hovered or accent_gold) else ThemeToken.TEXT_NORMAL
         renderer.draw_text(
             surface,
             label,
             rect.centerx,
-            rect.centery,
+            rect.centery - 1,
             token=text_tok,
-            size=13,
+            size=16,
             bold=True,
             align="center",
+            font_variant="alagard",
         )

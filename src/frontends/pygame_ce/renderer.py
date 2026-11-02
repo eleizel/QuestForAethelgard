@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Literal
 import pygame
 
 from src.core.theme import ThemeToken, resolve_rgb_color
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+FONTS_DIR = PROJECT_ROOT / "assets" / "fonts"
+ALAGARD_FONT = FONTS_DIR / "alagard.ttf"
+M5X7_FONT = FONTS_DIR / "m5x7.ttf"
 
 
 class PygameRenderer:
@@ -14,17 +20,31 @@ class PygameRenderer:
     def __init__(self) -> None:
         if not pygame.font.get_init():
             pygame.font.init()
-        self._fonts: dict[tuple[int, bool], pygame.font.Font] = {}
+        self._fonts: dict[tuple[int, bool, str], pygame.font.Font] = {}
 
-    def get_font(self, size: int = 16, bold: bool = False) -> pygame.font.Font:
-        """Retrieve a cached font of specified size and weight."""
-        key = (size, bold)
+    def get_font(
+        self,
+        size: int = 16,
+        bold: bool = False,
+        variant: Literal["alagard", "body", "default"] = "alagard",
+    ) -> pygame.font.Font:
+        """Retrieve a cached retro 16-bit font (Alagard for titles/accents, m5x7 for body text)."""
+        key = (size, bold, variant)
         if key not in self._fonts:
-            try:
-                # Prefer crisp system sans-serif or medieval/georgia serif if available
-                font = pygame.font.SysFont("georgia,segoeui,arial", size=size, bold=bold)
-            except Exception:
-                font = pygame.font.Font(None, size)
+            font_path = ALAGARD_FONT if variant in ("alagard", "default") else M5X7_FONT
+            if not font_path.exists():
+                font_path = ALAGARD_FONT if ALAGARD_FONT.exists() else M5X7_FONT
+
+            if font_path.exists():
+                try:
+                    font = pygame.font.Font(str(font_path), size)
+                except Exception:
+                    font = pygame.font.Font(None, size)
+            else:
+                try:
+                    font = pygame.font.SysFont("georgia,segoeui,arial", size=size, bold=bold)
+                except Exception:
+                    font = pygame.font.Font(None, size)
             self._fonts[key] = font
         return self._fonts[key]
 
@@ -42,9 +62,10 @@ class PygameRenderer:
         size: int = 16,
         bold: bool = False,
         align: Literal["left", "center", "right"] = "left",
+        font_variant: Literal["alagard", "body", "default"] = "alagard",
     ) -> pygame.Rect:
-        """Render anti-aliased text on surface with horizontal alignment."""
-        font = self.get_font(size=size, bold=bold)
+        """Render 16-bit pixel font text on surface with horizontal alignment."""
+        font = self.get_font(size=size, bold=bold, variant=font_variant)
         rendered = font.render(text, True, self.color(token))
         rect = rendered.get_rect()
 

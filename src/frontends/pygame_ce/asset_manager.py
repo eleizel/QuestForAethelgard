@@ -289,6 +289,77 @@ class AssetManager:
             return surf
         return None
 
+    def render_9slice(
+        self,
+        src_surf: pygame.Surface,
+        target_w: int,
+        target_h: int,
+        margin: int = 54,
+    ) -> pygame.Surface:
+        """Scale an ornate frame to arbitrary width and height using 9-slice tiling/stretching."""
+        w, h = src_surf.get_size()
+        # Scale margin down if target dimensions are small
+        m = min(margin, target_w // 3, target_h // 3)
+        if m <= 0:
+            m = min(margin, target_w // 2, target_h // 2)
+        if m <= 0:
+            return pygame.transform.scale(src_surf, (target_w, target_h))
+
+        out = pygame.Surface((target_w, target_h), pygame.SRCALPHA)
+
+        # 4 corners
+        tl = src_surf.subsurface((0, 0, m, m))
+        tr = src_surf.subsurface((w - m, 0, m, m))
+        bl = src_surf.subsurface((0, h - m, m, m))
+        br = src_surf.subsurface((w - m, h - m, m, m))
+
+        # 4 edges
+        inner_w = max(1, target_w - 2 * m)
+        inner_h = max(1, target_h - 2 * m)
+        src_inner_w = max(1, w - 2 * m)
+        src_inner_h = max(1, h - 2 * m)
+
+        t_edge = src_surf.subsurface((m, 0, src_inner_w, m))
+        b_edge = src_surf.subsurface((m, h - m, src_inner_w, m))
+        l_edge = src_surf.subsurface((0, m, m, src_inner_h))
+        r_edge = src_surf.subsurface((w - m, m, m, src_inner_h))
+
+        center = src_surf.subsurface((m, m, src_inner_w, src_inner_h))
+
+        # Blit center and edges
+        out.blit(pygame.transform.scale(center, (inner_w, inner_h)), (m, m))
+        out.blit(pygame.transform.scale(t_edge, (inner_w, m)), (m, 0))
+        out.blit(pygame.transform.scale(b_edge, (inner_w, m)), (m, target_h - m))
+        out.blit(pygame.transform.scale(l_edge, (m, inner_h)), (0, m))
+        out.blit(pygame.transform.scale(r_edge, (m, inner_h)), (target_w - m, m))
+
+        # Blit corners
+        out.blit(tl, (0, 0))
+        out.blit(tr, (target_w - m, 0))
+        out.blit(bl, (0, target_h - m))
+        out.blit(br, (target_w - m, target_h - m))
+        return out
+
+    def get_9slice_frame(
+        self,
+        name: str = "frame_gold_ornate",
+        target_w: int = 400,
+        target_h: int = 280,
+        margin: int = 54,
+    ) -> pygame.Surface | None:
+        """Retrieve a cached 9-slice rendered ornate frame of target dimensions."""
+        cache_key = f"9slice_{name}_{target_w}_{target_h}_{margin}"
+        if cache_key in self.sprite_cache:
+            return self.sprite_cache[cache_key]
+
+        base_frame = self.get_ui_component(name)
+        if base_frame is None:
+            return None
+
+        scaled = self.render_9slice(base_frame, target_w, target_h, margin=margin)
+        self.sprite_cache[cache_key] = scaled
+        return scaled
+
 
 # Global singleton helper
 assets = AssetManager()
