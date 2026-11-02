@@ -374,6 +374,22 @@ class AssetManager:
                 return surf
         return None
 
+    def get_pyxel_icon(self, u: int, v: int, size: tuple[int, int] = (24, 24)) -> pygame.Surface | None:
+        """Extract an 8x8 retro item tile from Bank 0 and scale it nearest-neighbor."""
+        cache_key = f"pyxel_tile_{u}_{v}_{size}"
+        if cache_key in self.sprite_cache:
+            return self.sprite_cache[cache_key]
+
+        bank_surf = self.get_ui_component("pyxel_bank0")
+        if bank_surf is None:
+            return None
+
+        tile_surf = pygame.Surface((8, 8), pygame.SRCALPHA)
+        tile_surf.blit(bank_surf, (0, 0), (u, v, 8, 8))
+        scaled = pygame.transform.scale(tile_surf, size)
+        self.sprite_cache[cache_key] = scaled
+        return scaled
+
     def get_combat_arena_bg(self, biome_id: str, size: tuple[int, int] | None = None) -> pygame.Surface | None:
         """Retrieve 16-bit SNES combat arena background with foreground battle platform."""
         bid = biome_id.lower()
