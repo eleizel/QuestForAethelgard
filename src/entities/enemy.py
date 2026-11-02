@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import random
-from statistics import mean
 from enum import Enum
 from math import ceil
+
+def mean(values) -> float:
+    vals = list(values)
+    return sum(vals) / len(vals) if vals else 0.0
 
 from src.entities.actor import Actor, Stats
 

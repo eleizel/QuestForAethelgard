@@ -54,8 +54,10 @@ class PygameApp:
             os.environ["SDL_VIDEODRIVER"] = "dummy"
             os.environ["SDL_AUDIODRIVER"] = "dummy"
 
-        if not pygame.get_init():
+        try:
             pygame.init()
+        except Exception:
+            pass
 
         if self.headless:
             self.screen: pygame.Surface = pygame.Surface((self.width, self.height))
