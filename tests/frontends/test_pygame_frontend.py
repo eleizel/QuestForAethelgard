@@ -306,6 +306,98 @@ def test_pygame_inventory_and_character_modals():
     char_view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_c), session)
 
 
+def test_pygame_events_view():
+    """Verify PygameEventsView decision execution, unavailable choice guards, resolved outcomes, and node exit."""
+    from src.data.events import GameEvent, EventChoice
+
+    session = GameSession()
+    session.start_new_game(class_id="warrior")
+    session.switch_mode(GameMode.EVENTS)
+    renderer = PygameRenderer()
+    surface = pygame.Surface((960, 540))
+
+    # 1. Custom GameEvent with 1 available and 1 expensive choice
+    choice_1_called = False
+    choice_2_called = False
+
+    def hook_1(state):
+        nonlocal choice_1_called
+        choice_1_called = True
+        state.player.current_hp = min(state.player.max_hp, state.player.current_hp + 10)
+        return "You rested and recovered 10 HP."
+
+    def hook_2(state):
+        nonlocal choice_2_called
+        choice_2_called = True
+        return "Paid 500 gold."
+
+    event = GameEvent(
+        id="test_altar",
+        title_en="Mystic Altar",
+        title_es="Altar Mistico",
+        description_en="A forgotten altar whispers ancient words.",
+        description_es="Un altar olvidado susurra palabras antiguas.",
+        scene_type="SHRINE",
+        choices=[
+            EventChoice(label_en="Pray (+10 HP)", label_es="Rezar (+10 HP)", action_hook=hook_1, is_available=lambda s: True),
+            EventChoice(label_en="Donate 500G", label_es="Donar 500G", action_hook=hook_2, is_available=lambda s: s.player.gold >= 500),
+        ],
+    )
+    session.state.current_event = event
+
+    view = PygameEventsView()
+    view.update(0.016, session)
+    view.draw(surface, renderer, session)
+
+    # Attempt to trigger unavailable choice 2 (Player has 0 gold) -> Should be ignored
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_2), session)
+    assert not choice_2_called
+    assert not event.resolved_text
+
+    # Trigger available choice 1 via key '1'
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_1), session)
+    assert choice_1_called
+    assert event.resolved_text == "You rested and recovered 10 HP."
+
+    # In resolved state, draw outcome
+    view.update(0.016, session)
+    view.draw(surface, renderer, session)
+
+    # In resolved state, press SPACE to continue and return to map
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE), session)
+    assert session.state.current_event is None
+    assert session.state.current_event_text == ""
+    assert session.current_mode == GameMode.MAP
+
+    # 2. Simple Rest Notification Node
+    session.switch_mode(GameMode.EVENTS)
+    session.state.current_event = None
+    session.state.current_event_text = "You slept safely by the hearth."
+
+    view.update(0.016, session)
+    view.draw(surface, renderer, session)
+
+    # Click continue button to clear rest node
+    click_pos = view.cont_rect.center
+    view.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=click_pos), session)
+    assert session.state.current_event_text == ""
+    assert session.current_mode == GameMode.MAP
+
+    # 3. Verify all scene types render cleanly without errors
+    for scene in ("CHEST", "SHRINE", "ALTAR", "FORGE", "PORTAL", "CORPSE", "REST", "DEFAULT"):
+        ev_scene = GameEvent(
+            id=f"scene_{scene}",
+            title_en="Scene Test",
+            title_es="Prueba",
+            description_en="Scene illustration test description.",
+            description_es="Prueba.",
+            scene_type=scene,
+            choices=[],
+        )
+        session.state.current_event = ev_scene
+        view.draw(surface, renderer, session)
+
+
 def test_pygame_end_game_and_credits_views():
     session = GameSession()
     session.start_new_game(class_id="warrior")
