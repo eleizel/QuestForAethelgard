@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import subprocess
 import sys
 import PyInstaller.__main__
 from PIL import Image
@@ -28,8 +29,21 @@ def ensure_icon() -> Path:
     return ico_path
 
 
+def ensure_assets() -> None:
+    """Ensure game.pyxres is generated and verified before PyInstaller packaging."""
+    print("--> Verifying / generating Pyxel retro assets (game.pyxres)...")
+    generator_script = PROJECT_ROOT / "src" / "tools" / "generate_assets.py"
+    cmd = [sys.executable, str(generator_script)]
+    subprocess.run(cmd, check=True, cwd=PROJECT_ROOT)
+    pyxres_file = PROJECT_ROOT / "assets" / "game.pyxres"
+    if not pyxres_file.exists() or pyxres_file.stat().st_size == 0:
+        raise RuntimeError(f"Failed to generate asset package at {pyxres_file}")
+    print(f"    [OK] Verified {pyxres_file.name} ({pyxres_file.stat().st_size} bytes)")
+
+
 def build_desktop() -> None:
     """Run PyInstaller build."""
+    ensure_assets()
     ico_path = ensure_icon()
 
     dist_dir = PROJECT_ROOT / "dist" / "desktop"
@@ -65,13 +79,10 @@ def build_desktop() -> None:
     if exe_file.exists():
         size_mb = exe_file.stat().st_size / (1024 * 1024)
         print("==================================================")
-        print(f"SUCCESS: Desktop build completed!")
-        print(f"Artifact: {exe_file}")
-        print(f"File Size: {size_mb:.2f} MB")
+        print(f"SUCCESS: Desktop executable built at {exe_file} ({size_mb:.2f} MB)")
         print("==================================================")
     else:
-        print("ERROR: Desktop build finished but output file was not found.", file=sys.stderr)
-        sys.exit(1)
+        raise RuntimeError(f"Build failed: executable not found at {exe_file}")
 
 
 if __name__ == "__main__":

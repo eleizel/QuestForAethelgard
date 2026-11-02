@@ -20,8 +20,21 @@ import sys
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
+def ensure_assets() -> None:
+    """Ensure game.pyxres is generated and verified before staging/packaging."""
+    print("--> Verifying / generating Pyxel retro assets (game.pyxres)...")
+    generator_script = PROJECT_ROOT / "src" / "tools" / "generate_assets.py"
+    cmd = [sys.executable, str(generator_script)]
+    subprocess.run(cmd, check=True, cwd=PROJECT_ROOT)
+    pyxres_file = PROJECT_ROOT / "assets" / "game.pyxres"
+    if not pyxres_file.exists() or pyxres_file.stat().st_size == 0:
+        raise RuntimeError(f"Failed to generate asset package at {pyxres_file}")
+    print(f"    [OK] Verified {pyxres_file.name} ({pyxres_file.stat().st_size} bytes)")
+
+
 def prepare_web_stage() -> Path:
     """Prepare clean staging directory for Pygbag."""
+    ensure_assets()
     stage_dir = PROJECT_ROOT / "build" / "web_stage"
     if stage_dir.exists():
         shutil.rmtree(stage_dir, ignore_errors=True)
@@ -105,6 +118,7 @@ def build_pygame_web(dist_web: Path) -> None:
 def build_pyxel_web(dist_web: Path) -> None:
     """Package Pyxel using pyxel package & app2html."""
     print("--> Packaging 8-Bit Retro Edition (Pyxel Web)...")
+    ensure_assets()
     dist_pyxel = dist_web / "pyxel"
     dist_pyxel.mkdir(parents=True, exist_ok=True)
 
@@ -211,6 +225,7 @@ def build_dual_web() -> None:
     print("2. Subpath (/pyxel/): Pyxel 8-Bit Retro Edition")
     print("==================================================")
 
+    ensure_assets()
     build_pygame_web(dist_web)
     build_pyxel_web(dist_web)
     copy_pwa_metadata(dist_web)

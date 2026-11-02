@@ -3,6 +3,8 @@
 Defines screen dimensions, target framerate, color palette indices, and layout configs.
 """
 
+from pathlib import Path
+import sys
 from typing import Final
 
 # Window and Display
@@ -10,10 +12,16 @@ WINDOW_TITLE: Final[str] = "Quest for Aethelgard"
 SCREEN_WIDTH: Final[int] = 256
 SCREEN_HEIGHT: Final[int] = 256
 FPS: Final[int] = 30
-import os
 
-RESOURCE_PATH: Final[str] = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                         "assets/game.pyxres")
+
+def _get_project_root() -> Path:
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        return Path(sys._MEIPASS)
+    return Path(__file__).resolve().parent.parent
+
+
+PROJECT_ROOT: Final[Path] = _get_project_root()
+RESOURCE_PATH: Final[str] = str(PROJECT_ROOT / "assets" / "game.pyxres")
 
 # Pyxel Palette Color Indices (0 to 15)
 COLOR_BLACK: Final[int] = 0

@@ -1,7 +1,6 @@
 # Cache de Python
 __pycache__/
 *.pyc
-/assets/game.pyxres
 QuestForAethelgard.html
 QuestForAethelgard.pyxapp
 saves/

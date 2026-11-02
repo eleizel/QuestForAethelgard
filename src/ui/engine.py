@@ -25,18 +25,34 @@ class Engine:
             fps=FPS,
             headless=self.headless,
             quit_key=pyxel.KEY_NONE,
-
         )
 
         if not self.headless:
             pyxel.mouse(True)
 
         abs_resource_path = os.path.abspath(RESOURCE_PATH)
+        loaded = False
         if os.path.exists(abs_resource_path):
             try:
                 pyxel.load(abs_resource_path)
+                loaded = True
             except (RuntimeError, ValueError) as e:
                 print(f"Warning: Could not load resource file {abs_resource_path}: {e}")
+
+        if not loaded:
+            # Fallback to populating in-memory resources directly!
+            try:
+                from src.tools.generate_assets import populate_pyxel_resources
+                populate_pyxel_resources()
+                print("Notice: Populated in-memory Pyxel retro assets successfully.")
+                try:
+                    os.makedirs(os.path.dirname(abs_resource_path), exist_ok=True)
+                    pyxel.save(abs_resource_path)
+                    print(f"Notice: Saved generated assets to {abs_resource_path}")
+                except Exception:
+                    pass
+            except Exception as gen_err:
+                print(f"Warning: Could not populate in-memory assets: {gen_err}")
 
         self.session: GameSession = GameSession()
         self.game_state: GameState = self.session.state
