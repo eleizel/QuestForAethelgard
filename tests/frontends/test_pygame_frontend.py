@@ -418,3 +418,31 @@ def test_level_10_promotion_to_epic_draft_flow():
     # Promotion must route immediately to ABILITY_CHOICE for Level 10 Epic draft
     assert session.current_mode == GameMode.ABILITY_CHOICE
     assert session.player.pending_ability_choices[0] == "EPIC"
+
+
+def test_pygame_character_modal_view_detailed():
+    session = GameSession()
+    session.start_new_game(class_id="warrior")
+    session.player.level = 6
+    session.player.gold = 250
+    session.player.stat_points = 2
+    session.toggle_character()
+    assert session.current_mode == GameMode.CHARACTER
+
+    view = PygameCharacterModalView()
+    renderer = PygameRenderer()
+    surface = pygame.Surface((960, 540))
+
+    view.update(0.016, session)
+    view.draw(surface, renderer, session)
+
+    # Click close button
+    close_click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=view.close_btn_rect.center)
+    view.handle_event(close_click, session)
+    assert session.current_mode != GameMode.CHARACTER
+
+    # Re-open and close with ESC
+    session.toggle_character()
+    assert session.current_mode == GameMode.CHARACTER
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE), session)
+    assert session.current_mode != GameMode.CHARACTER
