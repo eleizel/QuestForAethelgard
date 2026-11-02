@@ -116,10 +116,20 @@ def build_pygame_web(dist_web: Path) -> None:
             pointer-events: none !important;
         }
 
-        body {
+        body, html {
             background-color: #0b0e14 !important;
-            overflow: hidden;
-            touch-action: manipulation;
+            overflow: hidden !important;
+            touch-action: none !important;
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
+        }
+
+        #canvas, canvas.emscripten {
+            touch-action: none !important;
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
         }
 
         /* Portrait orientation guidance prompt */
@@ -252,13 +262,21 @@ def build_pygame_web(dist_web: Path) -> None:
         window.addEventListener('click', lockLandscape, { passive: true });
         window.addEventListener('touchstart', lockLandscape, { passive: true });
 
-        // Auto-retrigger Pygbag layout adjustment on orientation flip
+        // Auto-retrigger Pygbag layout adjustment on orientation flip and resize
         window.addEventListener('orientationchange', () => {
             setTimeout(() => {
                 if (typeof window_resize === 'function') {
                     window_resize();
                 }
             }, 250);
+        });
+
+        window.addEventListener('resize', () => {
+            setTimeout(() => {
+                if (typeof window_resize === 'function') {
+                    window_resize();
+                }
+            }, 100);
         });
     </script>
     """

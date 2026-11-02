@@ -142,7 +142,7 @@ class PygameCombatView(PygameView):
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     tx = int(target.x * (960 / 256))
                     ty = int(target.y * (540 / 256))
-                    tr = int(target.button_radius * 2.8) + 14
+                    tr = int(target.button_radius * 3.5) + 22
                     dist = math.hypot(event.pos[0] - tx, event.pos[1] - ty)
                     if dist <= tr:
                         combat.resolve_qte_target(target.current_accuracy())
@@ -168,25 +168,25 @@ class PygameCombatView(PygameView):
             pos = event.pos
 
             # Speed toggle click
-            if self.speed_btn_rect.collidepoint(pos):
+            if self.speed_btn_rect.inflate(10, 10).collidepoint(pos):
                 self._cycle_speed()
                 return
 
             # Belt item clicks
             for idx, rect in enumerate(self.belt_rects):
-                if rect.collidepoint(pos):
+                if rect.inflate(10, 10).collidepoint(pos):
                     self.selected_belt_idx = idx
                     self._use_belt_item(idx, session)
                     return
 
             # Ability clicks
             for idx, rect in enumerate(self.ability_rects):
-                if rect.collidepoint(pos):
+                if rect.inflate(8, 8).collidepoint(pos):
                     self._queue_ability(idx, session)
                     return
 
-            # Arena click advances combat turn
-            if self.arena_rect.collidepoint(pos):
+            # Combat stage tap advances combat turn (tap anywhere on stage outside belt/ability/speed)
+            if pos[1] >= 56:
                 self._tick_combat(session)
 
     def _use_belt_item(self, idx: int, session: GameSession) -> None:
