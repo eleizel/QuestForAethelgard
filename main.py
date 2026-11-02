@@ -18,11 +18,27 @@ def main() -> None:
         action="store_true",
         help="Run without displaying a graphical window (for CI/simulations)",
     )
+    parser.add_argument(
+        "--fullscreen",
+        "-f",
+        action="store_true",
+        help="Launch the pygame frontend in fullscreen mode",
+    )
+    parser.add_argument(
+        "--maximized",
+        "-m",
+        action="store_true",
+        help="Launch the pygame frontend in a maximized window",
+    )
     args, _ = parser.parse_known_args()
 
     if args.frontend == "pygame":
         from src.frontends.pygame_ce.app import PygameApp
-        app = PygameApp(headless=args.headless)
+        app = PygameApp(
+            headless=args.headless,
+            fullscreen=args.fullscreen,
+            maximized=args.maximized,
+        )
         if args.headless:
             app.run(max_frames=5)
         else:

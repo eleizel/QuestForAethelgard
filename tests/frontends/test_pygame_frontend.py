@@ -331,3 +331,18 @@ def test_pygame_app_lifecycle_all_modes():
         assert active_view is not None
         app.update(0.016)
         app.draw()
+
+
+def test_pygame_app_fullscreen_and_maximized_flags():
+    """Verify PygameApp initializes with fullscreen and maximized options."""
+    app_fs = PygameApp(headless=True, fullscreen=True)
+    assert app_fs.fullscreen is True
+
+    app_max = PygameApp(headless=True, maximized=True)
+    assert app_max.maximized is True
+
+    # Test F11 key handling
+    app = PygameApp(headless=True)
+    event_f11 = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_F11, mod=0)
+    pygame.event.post(event_f11)
+    app.handle_events()

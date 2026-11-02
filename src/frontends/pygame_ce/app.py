@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING
 import pygame
 
@@ -38,11 +39,15 @@ class PygameApp:
         width: int = 960,
         height: int = 540,
         headless: bool = False,
+        fullscreen: bool = False,
+        maximized: bool = False,
         session: GameSession | None = None,
     ) -> None:
         self.width: int = width
         self.height: int = height
         self.headless: bool = headless
+        self.fullscreen: bool = fullscreen
+        self.maximized: bool = maximized
         self.is_running: bool = False
 
         if self.headless:
@@ -56,7 +61,26 @@ class PygameApp:
             self.screen: pygame.Surface = pygame.Surface((self.width, self.height))
         else:
             pygame.display.set_caption("Quest for Aethelgard — 16-Bit SNES Golden Age Edition")
-            self.screen = pygame.display.set_mode((self.width, self.height), pygame.DOUBLEBUF)
+            icon_path = Path(__file__).resolve().parents[3] / "assets" / "icon-192.png"
+            if icon_path.exists():
+                try:
+                    pygame.display.set_icon(pygame.image.load(str(icon_path)))
+                except Exception:
+                    pass
+
+            flags = pygame.DOUBLEBUF | pygame.SCALED | pygame.RESIZABLE
+            if self.fullscreen:
+                flags |= pygame.FULLSCREEN
+
+            self.screen = pygame.display.set_mode((self.width, self.height), flags)
+
+            if self.maximized and not self.fullscreen:
+                try:
+                    from pygame.window import Window
+                    win = Window.from_display_module()
+                    win.maximize()
+                except Exception:
+                    pass
 
         self.clock: pygame.time.Clock = pygame.time.Clock()
         self.session: GameSession = session if session is not None else GameSession()
@@ -93,6 +117,16 @@ class PygameApp:
             if event.type == pygame.QUIT:
                 self.is_running = False
                 return
+
+            if event.type == pygame.KEYDOWN:
+                # F11 or Alt+Enter toggles fullscreen without restarting or distorting
+                if event.key == pygame.K_F11 or (event.key == pygame.K_RETURN and (event.mod & pygame.KMOD_ALT)):
+                    try:
+                        pygame.display.toggle_fullscreen()
+                        self.fullscreen = not self.fullscreen
+                    except Exception:
+                        pass
+                    continue
 
             active_view = self.get_active_view()
             active_view.handle_event(event, self.session)
