@@ -182,3 +182,24 @@ class PygameApp:
 
         if not self.headless:
             pygame.quit()
+
+    async def run_async(self, max_frames: int | None = None) -> None:
+        """Run asynchronous application main loop for WebAssembly (Pygbag) and event loops."""
+        import asyncio
+
+        self.is_running = True
+        frames_rendered = 0
+
+        while self.is_running:
+            dt = self.clock.tick(60) / 1000.0  # 60 FPS
+            self.handle_events()
+            self.update(dt)
+            self.draw()
+
+            frames_rendered += 1
+            if max_frames is not None and frames_rendered >= max_frames:
+                break
+            await asyncio.sleep(0)
+
+        if not self.headless:
+            pygame.quit()

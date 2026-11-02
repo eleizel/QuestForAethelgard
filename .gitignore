@@ -11,3 +11,9 @@ reports/
 .env*
 *.key
 local_keys.json
+
+# Build & packaging artifacts
+build/
+dist/
+*.spec
+.venv/

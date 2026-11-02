@@ -1,3 +1,6 @@
 pyxel>=2.0.0
 pytest
 pygame-ce>=2.5.0
+pyinstaller>=6.0.0
+pygbag>=0.9.0
+pillow>=10.0.0

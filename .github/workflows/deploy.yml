@@ -1,4 +1,4 @@
-name: Build and Deploy Pyxel Web
+name: Build and Deploy Dual-Frontend Web & Desktop
 
 on:
   push:
@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  build-web:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -24,51 +24,55 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: '3.12'
 
-      - name: Install dependencies & Pyxel
+      - name: Install dependencies
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Package Pyxel App to HTML
+      - name: Build Dual-Frontend Web Deployment (Pygame-CE + Pyxel)
         run: |
-          # 1. Genera los assets necesarios
-          cd src/tools
-          python generate_assets.py
-          cd ../..
-          
-          # 2. Genera la carpeta dist
-          mkdir dist
-          
-          # 3. Empaqueta la carpeta raiz y genera el HTML autonomo
-          pyxel package . main.py
-          pyxel app2html QuestForAethelgard.pyxapp
-          mv QuestForAethelgard.html dist/index.html
-          
-          # 4. Copia los archivos del manifest e iconos a dist/
-          cp assets/manifest.json dist/
-          cp assets/icon-192.png dist/
-          cp assets/icon-512.png dist/
-          cp assets/screenshots/* dist/
-          mkdir dist/.well-known
-          cp -r assets/.well-known/ dist/
-          
-          # 5. Inyecta los tags con el script de parchado
-          python src/tools/patch_html.py
+          python tools/build_web.py
 
-      - name: Upload Artifact
+      - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'dist'
+          path: 'dist/web'
 
-  deploy:
+  deploy-pages:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    needs: build
+    needs: build-web
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  build-desktop:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build Standalone Windows Executable
+        run: |
+          python tools/build_desktop.py
+
+      - name: Upload Desktop Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuestForAethelgard-Windows-Desktop
+          path: dist/desktop/QuestForAethelgard.exe

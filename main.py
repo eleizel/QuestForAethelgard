@@ -1,17 +1,19 @@
 """Entry point for Quest for Aethelgard supporting multi-frontend switching."""
 
 import argparse
+import asyncio
 import sys
 
 
-def main() -> None:
+async def main_async() -> None:
     """Initialize and run the Quest for Aethelgard engine."""
     parser = argparse.ArgumentParser(description="Quest for Aethelgard")
+    default_frontend = "pygame" if sys.platform == "emscripten" else "pygame"
     parser.add_argument(
         "--frontend",
         choices=["pyxel", "pygame"],
-        default="pyxel",
-        help="Frontend presentation engine to run (default: pyxel)",
+        default=default_frontend,
+        help="Frontend presentation engine to run (default: pygame)",
     )
     parser.add_argument(
         "--headless",
@@ -39,15 +41,22 @@ def main() -> None:
             fullscreen=args.fullscreen,
             maximized=args.maximized,
         )
-        if args.headless:
+        if sys.platform == "emscripten":
+            await app.run_async()
+        elif args.headless:
             app.run(max_frames=5)
         else:
-            app.run()
+            await app.run_async()
     else:
         from src.ui.engine import Engine
         engine = Engine(headless=args.headless)
         if not args.headless:
             engine.run()
+
+
+def main() -> None:
+    """Entry point invoking the async loop."""
+    asyncio.run(main_async())
 
 
 if __name__ == "__main__":
