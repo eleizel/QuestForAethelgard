@@ -8,3 +8,6 @@ saves/
 reports/
 *.tmp
 /.idea/misc.xml
+.env*
+*.key
+local_keys.json

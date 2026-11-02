@@ -264,6 +264,71 @@ class AssetManager:
             return surf
         return None
 
+    def get_bust_portrait(self, class_id: str, size: tuple[int, int] = (40, 40)) -> pygame.Surface | None:
+        """Retrieve neck-up cropped 16-bit bust portrait scaled to size preserving aspect ratio."""
+        cid = class_id.lower()
+        cache_key = f"bust_{cid}_{size}"
+        if cache_key in self.sprite_cache:
+            return self.sprite_cache[cache_key]
+
+        raw_portrait = self.get_class_portrait(cid)
+        if raw_portrait is None:
+            return None
+
+        # Crop neck-up: top ~68% height, center 85% width
+        w, h = raw_portrait.get_size()
+        crop_h = int(h * 0.68)
+        crop_w = int(w * 0.85)
+        left = (w - crop_w) // 2
+        sub = raw_portrait.subsurface((left, 0, crop_w, crop_h))
+
+        tw, th = size
+        scale = min(tw / crop_w, th / crop_h)
+        scaled_w = max(1, int(crop_w * scale))
+        scaled_h = max(1, int(crop_h * scale))
+        scaled = pygame.transform.smoothscale(sub, (scaled_w, scaled_h))
+
+        final_surf = pygame.Surface(size, pygame.SRCALPHA)
+        final_surf.blit(scaled, ((tw - scaled_w) // 2, (th - scaled_h) // 2))
+        self.sprite_cache[cache_key] = final_surf
+        return final_surf
+
+    def get_biome_icon(self, biome_id: str, size: tuple[int, int] | None = None) -> pygame.Surface | None:
+        """Retrieve 16-bit SNES biome emblem icon."""
+        bid = biome_id.lower()
+        cache_key = f"biome_{bid}_{size}"
+        if cache_key in self.sprite_cache:
+            return self.sprite_cache[cache_key]
+
+        png_path = PROJECT_ROOT / "assets" / "icons" / f"biome_{bid}.png"
+        if png_path.exists():
+            surf = pygame.image.load(str(png_path))
+            if pygame.display.get_surface():
+                surf = surf.convert_alpha()
+            if size is not None:
+                surf = pygame.transform.smoothscale(surf, size)
+            self.sprite_cache[cache_key] = surf
+            return surf
+        return None
+
+    def get_node_icon(self, node_type: str, size: tuple[int, int] | None = None) -> pygame.Surface | None:
+        """Retrieve 16-bit SNES map node medallion icon (combat, event, rest, elite, treasure, shop, boss)."""
+        ntype = node_type.lower()
+        cache_key = f"node_{ntype}_{size}"
+        if cache_key in self.sprite_cache:
+            return self.sprite_cache[cache_key]
+
+        png_path = PROJECT_ROOT / "assets" / "icons" / f"node_{ntype}.png"
+        if png_path.exists():
+            surf = pygame.image.load(str(png_path))
+            if pygame.display.get_surface():
+                surf = surf.convert_alpha()
+            if size is not None:
+                surf = pygame.transform.smoothscale(surf, size)
+            self.sprite_cache[cache_key] = surf
+            return surf
+        return None
+
     def get_enemy_sprite(self, enemy_id: str, scale: int = 3) -> pygame.Surface | None:
         """Retrieve 16x16 enemy sprite upscaled for combat arena."""
         coords = ENEMY_COORDS.get(enemy_id.lower())
@@ -295,6 +360,8 @@ class AssetManager:
         target_w: int,
         target_h: int,
         margin: int = 54,
+        draw_center: bool = True,
+        edge_margin: int | None = None,
     ) -> pygame.Surface:
         """Scale an ornate frame to arbitrary width and height using 9-slice tiling/stretching."""
         w, h = src_surf.get_size()
@@ -305,6 +372,8 @@ class AssetManager:
         if m <= 0:
             return pygame.transform.scale(src_surf, (target_w, target_h))
 
+        em = min(edge_margin if edge_margin is not None else m, m)
+
         out = pygame.Surface((target_w, target_h), pygame.SRCALPHA)
 
         # 4 corners
@@ -314,24 +383,25 @@ class AssetManager:
         br = src_surf.subsurface((w - m, h - m, m, m))
 
         # 4 edges
-        inner_w = max(1, target_w - 2 * m)
-        inner_h = max(1, target_h - 2 * m)
         src_inner_w = max(1, w - 2 * m)
         src_inner_h = max(1, h - 2 * m)
+        dest_inner_w = max(1, target_w - 2 * m)
+        dest_inner_h = max(1, target_h - 2 * m)
 
-        t_edge = src_surf.subsurface((m, 0, src_inner_w, m))
-        b_edge = src_surf.subsurface((m, h - m, src_inner_w, m))
-        l_edge = src_surf.subsurface((0, m, m, src_inner_h))
-        r_edge = src_surf.subsurface((w - m, m, m, src_inner_h))
+        t_edge = src_surf.subsurface((m, 0, src_inner_w, em))
+        b_edge = src_surf.subsurface((m, h - em, src_inner_w, em))
+        l_edge = src_surf.subsurface((0, m, em, src_inner_h))
+        r_edge = src_surf.subsurface((w - em, m, em, src_inner_h))
 
         center = src_surf.subsurface((m, m, src_inner_w, src_inner_h))
 
         # Blit center and edges
-        out.blit(pygame.transform.scale(center, (inner_w, inner_h)), (m, m))
-        out.blit(pygame.transform.scale(t_edge, (inner_w, m)), (m, 0))
-        out.blit(pygame.transform.scale(b_edge, (inner_w, m)), (m, target_h - m))
-        out.blit(pygame.transform.scale(l_edge, (m, inner_h)), (0, m))
-        out.blit(pygame.transform.scale(r_edge, (m, inner_h)), (target_w - m, m))
+        if draw_center:
+            out.blit(pygame.transform.scale(center, (dest_inner_w, dest_inner_h)), (m, m))
+        out.blit(pygame.transform.scale(t_edge, (dest_inner_w, em)), (m, 0))
+        out.blit(pygame.transform.scale(b_edge, (dest_inner_w, em)), (m, target_h - em))
+        out.blit(pygame.transform.scale(l_edge, (em, dest_inner_h)), (0, m))
+        out.blit(pygame.transform.scale(r_edge, (em, dest_inner_h)), (target_w - em, m))
 
         # Blit corners
         out.blit(tl, (0, 0))
@@ -346,9 +416,11 @@ class AssetManager:
         target_w: int = 400,
         target_h: int = 280,
         margin: int = 54,
+        draw_center: bool = True,
+        edge_margin: int | None = None,
     ) -> pygame.Surface | None:
         """Retrieve a cached 9-slice rendered ornate frame of target dimensions."""
-        cache_key = f"9slice_{name}_{target_w}_{target_h}_{margin}"
+        cache_key = f"9slice_{name}_{target_w}_{target_h}_{margin}_{draw_center}_{edge_margin}"
         if cache_key in self.sprite_cache:
             return self.sprite_cache[cache_key]
 
@@ -356,7 +428,9 @@ class AssetManager:
         if base_frame is None:
             return None
 
-        scaled = self.render_9slice(base_frame, target_w, target_h, margin=margin)
+        scaled = self.render_9slice(
+            base_frame, target_w, target_h, margin=margin, draw_center=draw_center, edge_margin=edge_margin
+        )
         self.sprite_cache[cache_key] = scaled
         return scaled
 

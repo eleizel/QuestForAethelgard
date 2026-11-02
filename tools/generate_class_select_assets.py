@@ -22,6 +22,13 @@ SPRITES_DIR = os.path.join(PROJECT_ROOT, "assets", "sprites")
 PORTRAITS_DIR = os.path.join(PROJECT_ROOT, "assets", "portraits")
 MANIFEST_PATH = os.path.join(PROJECT_ROOT, "assets", "ui_asset_manifest.json")
 
+# Auto-load key from .env if not in environment
+if not API_KEY and os.path.exists(os.path.join(PROJECT_ROOT, ".env")):
+    with open(os.path.join(PROJECT_ROOT, ".env"), encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("GEMINI_API_KEY="):
+                API_KEY = line.strip().split("=", 1)[1]
+
 os.makedirs(ICONS_DIR, exist_ok=True)
 os.makedirs(SPRITES_DIR, exist_ok=True)
 os.makedirs(PORTRAITS_DIR, exist_ok=True)
