@@ -329,14 +329,163 @@ class AssetManager:
             return surf
         return None
 
-    def get_enemy_sprite(self, enemy_id: str, scale: int = 3) -> pygame.Surface | None:
-        """Retrieve 16x16 enemy sprite upscaled for combat arena."""
-        coords = ENEMY_COORDS.get(enemy_id.lower())
+    def get_status_icon(self, status_id: str, size: tuple[int, int] = (24, 24)) -> pygame.Surface | None:
+        """Retrieve 16-bit SNES status effect badge icon (burn, poison, bleed, stun, blind, fortify, haste, weaken, vulnerable)."""
+        sid = status_id.lower()
+        cache_key = f"status_{sid}_{size}"
+        if cache_key in self.sprite_cache:
+            return self.sprite_cache[cache_key]
+
+        png_path = PROJECT_ROOT / "assets" / "icons" / f"status_{sid}.png"
+        if png_path.exists():
+            surf = pygame.image.load(str(png_path))
+            if pygame.display.get_surface():
+                surf = surf.convert_alpha()
+            if size is not None:
+                surf = pygame.transform.smoothscale(surf, size)
+            self.sprite_cache[cache_key] = surf
+            return surf
+        return None
+
+    def get_item_icon(self, item_id: str, size: tuple[int, int] | None = None) -> pygame.Surface | None:
+        """Retrieve 16-bit SNES inventory / belt item icon."""
+        iid = item_id.lower()
+        cache_key = f"item_{iid}_{size}"
+        if cache_key in self.sprite_cache:
+            return self.sprite_cache[cache_key]
+
+        candidate_names = [f"item_{iid}.png", f"{iid}.png"]
+        if "potion" in iid or "health" in iid:
+            candidate_names.append("item_potion_health.png")
+        elif "mana" in iid or "blue" in iid:
+            candidate_names.append("item_potion_mana.png")
+        elif "herb" in iid or "antidote" in iid:
+            candidate_names.append("item_herb.png")
+
+        for c in candidate_names:
+            p = PROJECT_ROOT / "assets" / "icons" / c
+            if p.exists():
+                surf = pygame.image.load(str(p))
+                if pygame.display.get_surface():
+                    surf = surf.convert_alpha()
+                if size is not None:
+                    surf = pygame.transform.smoothscale(surf, size)
+                self.sprite_cache[cache_key] = surf
+                return surf
+        return None
+
+    def get_combat_arena_bg(self, biome_id: str, size: tuple[int, int] | None = None) -> pygame.Surface | None:
+        """Retrieve 16-bit SNES combat arena background with foreground battle platform."""
+        bid = biome_id.lower()
+        cache_key = f"combat_bg_{bid}_{size}"
+        if cache_key in self.sprite_cache:
+            return self.sprite_cache[cache_key]
+
+        png_path = PROJECT_ROOT / "assets" / "backgrounds" / f"combat_{bid}.png"
+        if not png_path.exists():
+            png_path = PROJECT_ROOT / "assets" / "backgrounds" / f"{bid}.png"
+
+        if png_path.exists():
+            surf = pygame.image.load(str(png_path))
+            if pygame.display.get_surface():
+                surf = surf.convert()
+            if size is not None:
+                surf = pygame.transform.smoothscale(surf, size)
+            self.sprite_cache[cache_key] = surf
+            return surf
+        return None
+
+    def get_enemy_sprite(
+        self,
+        enemy_id_or_name: str,
+        size: tuple[int, int] | None = None,
+        max_height: int = 120,
+        scale: int = 3,
+    ) -> pygame.Surface | None:
+        """Retrieve authentic 16-bit SNES enemy combat sprite facing left."""
+        raw_key = enemy_id_or_name.lower().replace(" ", "_").replace("-", "_").replace(",", "").replace(".", "")
+        cache_key = f"enemy_sprite_{raw_key}_{size}_{max_height}"
+        if cache_key in self.sprite_cache:
+            return self.sprite_cache[cache_key]
+
+        # 1. Check generated high-res 16-bit enemy sprites
+        enemy_dir = PROJECT_ROOT / "assets" / "sprites" / "enemies"
+        candidate_paths = [
+            enemy_dir / f"{raw_key}.png",
+        ]
+        # Also match substrings if needed
+        for p in candidate_paths:
+            if p.exists():
+                surf = pygame.image.load(str(p))
+                if pygame.display.get_surface():
+                    surf = surf.convert_alpha()
+                if size is not None:
+                    surf = pygame.transform.smoothscale(surf, size)
+                elif max_height:
+                    w, h = surf.get_size()
+                    if h > max_height or w > 200:
+                        ratio = min(max_height / h, 200 / w)
+                        new_w = max(1, int(w * ratio))
+                        new_h = max(1, int(h * ratio))
+                        surf = pygame.transform.smoothscale(surf, (new_w, new_h))
+                self.sprite_cache[cache_key] = surf
+                return surf
+
+        # Check all files in enemy_dir for substring match
+        if enemy_dir.exists():
+            for p in enemy_dir.glob("*.png"):
+                stem = p.stem.lower()
+                if stem in raw_key or raw_key in stem:
+                    surf = pygame.image.load(str(p))
+                    if pygame.display.get_surface():
+                        surf = surf.convert_alpha()
+                    if size is not None:
+                        surf = pygame.transform.smoothscale(surf, size)
+                    elif max_height:
+                        w, h = surf.get_size()
+                        ratio = min(max_height / h, 200 / w)
+                        new_w = max(1, int(w * ratio))
+                        new_h = max(1, int(h * ratio))
+                        surf = pygame.transform.smoothscale(surf, (new_w, new_h))
+                    self.sprite_cache[cache_key] = surf
+                    return surf
+
+        # 2. Fallback to 16x16 sprite banks upscaled
+        coords = ENEMY_COORDS.get(raw_key)
         if coords:
             u, v = coords
             return self.get_sprite(0, u, v, 16, 16, scale=scale)
-        # Fallback skeleton at (16, 0)
         return self.get_sprite(0, 16, 0, 16, 16, scale=scale)
+
+    def get_enemy_bust(self, enemy_id_or_name: str, size: tuple[int, int] = (38, 38)) -> pygame.Surface | None:
+        """Retrieve cropped headshot/bust of an enemy sprite for the enemy status window."""
+        raw_key = enemy_id_or_name.lower().replace(" ", "_").replace("-", "_")
+        cache_key = f"enemy_bust_{raw_key}_{size}"
+        if cache_key in self.sprite_cache:
+            return self.sprite_cache[cache_key]
+
+        sprite = self.get_enemy_sprite(enemy_id_or_name, max_height=180)
+        if sprite is None:
+            return None
+
+        w, h = sprite.get_size()
+        # Crop headshot: upper 65% height, center 75% width
+        crop_h = max(1, int(h * 0.65))
+        crop_w = max(1, int(w * 0.75))
+        left = max(0, (w - crop_w) // 2)
+        sub = sprite.subsurface((left, 0, min(crop_w, w - left), min(crop_h, h)))
+
+        tw, th = size
+        # Fill the square headshot frame nicely
+        scale = max(tw / sub.get_width(), th / sub.get_height())
+        scaled_w = max(1, int(sub.get_width() * scale))
+        scaled_h = max(1, int(sub.get_height() * scale))
+        scaled = pygame.transform.smoothscale(sub, (scaled_w, scaled_h))
+
+        final_surf = pygame.Surface(size, pygame.SRCALPHA)
+        final_surf.blit(scaled, ((tw - scaled_w) // 2, (th - scaled_h) // 2))
+        self.sprite_cache[cache_key] = final_surf
+        return final_surf
 
 
     def get_ui_component(self, name: str) -> pygame.Surface | None:

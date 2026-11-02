@@ -16,6 +16,7 @@ from src.core.theme import ThemeToken
 from src.data.biomes import get_biome
 from src.systems.map_gen import NodeType
 from src.frontends.pygame_ce.asset_manager import assets
+from src.frontends.pygame_ce.components.top_hud import TopHUDComponent
 from src.frontends.pygame_ce.views.base import PygameView
 
 if TYPE_CHECKING:
@@ -62,11 +63,7 @@ class PygameMapView(PygameView):
     def __init__(self) -> None:
         self.pulse_timer: float = 0.0
         self._hovered_node_id: int | None = None
-        self._hovered_btn: str | None = None
-
-        # Interactive Button Rects (inset from frame edges to prevent corner overlap)
-        self.char_btn_rect = pygame.Rect(716, 12, 98, 32)
-        self.inv_btn_rect = pygame.Rect(824, 12, 98, 32)
+        self.top_hud = TopHUDComponent()
 
     def _get_node_screen_pos(self, node: MapNode, total_floors: int, surface_w: int, surface_h: int) -> tuple[int, int]:
         """Compute pixel position for a node with comfortable layout spacing within center viewport."""
@@ -89,6 +86,9 @@ class PygameMapView(PygameView):
 
     def handle_event(self, event: pygame.event.Event, session: GameSession) -> None:
         """Handle mouse clicks and keyboard shortcuts on the Spire map."""
+        if self.top_hud.handle_event(event, session):
+            return
+
         if not session.state.map_graph:
             return
 
@@ -97,26 +97,12 @@ class PygameMapView(PygameView):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 session.reset_to_title()
-            elif event.key == pygame.K_i:
-                session.toggle_inventory()
-            elif event.key == pygame.K_c:
-                session.toggle_character()
             elif event.key in (pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4):
                 idx = event.key - pygame.K_1
                 if 0 <= idx < len(available):
                     session.select_map_node(available[idx].id)
 
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            pos = event.pos
-
-            # Top HUD Buttons
-            if self.inv_btn_rect.collidepoint(pos):
-                session.toggle_inventory()
-                return
-            elif self.char_btn_rect.collidepoint(pos):
-                session.toggle_character()
-                return
-
             if self._hovered_node_id is not None:
                 session.select_map_node(self._hovered_node_id)
 
@@ -124,13 +110,7 @@ class PygameMapView(PygameView):
         """Update pulse timer and check mouse hover over nodes and buttons."""
         self.pulse_timer += dt
         pos = pygame.mouse.get_pos()
-
-        if self.inv_btn_rect.collidepoint(pos):
-            self._hovered_btn = "inv"
-        elif self.char_btn_rect.collidepoint(pos):
-            self._hovered_btn = "char"
-        else:
-            self._hovered_btn = None
+        self.top_hud.update(pos)
 
         if not session.state.map_graph:
             self._hovered_node_id = None
@@ -373,141 +353,9 @@ class PygameMapView(PygameView):
                 )
 
         # =========================================================================
-        # 4. TOP HUD BAR (y = 6 to y = 50)
+        # 4. TOP HUD BAR (y = 6 to y = 52)
         # =========================================================================
-        hud_rect = pygame.Rect(8, 6, surface_w - 16, 46)
-        hud_bg = pygame.Surface((hud_rect.width, hud_rect.height), pygame.SRCALPHA)
-        hud_bg.fill((18, 15, 24, 240))
-        surface.blit(hud_bg, hud_rect.topleft)
-
-        # 9-slice clean gold frame (margin=23 to keep native crisp corner)
-        hud_frame = assets.get_9slice_frame("frame_gold_clean", hud_rect.width, hud_rect.height, margin=23)
-        if hud_frame:
-            surface.blit(hud_frame, hud_rect.topleft)
-        else:
-            pygame.draw.rect(surface, (218, 165, 32), hud_rect, width=2, border_radius=4)
-
-        # 4A. Character Headshot Bust (leftmost part precisely aligned with the last straight point of the inner horizontal line at x=24)
-        bust_rect = pygame.Rect(hud_rect.x + 24, hud_rect.y + 5, 36, 36)
-        bust_surf = assets.get_bust_portrait(player.class_id, size=(36, 36))
-        if bust_surf:
-            surface.blit(bust_surf, bust_rect.topleft)
-
-        # 4B. Name, Class, Level
-        info_x = bust_rect.right + 10
-        name_part = f"{player.name}"
-        class_part = f" ({player.class_id.capitalize()})"
-        lvl_part = f" Lv.{player.level}"
-
-        # Draw compound colored text
-        r_name = renderer.draw_text(
-            surface, name_part, info_x, hud_rect.y + 8,
-            token=ThemeToken.TEXT_HIGHLIGHT, size=14, bold=True, font_variant="alagard"
-        )
-        r_class = renderer.draw_text(
-            surface, class_part, r_name.right, hud_rect.y + 8,
-            token=ThemeToken.TEXT_NORMAL, size=14, bold=True, font_variant="alagard"
-        )
-        renderer.draw_text(
-            surface, lvl_part, r_class.right, hud_rect.y + 8,
-            token=ThemeToken.TEXT_HIGHLIGHT, size=14, bold=True, font_variant="alagard"
-        )
-
-        # 4C. EXP Text & Bar
-        exp_next = max(1, getattr(player, "exp_to_next_level", 100))
-        exp_curr = getattr(player, "experience", 0)
-        exp_str = f"EXP: {exp_curr}/{exp_next}"
-        r_exp = renderer.draw_text(
-            surface, exp_str, info_x, hud_rect.y + 26,
-            token=ThemeToken.TEXT_MUTED, size=11, bold=False, font_variant="alagard"
-        )
-
-        # EXP Bar
-        exp_bar_x = r_exp.right + 8
-        exp_bar_rect = pygame.Rect(exp_bar_x, hud_rect.y + 28, 100, 10)
-        pygame.draw.rect(surface, (30, 32, 45), exp_bar_rect, border_radius=2)
-        exp_ratio = min(1.0, max(0.0, exp_curr / exp_next))
-        if exp_ratio > 0:
-            fill_w = max(2, int(exp_bar_rect.width * exp_ratio))
-            pygame.draw.rect(surface, (41, 173, 255), (exp_bar_rect.x, exp_bar_rect.y, fill_w, exp_bar_rect.height), border_radius=2)
-        pygame.draw.rect(surface, (150, 155, 175), exp_bar_rect, width=1, border_radius=2)
-
-        # Vertical Divider
-        div1_x = exp_bar_rect.right + 16
-        renderer.draw_text(surface, "|", div1_x, hud_rect.y + 16, token=ThemeToken.BORDER_MUTED, size=14, font_variant="alagard")
-
-        # 4D. Gold
-        gold_x = div1_x + 14
-        renderer.draw_text(
-            surface,
-            f"Gold: {player.gold}",
-            gold_x,
-            hud_rect.y + 16,
-            token=ThemeToken.TEXT_HIGHLIGHT,
-            size=14,
-            bold=True,
-            font_variant="alagard",
-        )
-
-        # Vertical Divider
-        div2_x = gold_x + 95
-        renderer.draw_text(surface, "|", div2_x, hud_rect.y + 16, token=ThemeToken.BORDER_MUTED, size=14, font_variant="alagard")
-
-        # 4E. Floor
-        floor_x = div2_x + 14
-        renderer.draw_text(
-            surface,
-            f"Floor {session.state.floor}",
-            floor_x,
-            hud_rect.y + 16,
-            token=ThemeToken.TEXT_NORMAL,
-            size=14,
-            bold=True,
-            font_variant="alagard",
-        )
-
-        # 4F. Top Right HUD Action Buttons ([CHAR] and [INV])
-        # CHAR button
-        c_hover = (self._hovered_btn == "char")
-        c_frame = assets.get_9slice_frame("frame_button_gold", self.char_btn_rect.width, self.char_btn_rect.height, margin=14)
-        if c_frame:
-            surface.blit(c_frame, self.char_btn_rect.topleft)
-        else:
-            pygame.draw.rect(surface, (218, 165, 32), self.char_btn_rect, width=2, border_radius=4)
-        if c_hover:
-            pygame.draw.rect(surface, (255, 255, 255), self.char_btn_rect, width=1, border_radius=4)
-        renderer.draw_text(
-            surface,
-            "[C] CHAR",
-            self.char_btn_rect.centerx,
-            self.char_btn_rect.centery - 6,
-            token=ThemeToken.TEXT_HIGHLIGHT if c_hover else ThemeToken.TEXT_NORMAL,
-            size=12,
-            bold=True,
-            align="center",
-            font_variant="alagard",
-        )
-
-        # INV button
-        i_hover = (self._hovered_btn == "inv")
-        i_frame = assets.get_9slice_frame("frame_button_gold", self.inv_btn_rect.width, self.inv_btn_rect.height, margin=14)
-        if i_frame:
-            surface.blit(i_frame, self.inv_btn_rect.topleft)
-        else:
-            pygame.draw.rect(surface, (218, 165, 32), self.inv_btn_rect, width=2, border_radius=4)
-        if i_hover:
-            pygame.draw.rect(surface, (255, 255, 255), self.inv_btn_rect, width=1, border_radius=4)
-        renderer.draw_text(
-            surface,
-            "[I] INV",
-            self.inv_btn_rect.centerx,
-            self.inv_btn_rect.centery - 6,
-            token=ThemeToken.TEXT_HIGHLIGHT if i_hover else ThemeToken.TEXT_NORMAL,
-            size=12,
-            bold=True,
-            align="center",
-            font_variant="alagard",
-        )
+        self.top_hud.draw(surface, renderer, session)
 
         # =========================================================================
         # 5. BOTTOM LEGEND BAR (y = 488 to y = 534)
