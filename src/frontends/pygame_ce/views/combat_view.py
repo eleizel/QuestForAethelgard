@@ -27,7 +27,7 @@ from src.core.theme import ThemeToken
 from src.frontends.pygame_ce.asset_manager import assets
 from src.frontends.pygame_ce.components.top_hud import TopHUDComponent
 from src.frontends.pygame_ce.views.base import PygameView
-from src.systems.combat import ACTION_THRESHOLD
+from src.systems.combat import ACTION_THRESHOLD, CombatResult
 from src.systems.inventory import MAX_BELT_SLOTS
 
 if TYPE_CHECKING:
@@ -64,6 +64,10 @@ class PygameCombatView(PygameView):
         self.selected_belt_idx: int = 0
 
         # Clickable rects for mouse interaction
+        self.victory_active: bool = False
+        self.victory_timer: float = 0.0
+        self.victory_duration: float = 2.5
+
         self.arena_rect = pygame.Rect(8, 56, 944, 176)
         self.speed_btn_rect = pygame.Rect(860, 64, 84, 26)
         self.belt_rects = [
@@ -93,6 +97,10 @@ class PygameCombatView(PygameView):
             return
 
         combat = session.combat
+
+        # Invalidate all player actions if battle is finished or victory modal is active
+        if self.victory_active or not combat.is_active() or combat.result != CombatResult.IN_PROGRESS:
+            return
 
         # If QTE is active, handle QTE key/mouse interaction
         if combat.is_qte_active() and combat.active_qte:
@@ -255,7 +263,38 @@ class PygameCombatView(PygameView):
             p.lifetime -= dt
         self.popups = [p for p in self.popups if p.lifetime > 0]
 
-        if not session.combat or not session.combat.is_active():
+        if not session.combat:
+            return
+
+        combat = session.combat
+
+        # 1. Player Defeat: immediately progress to defeat view (no victory modal)
+        if combat.result == CombatResult.PLAYER_DEFEAT or session.player.current_hp <= 0:
+            combat.completion_delay_ticks = 0
+            session.update_combat()
+            return
+
+        # 2. Player Victory: trigger golden victory modal and 2.5s countdown
+        if combat.result == CombatResult.PLAYER_VICTORY or (combat.enemy and combat.enemy.current_hp <= 0):
+            if not self.victory_active:
+                self.victory_active = True
+                self.victory_timer = self.victory_duration
+                try:
+                    from src.systems.audio_manager import audio_manager, AudioCue
+                    audio_manager.play_cue(AudioCue.VICTORY)
+                except Exception:
+                    pass
+
+            self.victory_timer -= dt
+            if self.victory_timer <= 0.0:
+                self.victory_active = False
+                combat.completion_delay_ticks = 0
+                session.update_combat()
+            return
+
+        if not combat.is_active():
+            combat.completion_delay_ticks = 0
+            session.update_combat()
             return
 
         # Advance QTE if active
@@ -333,6 +372,11 @@ class PygameCombatView(PygameView):
             surface.blit(arena_bg, arena_rect.topleft)
         else:
             pygame.draw.rect(surface, (18, 15, 25), arena_rect)
+
+        # Dim arena background slightly so combatant sprites pop and do not blend into scenery
+        arena_dim = pygame.Surface((arena_rect.width, arena_rect.height), pygame.SRCALPHA)
+        arena_dim.fill((0, 0, 0, 75))
+        surface.blit(arena_dim, arena_rect.topleft)
 
         # Vignette / subtle dark gradient along the top and bottom of arena
         vignette = pygame.Surface((arena_rect.width, 30), pygame.SRCALPHA)
@@ -828,6 +872,12 @@ class PygameCombatView(PygameView):
         if combat.is_qte_active() and combat.active_qte:
             self._draw_qte(surface, renderer, combat.active_qte)
 
+        # =========================================================================
+        # 8. VICTORY NOTIFICATION MODAL
+        # =========================================================================
+        if self.victory_active:
+            self._draw_victory_modal(surface, renderer, session)
+
         # Restore un-shaked surface if shake was applied
         if orig_surface != surface:
             orig_surface.blit(surface, (ox, oy))
@@ -996,3 +1046,96 @@ class PygameCombatView(PygameView):
             pygame.draw.circle(surface, (15, 15, 20), (tx, ty), br)
             pygame.draw.circle(surface, tier_col, (tx, ty), br, width=3)
             renderer.draw_text(surface, f"{target.tier.upper()} {target.score}%", tx, ty - 8, token=ThemeToken.TEXT_HIGHLIGHT, size=13, bold=True, align="center")
+
+    def _draw_victory_modal(self, surface: pygame.Surface, renderer: PygameRenderer, session: GameSession) -> None:
+        """Render centered victory notification modal with 9-slice frame, gold typography, and countdown."""
+        w, h = surface.get_width(), surface.get_height()
+        combat = session.combat
+        if not combat:
+            return
+        enemy = combat.enemy
+
+        # 1. Dark semi-transparent dim backdrop across entire screen
+        backdrop = pygame.Surface((w, h), pygame.SRCALPHA)
+        backdrop.fill((0, 0, 0, 140))
+        surface.blit(backdrop, (0, 0))
+
+        # 2. Modal dimensions and placement
+        modal_w, modal_h = 440, 160
+        modal_rect = pygame.Rect((w - modal_w) // 2, (h - modal_h) // 2, modal_w, modal_h)
+
+        # Modal solid dark gothic interior
+        modal_bg = pygame.Surface((modal_rect.width, modal_rect.height), pygame.SRCALPHA)
+        modal_bg.fill((16, 12, 24, 250))
+        surface.blit(modal_bg, modal_rect.topleft)
+
+        # Modal gold ornate frame
+        modal_frame = assets.get_9slice_frame(
+            "frame_gold_ornate_hollow",
+            modal_rect.width,
+            modal_rect.height,
+            margin=48,
+            draw_center=False,
+            edge_margin=22,
+        )
+        if modal_frame:
+            surface.blit(modal_frame, modal_rect.topleft)
+        else:
+            pygame.draw.rect(surface, (218, 165, 32), modal_rect, width=2, border_radius=6)
+
+        # 3. Text & Info
+        # Golden Victory Header
+        renderer.draw_text(
+            surface,
+            "VICTORY!",
+            modal_rect.centerx,
+            modal_rect.y + 22,
+            token=ThemeToken.TEXT_HIGHLIGHT,
+            size=22,
+            bold=True,
+            align="center",
+            font_variant="alagard",
+        )
+
+        # Enemy vanquished subtitle
+        enemy_name = enemy.name if enemy else "Enemy"
+        renderer.draw_text(
+            surface,
+            f"{enemy_name} vanquished!",
+            modal_rect.centerx,
+            modal_rect.y + 58,
+            token=ThemeToken.TEXT_NORMAL,
+            size=15,
+            bold=True,
+            align="center",
+            font_variant="alagard",
+        )
+
+        # Spoils preview (Exp and Gold)
+        exp = getattr(enemy, "exp_reward", 0)
+        gold = getattr(enemy, "gold_reward", 0)
+        spoils_txt = f"+{exp} EXP      +{gold} GOLD"
+        renderer.draw_text(
+            surface,
+            spoils_txt,
+            modal_rect.centerx,
+            modal_rect.y + 86,
+            token=ThemeToken.ACCENT_PRIMARY,
+            size=13,
+            bold=True,
+            align="center",
+            font_variant="alagard",
+        )
+
+        # Countdown to map progression
+        sec = max(1, int(math.ceil(self.victory_timer)))
+        renderer.draw_text(
+            surface,
+            f"Continuing to map in {sec}s...",
+            modal_rect.centerx,
+            modal_rect.y + 118,
+            token=ThemeToken.TEXT_MUTED,
+            size=12,
+            align="center",
+            font_variant="alagard",
+        )

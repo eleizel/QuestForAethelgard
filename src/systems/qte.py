@@ -21,9 +21,9 @@ QTE_Y_MAX: Final[int] = 174
 QTE_BUTTON_RADIUS: Final[int] = 10
 QTE_START_RADIUS: Final[float] = 32.0
 
-# Timing constants (at 30 FPS, 22px span at 0.75..1.25 px/frame -> ~0.59s..0.98s per button)
-QTE_MIN_SHRINK_SPEED: Final[float] = 0.75
-QTE_MAX_SHRINK_SPEED: Final[float] = 1.25
+# Timing constants (decreased to half speed for balanced reaction window: ~1.2s..2.0s per button)
+QTE_MIN_SHRINK_SPEED: Final[float] = 0.375
+QTE_MAX_SHRINK_SPEED: Final[float] = 0.625
 QTE_OVERSHOOT_GRACE: Final[float] = 1.2
 QTE_INTRO_FRAMES: Final[int] = 75
 QTE_FEEDBACK_FRAMES: Final[int] = 20
@@ -58,7 +58,7 @@ class QTETarget:
     button_radius: int = QTE_BUTTON_RADIUS
     start_radius: float = QTE_START_RADIUS
     current_radius: float = QTE_START_RADIUS
-    shrink_speed: float = 0.95
+    shrink_speed: float = 0.475
     resolved: bool = False
     score: int = 0
     tier: str = ""
