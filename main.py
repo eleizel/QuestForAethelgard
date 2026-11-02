@@ -1,11 +1,25 @@
+# /// script
+# dependencies = [
+#  "pygame-ce",
+# ]
+# ///
 """Entry point for Quest for Aethelgard supporting multi-frontend switching."""
+
+from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import sys
 
+import pygame
+import pygame.display
+import pygame.font
+import pygame.image
+import pygame.mixer
 
-async def main_async() -> None:
+
+async def main() -> None:
     """Initialize and run the Quest for Aethelgard engine."""
     parser = argparse.ArgumentParser(description="Quest for Aethelgard")
     default_frontend = "pygame" if sys.platform == "emscripten" else "pygame"
@@ -54,10 +68,5 @@ async def main_async() -> None:
             engine.run()
 
 
-def main() -> None:
-    """Entry point invoking the async loop."""
-    asyncio.run(main_async())
-
-
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
