@@ -1,16 +1,62 @@
-"""Entry point for Quest for Aethelgard."""
+"""Entry point for Quest for Aethelgard supporting multi-frontend switching."""
 
+import argparse
+import asyncio
 import sys
 
-from src.ui.engine import Engine
+
+async def main_async() -> None:
+    """Initialize and run the Quest for Aethelgard engine."""
+    parser = argparse.ArgumentParser(description="Quest for Aethelgard")
+    default_frontend = "pygame" if sys.platform == "emscripten" else "pygame"
+    parser.add_argument(
+        "--frontend",
+        choices=["pyxel", "pygame"],
+        default=default_frontend,
+        help="Frontend presentation engine to run (default: pygame)",
+    )
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run without displaying a graphical window (for CI/simulations)",
+    )
+    parser.add_argument(
+        "--fullscreen",
+        "-f",
+        action="store_true",
+        help="Launch the pygame frontend in fullscreen mode",
+    )
+    parser.add_argument(
+        "--maximized",
+        "-m",
+        action="store_true",
+        help="Launch the pygame frontend in a maximized window",
+    )
+    args, _ = parser.parse_known_args()
+
+    if args.frontend == "pygame":
+        from src.frontends.pygame_ce.app import PygameApp
+        app = PygameApp(
+            headless=args.headless,
+            fullscreen=args.fullscreen,
+            maximized=args.maximized,
+        )
+        if sys.platform == "emscripten":
+            await app.run_async()
+        elif args.headless:
+            app.run(max_frames=5)
+        else:
+            await app.run_async()
+    else:
+        from src.ui.engine import Engine
+        engine = Engine(headless=args.headless)
+        if not args.headless:
+            engine.run()
 
 
 def main() -> None:
-    """Initialize and run the Quest for Aethelgard engine."""
-    headless = "--headless" in sys.argv
-    engine = Engine(headless=headless)
-    if not headless:
-        engine.run()
+    """Entry point invoking the async loop."""
+    asyncio.run(main_async())
 
 
 if __name__ == "__main__":

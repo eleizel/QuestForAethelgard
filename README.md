@@ -1,43 +1,75 @@
 # Quest for Aethelgard
 
-*Quest for Aethelgard* is a retro, gothic-fantasy roguelike RPG built with [Pyxel](https://github.com/kitao/pyxel). Choose a hero, navigate branching dungeon routes, survive automatic turn-based battles with interactive timing mechanics, collect tiered equipment and synergistic abilities, promote into specialized advanced classes, and vanquish the bosses across all three acts.
+*Quest for Aethelgard* is a gothic-fantasy roguelike RPG featuring a pure-Python domain core and a **dual-frontend presentation architecture**:
+1. **16-Bit Super Nintendo Golden Age Edition** ([Pygame-CE](https://pyga.me)): A 960×540 widescreen presentation styled after classic SNES JRPGs (*Secret of Evermore*, *Terranigma*, *Chrono Trigger*) with authentic Alagard typography, 9-slice gold ornate frames, scenic biome vistas, detailed hero busts, golden class crests, and procedural waveform audio cues.
+2. **8-Bit Retro Classic Edition** ([Pyxel](https://github.com/kitao/pyxel)): A 256×256 retro console experience featuring a 16-color palette, classic chiptunes, and bitmap fonts.
 
-The game runs locally as a Python desktop application and on the web as a progressive web app (PWA). It features complete English and Spanish localization, keyboard, mouse, and touchscreen controls, custom pixel-art assets, biome music, and sound effects.
+Choose a champion, navigate branching spire dungeons, survive speed-governed ATB battles with interactive Quick Time Events, collect tiered equipment with on-hit and on-damaged triggers, promote into specialized advanced classes at Level 10, and vanquish bosses across all three acts.
+
+The game runs locally as a desktop Python application, as a **standalone native desktop executable (`.exe`)**, and in the browser as a **dual-frontend Progressive Web App (PWA)** hosted on GitHub Pages.
 
 ---
 
 ## Contents
 
 - [Features](#features)
+- [Architecture & Design Patterns](#architecture--design-patterns)
 - [Requirements](#requirements)
 - [Install and Run](#install-and-run)
+  - [Frontend Selection (Pygame-CE vs. Pyxel)](#frontend-selection)
+- [Packaging & Distribution](#packaging--distribution)
+  - [Standalone Desktop Executable (.exe)](#standalone-desktop-executable-exe)
+  - [Dual-Frontend Web Deployment (GitHub Pages / PWA)](#dual-frontend-web-deployment-github-pages--pwa)
 - [User Manual](#user-manual)
-  - [Start a Run](#start-a-run)
+  - [Start a Run & Route Selection](#start-a-run--route-selection)
   - [Class System & Level 10 Promotions](#class-system--level-10-promotions)
-  - [Explore the Dungeon Map](#explore-the-dungeon-map)
-  - [Combat System & QTE Mechanics](#combat-system--qte-mechanics)
-  - [Character Sheet & Detailed Stats](#character-sheet--detailed-stats)
-  - [Tiered Equipment & Inventory](#tiered-equipment--inventory)
-  - [Events, Shops, and Rewards](#events-shops-and-rewards)
-  - [Save and Load System](#save-and-load-system)
+  - [Spire Exploration Map](#spire-exploration-map)
+  - [Speed-Driven Combat & Boss QTEs](#speed-driven-combat--boss-qtes)
+  - [Tiered Equipment & Paperdoll Inventory](#tiered-equipment--paperdoll-inventory)
+  - [Character Sheet & Hero Attributes](#character-sheet--hero-attributes)
+  - [Merchant Shop, Events & Battle Rewards](#merchant-shop-events--battle-rewards)
+  - [Save and Resume System](#save-and-resume-system)
   - [Controls Reference](#controls-reference)
 - [Project Structure](#project-structure)
 - [Development, Testing & Monte Carlo Telemetry](#development-testing--monte-carlo-telemetry)
-- [Assets and Audio](#assets-and-audio)
+  - [Automated Test Suite (263 Tests)](#automated-test-suite-263-tests)
+  - [Architectural Boundary Linter](#architectural-boundary-linter)
+  - [Monte Carlo Balance Telemetry](#monte-carlo-balance-telemetry)
 - [License](#license)
 
 ---
 
 ## Features
 
-- **Three Starting Classes & Six Advanced Promotions**: Start as Warrior, Rogue, or Mage. At level 10, promote into Paladin, Berserker, Venomancer, Duelist, Archmage, or Warlock, unlocking permanent signature passives and epic abilities.
-- **Three Dungeon Acts & Branching Biomes**: Explore multi-floor dungeons with Fate (random biomes) or Pathfinder (player-chosen biomes) routing.
-- **Dynamic Branching Map**: Navigate Combat, Elite, Rest, Treasure, Event, Shop, and Act Boss nodes.
-- **Speed-Driven Combat Engine with QTEs**: Automatic tick-based combat governed by speed gauges, active skill queues, and interactive timing Quick Time Events during Elite and Boss encounters.
-- **192-Item Tiered Equipment System**: Equip 8 slots (Head, Shoulders, Chest, Waist, Hands, Legs, Main Hand, Off Hand) across 5 rarity tiers with on-hit and on-damaged triggers.
-- **Interactive Events & Class Armories**: Biome-exclusive narrative events, including Act 1 & 2 weapon racks and mystic caches offering choices between 3 class-specific next-tier gear pieces.
-- **Full Save & Resume**: Cross-platform persistence supporting local JSON saves on desktop and LocalStorage on the web.
-- **Rich Retro Presentation**: 16-color Pyxel gothic pixel art, full soundtrack, sound effects, BDF bitmap font, and EN/ES localization.
+- **Dual-Frontend Architecture**:
+  - **16-Bit SNES Edition** (`pygame-ce`): Full 960×540 widescreen layout across all 14 game screens, featuring 9-slice golden ornate frames, Alagard pixel typography, animated hero sprites, class crests, scenic vista windows, threat intelligence, and procedural audio.
+  - **8-Bit Retro Edition** (`pyxel`): Authentic 256×256 chiptune console styling.
+- **Pure Domain Core (Clean Architecture)**: 100% decoupled Python domain model with zero GUI framework imports, continuously validated by an AST boundary enforcement test suite.
+- **Three Starting Classes & Six Advanced Promotions**: Start as Warrior, Rogue, or Mage. At Level 10, promote into Paladin, Berserker, Venomancer, Duelist, Archmage, or Warlock, unlocking permanent signature passives and epic abilities.
+- **Three Dungeon Acts & Biome Routes**: Explore multi-floor dungeons with Fate (random biomes) or Pathfinder (player-chosen expedition routes) mechanics.
+- **Dynamic Spire Node Tree**: Navigate Combat, Elite, Rest, Treasure, Event, Merchant Shop, and Act Boss nodes.
+- **Speed-Driven Combat Engine with QTEs**: Real-time ATB tick gauges governed by speed attributes, active ability cooldowns, 3-slot quick potion belts, and interactive timed circle Quick Time Events against Elite and Boss adversaries.
+- **192-Item Tiered Equipment System**: Equip 7 paperdoll slots (Main Hand, Off Hand, Helmet, Armor, Legs, Ring 1, Ring 2) across 5 rarity tiers with dynamic stat comparison diffs and on-hit/on-damaged procs.
+- **Interactive Narrative Events**: Rich story scenarios with stat/gold/item requirement checks, risk-reward decision trees, and consequence resolution.
+- **Merchant Shop with Live Feedback**: Merchant inventory offering equipment, potions, and herbs with dynamic stat comparisons and live transaction toasts.
+- **Cross-Platform Persistence**: Atomic JSON saves on desktop (`saves/quest_for_aethelgard_save.json`) and Web `LocalStorage`, backed by the Memento and Repository design patterns.
+- **No Virtual Gamepad Clutter**: Web builds feature clean, unobtrusive canvas layouts with mobile touch controls routed directly to interactive UI components rather than overlay joysticks.
+
+---
+
+## Architecture & Design Patterns
+
+The codebase strictly follows clean architecture principles and software design patterns:
+
+| Pattern | Architectural Component | Purpose & Implementation |
+| :--- | :--- | :--- |
+| **Facade Pattern** | `GameSession` (`src.core.session`) | Unified domain gateway used by all frontends and simulations. Exposes state queries and commands without leaking entity internals. |
+| **State Pattern** | `GameStateMachine` & `ModeState` (`src.core.fsm`) | Manages all operational modes (`WELCOME`, `MAP`, `COMBAT`, `SHOP`, `INVENTORY`, `PROMOTION`, etc.) with strict state validation. |
+| **Command Pattern** | `Command` & `CommandDispatcher` (`src.core.commands`) | Encapsulates user intent (`BuyItemCommand`, `TakeLootCommand`, `ChooseAbilityCommand`, `PromoteClassCommand`). |
+| **Observer Pattern** | `EventBus` & `DomainEvent` (`src.core.events`) | Reactive event streams decoupling audio cues, floating popups, and battle logs (`AudioCueEvent`, `DamageDealtEvent`, `HealthRestoredEvent`). |
+| **Domain Services** | `ShopService`, `LootService`, `DraftService`, `ProgressionService` | Pure business logic completely isolated from frontend views. |
+| **Memento / Repository** | `RunMemento` & `RunRepository` (`src.core.persistence`) | Immutable serialization snapshots decoupling persistence from live models, supporting File, Memory, and LocalStorage backends. |
+| **Semantic Tokens** | `ThemeToken` (`src.core.theme`) | Abstract design tokens resolving to 0–15 palette indices in Pyxel and 24-bit RGB tuples in Pygame-CE. |
 
 ---
 
@@ -46,7 +78,13 @@ The game runs locally as a Python desktop application and on the web as a progre
 - Python 3.10 or newer
 - pip
 
-Main runtime dependency is [Pyxel](https://github.com/kitao/pyxel) 2.0+. `pytest` is used for test suites and balance simulations.
+Main runtime dependencies:
+- [pygame-ce](https://pyga.me) 2.5+ (16-Bit SNES Golden Age client)
+- [Pyxel](https://github.com/kitao/pyxel) 2.0+ (8-Bit Retro client)
+- `pytest` (Test suites, architectural boundary linter, balance telemetry)
+- `pyinstaller` (Desktop standalone executable compilation)
+- `pygbag` (WebAssembly compilation for Pygame-CE)
+- `pillow` (Asset format conversion)
 
 ---
 
@@ -72,136 +110,116 @@ python -m pip install -r requirements.txt
 
 ### 2. Launch the Game
 
+#### Frontend Selection
+
 ```bash
+# Launch with default 16-Bit SNES Pygame-CE client (960x540)
 python main.py
+
+# Launch explicitly with Pygame-CE
+python main.py --frontend pygame
+
+# Launch in fullscreen mode
+python main.py --frontend pygame --fullscreen
+
+# Launch in maximized window
+python main.py --frontend pygame --maximized
+
+# Launch with retro 8-Bit Pyxel engine (256x256)
+python main.py --frontend pyxel
+
+# Launch headless simulation mode (for CI / automated trials)
+python main.py --headless
 ```
+
+---
+
+## Packaging & Distribution
+
+### Standalone Desktop Executable (.exe)
+
+Compile Quest for Aethelgard into a standalone single-file binary with all fonts, backgrounds, sprites, and audio cues embedded:
+
+```powershell
+python tools/build_desktop.py
+```
+
+The resulting executable is generated at `dist/desktop/QuestForAethelgard.exe` (~46 MB) and can be distributed to players on Windows without requiring Python.
+
+### Dual-Frontend Web Deployment (GitHub Pages / PWA)
+
+Build the complete dual-frontend web distribution:
+
+```powershell
+python tools/build_web.py
+```
+
+This compiles:
+1. **Root (`/`)**: 16-Bit SNES Golden Age Edition (Pygame-CE via `pygbag` WebAssembly).
+2. **Subpath (`/pyxel/`)**: 8-Bit Retro Edition (Pyxel via Pyodide WebAssembly).
+3. **No Virtual Gamepads**: Both editions are patched to deactivate on-screen touch joysticks and d-pad overlays.
+4. **Cross-Edition Links**: Bidirectional switching pills allow players to jump between the 16-bit SNES and 8-bit retro presentations in real time.
+
+Both editions are automatically built and deployed via the GitHub Actions CI/CD workflow in [`.github/workflows/deploy.yml`](file:///c:/Users/Sergio/PycharmProjects/QuestForAethelgard/.github/workflows/deploy.yml).
 
 ---
 
 ## User Manual
 
-### Start a Run
+### Start a Run & Route Selection
 
-1. On the title screen:
-   - Press `1` for **New Game**.
-   - Press `2` for **Load Game** (resumes saved run).
-   - Press `3` for **Credits**.
-2. Select your hero class: **Warrior** (`1`), **Rogue** (`2`), or **Mage** (`3`).
-3. Select your route style using `B` or `T`:
-   - **Fate**: Randomly picks biomes for each act.
-   - **Pathfinder**: Allows you to pick your preferred biome at the start of each act.
-4. Press `Enter` or `Space` to begin.
-
----
+1. **Title Screen**: Select **New Game** (`[1]`), **Load Game** (`[2]`), or **Credits** (`[4]`). Toggle language using `[3]` or `[L]`.
+2. **Class Selection**: Select your champion:
+   - **Warrior** (`[1]`): High Armor & Brutal Cleaves.
+   - **Rogue** (`[2]`): Lethal Daggers & Toxic Venoms.
+   - **Mage** (`[3]`): Arcane Spells & Barrier Shields.
+3. **Route Mode**: Toggle between **Fate** (random biomes) and **Pathfinder** (choose biomes at the start of each act) using `[B]` or `[T]`.
 
 ### Class System & Level 10 Promotions
 
-Each starting class has unique base attributes, stat scaling, and starter gear. At **Level 10**, players choose between two specialized advanced classes. Promoting restores 50% max HP, unlocks an epic ability draft, permanently boosts attribute growth, and grants a signature passive:
+At **Level 10**, your champion qualifies for subclass promotion:
 
-| Base Class | Advanced Class | Signature Ability & Mechanics |
-| :--- | :--- | :--- |
-| **Warrior** | **Paladin** | **Paladin's Oath**: Holy light heals for 18% of ability impact whenever an ability is cast. Exceptional armor and health growth. |
-| **Warrior** | **Berserker** | **Blood Frenzy**: Dynamic 10%–25% lifesteal that scales inversely with current HP. Dropping to or below 46% HP triggers a one-time emergency burst heal for 22% max HP. |
-| **Rogue** | **Venomancer** | **Toxic Eruption**: Poison detonations restore health equal to 30% of total poison tick damage, enabling self-sustaining damage-over-time playstyles. |
-| **Rogue** | **Duelist** | **Riposte / Flourish**: Counter-attacks and high critical strike affinity. Features defensive parry stances and devastating 65% counter-flourishes. |
-| **Mage** | **Archmage** | **Arcane Ward**: Grants an arcane shield equal to 15% maximum HP that refreshes whenever any non-basic spell is cast. |
-| **Mage** | **Warlock** | **Soul Harvest**: Burns siphon vitality from foes; the first tick of every Burn effect leeches 30% of damage dealt back to the Warlock. |
+| Base Class | Advanced Class | Role | Signature Passive & Mechanics |
+| :--- | :--- | :--- | :--- |
+| **Warrior** | **Paladin** | Holy Bastion | **Holy Aegis**: Casting abilities heals for a percentage of impact. Enhanced shield and armor scaling. |
+| **Warrior** | **Berserker** | Rage Brawler | **Deathless Onslaught**: Attack speed and damage increase inversely with current health. Emergency healing burst on critical low HP. |
+| **Rogue** | **Venomancer** | Toxin Master | **Venom Mastery**: Poison detonations restore health and amplify ongoing tick damage. |
+| **Rogue** | **Duelist** | Critical Striker | **Riposte Mastery**: High dodge chance triggering immediate counter-attacks upon evasion. |
+| **Mage** | **Archmage** | Burst Elementalist | **Arcane Overload**: Spell echoes trigger chance-based double casts and rapid cooldown reduction. |
+| **Mage** | **Warlock** | Dark Siphon | **Soul Siphon**: Dark spells drain enemy vitality to restore hero HP and reinforce barrier shields. |
 
-#### Signature Reworked Abilities:
-- **Shadow Step**: Reworked into an **Evade** system. Grants stacking Evade charges; each charge completely negates the next incoming attack before being consumed.
-- **Toxic Blood**: Passively infects unpoisoned attackers on hit with poison and triggers reactive self-healing.
-- **Phoenix Rebirth**: Upon death, revives the hero and immediately deploys a protective shield equal to 15% maximum HP.
+Promoting immediately launches an **Epic Ability Draft** offering class-exclusive signature spells.
 
----
+### Spire Exploration Map
 
-### Explore the Dungeon Map
+- Progress upward floor-by-floor through the Spire node tree:
+  - **Combat / Elite**: Battle monsters for EXP, gold, and gear.
+  - **Rest**: Recover hero HP.
+  - **Shop**: Browse equipment, health potions, and attribute herbs.
+  - **Treasure**: Claim gold caches and rare equipment.
+  - **Event**: Encounter narrative dilemmas with requirement-based choices.
+  - **Boss**: Vanquish the Act Guardian to advance to the next Act.
+- **Save & Quit**: Press `[Q]` or `[ESC]` on the Map to save your run and safely return to the title screen.
 
-The dungeon is generated as a branching graph:
-- Numbered, illuminated nodes (`1`–`4`) represent valid moves. You cannot revisit cleared nodes.
-- **Acts 1 & 2** feature 12 floors; **Act 3** features 18 floors.
-- Defeating an Act Boss fully restores HP and advances the run to the next act.
+### Speed-Driven Combat & Boss QTEs
 
-| Node Type | Icon / Indicator | Encounter Details |
-| :--- | :--- | :--- |
-| **Combat** | Crossed Swords | Standard enemy battle. Grants XP, gold, and chance for item drops. |
-| **Elite** | Crowned Skull | High-threat enemy featuring **QTE timing challenges**. Drops elite rewards and high-tier equipment. |
-| **Rest** | Campfire | Recover 25–40 HP (capped at max HP). |
-| **Treasure** | Chest | Free cache yielding 25–40 gold and occasional oddities. |
-| **Event** | Question Mark | Branching narrative encounters, stat checks, and class armories (choose 1 of 3 next-tier equipment pieces). |
-| **Shop** | Coin Pouch | Trade gold with the merchant to buy weapons, armor, potions, or sell unwanted pouch gear. |
-| **Boss** | Demonic Skull | Act climax with multi-phase mechanics and mandatory QTE defense sequences. |
+- Battles feature symmetrical ATB gauges where action frequency scales with the Speed attribute.
+- **Quick-Belt**: Consume belt potions in combat using keys `[1]`, `[2]`, or `[3]`.
+- **Combat Speed**: Press `[Z]` to cycle battle pacing between 1x, 2x, and 4x speed.
+- **Quick Time Events (QTE)**: When Elites and Bosses initiate signature strikes, a shrinking ring clash minigame appears. Press `[Space]` or click when the ring aligns inside the golden target zone for **Perfect** parries or damage mitigation.
 
----
+### Tiered Equipment & Paperdoll Inventory
 
-### Combat System & QTE Mechanics
+- Equip gear across 7 slots: Main Hand, Off Hand, Helmet, Armor, Legs, Ring 1, Ring 2.
+- Items span 5 rarity tiers: Common, Uncommon, Rare, Epic, and Legendary.
+- The item inspection panel provides live **`Diff: +X / -X`** stat deltas compared against your currently equipped gear.
+- High-tier equipment features **on-hit** (burn, bleed, poison) and **on-damaged** (thorns, barrier procs) triggers.
 
-Combat runs in automatic ticks calculated from hero and enemy **Speed**:
-- Each tick charges the combatant's action gauge. When full, an action triggers.
-- **Active Abilities**: Queue abilities using `4` or `5`. The ability fires on the hero's next ready action.
-- **Belt Potions**: Use quick-belt slots instantly with `1`, `2`, or `3`.
-- **Combat Speed**: Press `Z` to toggle between 1x, 2x, 4x, and Instant combat playback. Press `Space` to step forward one tick manually.
+### Save and Resume System
 
-#### Quick Time Events (QTEs)
-During **Elite** and **Boss** encounters, special high-impact moves trigger a circular QTE:
-- A shrinking outer ring contracts toward a stationary target bullseye.
-- Press `Space` or tap the screen when the rings align inside the sweet spot.
-- Achieving a **Hit / Perfect** timing breaks the enemy's stance, negating incoming damage or delivering counter-stagger critical damage.
-
----
-
-### Character Sheet & Detailed Stats
-
-Press `C` or click the character portrait button on the HUD at any time to open the **Character Sheet**:
-- **Attributes**: View current Strength, Agility, Intelligence, Armor, Crit Chance, and Speed.
-- **Effective Stats**: Hover/inspect all active gear contributions and passive synergies.
-- **Passives & Promotion**: Review active signatures, unlocked class perks, and hero lore.
-
----
-
-### Tiered Equipment & Inventory
-
-Press `I` or click the bag icon to toggle the inventory:
-- **8 Equipment Slots**: Head, Shoulders, Chest, Waist, Hands, Legs, Main Hand, and Off Hand.
-- **Pouch**: Stores up to 10 unequipped items. Press `E` to equip or `D` to discard. Promoted classes retain full proficiency with starting class equipment.
-- **Belt**: 3 quick-use slots dedicated to combat consumables. Assign items from pouch using `E`.
-- **Tiered Rarities**:
-  - Tier 1: Common
-  - Tier 2: Uncommon
-  - Tier 3: Rare
-  - Tier 4: Epic
-  - Tier 5: Legendary
-- High-tier armors and weapons feature dynamic **on-hit** (chance to burn/bleed/poison) and **on-damaged** (thorns, barrier procs) triggers.
-
----
-
-### Save and Load System
-
-*Quest for Aethelgard* includes an integrated persistence engine:
-- **Auto-Saving**: Progress is automatically serialized upon navigating map nodes and completing encounters.
-- **Manual Save**: Save directly to disk (`saves/run_save.json`) or browser storage.
-- **Resume**: Select **Load Game** (`2`) on the title screen to resume an ongoing run exactly where you left off.
-
----
-
-### Controls Reference
-
-| Screen / Context | Keyboard | Mouse / Touch |
-| :--- | :--- | :--- |
-| **Title Screen** | `1` New Game, `2` Load Game, `3` Credits | Click menu buttons |
-| **Title Settings** | `L` Language (EN/ES), `M` Music On/Off, `S` SFX On/Off | Click HUD icons |
-| **Class Select** | `1`–`3` or Arrow keys; `Enter`/`Space` to confirm | Click class cards |
-| **Route Mode** | `B` or `T` to toggle Fate / Pathfinder | Click route badge |
-| **Dungeon Map** | `1`–`4` (node numbers) | Click available nodes |
-| **Character Sheet** | `C` or `Esc` to toggle | Click HUD portrait |
-| **Inventory / Pouch** | `I` or `Esc` to toggle; `Tab` to cycle panes; `E` equip/use; `D` discard | Click slots and tabs |
-| **Combat Ticks & Speed** | `Space` step tick; `Z` cycle speed (1x / 2x / 4x / max) | Click speed toggle button |
-| **Combat Consumables** | `1`–`3` to use quick-belt slots | Click belt icons |
-| **Combat Abilities** | `4`–`5` to queue active abilities | Click ability buttons |
-| **Combat QTE** | `Space` when rings align | Tap target ring |
-| **Promotion Dialog** | `1`–`2` to select class; `Enter`/`Space` to confirm | Click class banner |
-| **Events** | `1`–`3` to select choice; `Space`/`Enter` to continue | Click choice options |
-| **Shop** | `Up`/`Down` or `W`/`S` to navigate; `Tab` Buy/Sell; `Enter`/`B` confirm; `Esc` leave | Click trade buttons |
-| **Loot Screen** | `1`–`3` take item; `Space` take all; `Enter`/`C` continue | Click loot items / button |
+- Runs are saved automatically upon navigating spire nodes and concluding battles.
+- Save manually at any point on the map via `[Q] SAVE` or `[ESC]`.
+- Resume anytime from the Title Screen by selecting **Load Game** (`[2]`).
 
 ---
 
@@ -209,26 +227,53 @@ Press `I` or click the bag icon to toggle the inventory:
 
 ```text
 QuestForAethelgard/
-├── assets/
-│   ├── game.pyxres              # Pyxel spritesheets, SFX, and chip music
-│   ├── spleen-5x8.bdf           # Bitmap font
-│   ├── manifest.json            # PWA web manifest
-│   └── screenshots/             # Gameplay and marketing previews
+├── assets/                      # Shared visual and audio assets
+│   ├── backgrounds/             # 16-Bit SNES vista panoramas & combat arenas
+│   ├── fonts/                   # Alagard, DotGothic16, Silkscreen typography
+│   ├── icons/                   # Status badges, map nodes, class crests
+│   ├── portraits/               # Large hero busts & class artwork
+│   ├── sprites/                 # SNES combatants & basic/elite/boss enemies
+│   ├── ui/                      # 9-slice gold ornate frames & title logos
+│   ├── game.pyxres              # Pyxel 8-bit soundbank & spritesheet
+│   └── manifest.json            # PWA web manifest
 ├── src/
-│   ├── config.py                # Gameplay, layout, and visual constants
-│   ├── core/                    # Engine loop, GameState, SaveManager, i18n localization
-│   ├── data/                    # Class archetypes, tiered equipment catalog, biomes, events
-│   ├── entities/                # Actor, Player, Enemy, Item, Stats data models
-│   ├── systems/                 # Combat, QTE, inventory, map generator, status effects
+│   ├── config.py                # Visual constants and display parameters
+│   ├── core/                    # Pure Python domain core (Zero GUI dependencies)
+│   │   ├── commands.py          # Command pattern definitions & dispatcher
+│   │   ├── events.py            # Reactive EventBus & domain events
+│   │   ├── fsm.py               # State machine & ModeState protocols
+│   │   ├── game_state.py        # Core GameState & mode transitions
+│   │   ├── persistence.py       # RunMemento & RunRepository
+│   │   ├── save_manager.py      # Cross-platform storage backends
+│   │   ├── session.py           # GameSession facade
+│   │   └── theme.py             # Semantic ThemeToken color abstraction
+│   ├── data/                    # Class catalog, 192 tiered items, biomes, enemies, events
+│   ├── entities/                # Actor, Player, Enemy, Item, Stats models
+│   ├── frontends/               # Pluggable presentation clients
+│   │   └── pygame_ce/           # 16-Bit SNES Golden Age JRPG engine (960x540)
+│   │       ├── app.py           # PygameApp master lifecycle & async Web loop
+│   │       ├── asset_manager.py # 9-slice gold frames, fonts, vistas, busts
+│   │       ├── renderer.py      # Anti-aliased font & surface renderer
+│   │       ├── audio_adapter.py # Procedural sound waveform synthesizer
+│   │       ├── components/      # Reusable TopHUDComponent status header
+│   │       └── views/           # Complete 14-screen SNES Golden Age suite
+│   ├── systems/                 # Combat, QTE, inventory, map generator, domain services
 │   ├── tools/                   # Asset generation, HTML patcher, build scripts
-│   └── ui/                      # ViewManager and individual screen views (Combat, Map, Inventory, etc.)
-├── tests/
-│   ├── core/                    # GameState, SaveManager, and lifecycle tests
-│   ├── entities/                # Actor, Player progression, and equipment tests
-│   ├── simulations/             # Monte Carlo headless simulation runner & balance telemetry
-│   └── systems/                 # Combat engine, QTE, abilities, and inventory tests
-├── main.py                      # Game launcher
-├── requirements.txt             # Python dependencies
+│   └── ui/                      # Classic 8-Bit Pyxel engine (256x256)
+├── tests/                       # 263 automated unit, integration, and boundary tests
+│   ├── core/                    # GameSession, FSM, events, and persistence tests
+│   ├── entities/                # Player progression, enemy scaling, and item tests
+│   ├── frontends/               # Pygame-CE client test suite
+│   ├── simulations/             # Headless Monte Carlo balance simulation trials
+│   ├── systems/                 # Combat engine, QTE, abilities, and inventory tests
+│   └── test_architecture_boundary.py # AST import decoupling boundary linter
+├── tools/                       # Build automation scripts
+│   ├── build_desktop.py         # PyInstaller standalone .exe packager
+│   └── build_web.py             # Dual-frontend Pygbag + Pyxel WebAssembly builder
+├── main.py                      # Multi-frontend async launcher
+├── pyxel_main.py                # Standalone Pyxel web entrypoint
+├── pygbag.ini                   # Pygbag packaging configuration
+├── requirements.txt             # Project dependencies
 └── README.md                    # Project documentation
 ```
 
@@ -236,31 +281,31 @@ QuestForAethelgard/
 
 ## Development, Testing & Monte Carlo Telemetry
 
-Run the full automated test suite (unit and system tests):
+### Automated Test Suite (263 Tests)
+
+Run the full automated test suite:
 
 ```powershell
 python -m pytest
 ```
 
+### Architectural Boundary Linter
+
+Enforce that the domain core (`src/core`, `src/entities`, `src/systems`, `src/data`) maintains zero imports from GUI frameworks (`pyxel`, `pygame`, `src.ui`):
+
+```powershell
+python -m pytest tests/test_architecture_boundary.py
+```
+
 ### Monte Carlo Balance Telemetry
-To test game balance, class win-rates, and equipment drop rates without running the GUI, execute the headless Monte Carlo simulation harness:
+
+Execute headless Monte Carlo simulation trials to measure win rates and balance across thousands of simulated runs:
 
 ```powershell
 python -m pytest tests/simulations/test_monte_carlo_balance.py -s
 ```
 
-The simulation tests all classes across thousands of runs with AI pathfinding and synergistic build drafts, exporting telemetry to `monte_carlo_build_telemetry.json`. All 6 promoted classes are calibrated to an Act 3 victory rate between **40% and 50%**.
-
----
-
-## Assets and Audio
-
-- Sprite graphics and audio cues are bundled in `assets/game.pyxres`.
-- Open in the Pyxel editor using:
-  ```powershell
-  pyxel edit assets/game.pyxres
-  ```
-- Music themes dynamically adapt to the active biome and switch into combat/boss tracks during battle.
+All 6 promoted classes are calibrated to an Act 3 victory rate between **40% and 50%**.
 
 ---
 

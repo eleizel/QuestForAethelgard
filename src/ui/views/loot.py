@@ -23,6 +23,7 @@ from src.config import (
     SCREEN_HEIGHT,
     SCREEN_WIDTH, SND_CLICK, SND_CHEST,
 )
+from src.systems.loot_service import LootService
 from src.ui.audio import audio
 from src.core.game_state import GameMode
 from src.core.i18n import i18n, t

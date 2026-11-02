@@ -46,12 +46,16 @@ class Item:
     @property
     def localized_name(self) -> str:
         from src.core.i18n import t
-        return t(f"item_{self.id}_name")
+        k = f"item_{self.id}_name"
+        res = t(k)
+        return res if res != k else (self.name or self.id.replace("_", " ").title())
 
     @property
     def localized_description(self) -> str:
         from src.core.i18n import t
-        return t(f"item_{self.id}_desc")
+        k = f"item_{self.id}_desc"
+        res = t(k)
+        return res if res != k else (self.description or "")
 
 
 @dataclass
