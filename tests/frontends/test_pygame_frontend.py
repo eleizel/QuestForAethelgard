@@ -284,16 +284,17 @@ def test_pygame_inventory_and_character_modals():
     inv_view = PygameInventoryModalView()
     inv_view.draw(surface, renderer, session)
 
-    # Equip via key '1' (first pouch slot)
+    # Equip via clicking on the pouch slot
     first_pouch_idx = len(session.player.inventory.pouch) - 1
-    # Trigger mouse click on the pouch item
-    pouch_click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(550, 130 + first_pouch_idx * 30 + 10))
+    pouch_pos = inv_view.pouch_rects[first_pouch_idx].center if inv_view.pouch_rects else (550, 130 + first_pouch_idx * 30 + 10)
+    pouch_click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=pouch_pos)
     inv_view.handle_event(pouch_click, session)
     assert session.player.inventory.equipment[EquipSlot.HEAD] is not None
     assert session.player.inventory.equipment[EquipSlot.HEAD].id == "test_helm"
 
     # Unequip by clicking on HEAD slot (index 0 in EQUIP_SLOT_ORDER)
-    head_slot_click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(150, 130 + 10))
+    head_pos = inv_view.equip_rects[0].center if inv_view.equip_rects else (150, 130 + 10)
+    head_slot_click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=head_pos)
     inv_view.handle_event(head_slot_click, session)
     assert session.player.inventory.equipment[EquipSlot.HEAD] is None
 
