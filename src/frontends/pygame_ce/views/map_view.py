@@ -11,6 +11,7 @@ import math
 from typing import TYPE_CHECKING
 import pygame
 
+from src.core.events import AudioCue, event_bus
 from src.core.game_state import GameMode
 from src.core.theme import ThemeToken
 from src.data.biomes import get_biome
@@ -95,8 +96,10 @@ class PygameMapView(PygameView):
         available = session.state.map_graph.available_nodes
 
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE:
-                session.reset_to_title()
+            if event.key in (pygame.K_ESCAPE, pygame.K_q):
+                session.save_game()
+                event_bus.emit_audio(AudioCue.CLICK)
+                session.switch_mode(GameMode.WELCOME)
             elif event.key in (pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4):
                 idx = event.key - pygame.K_1
                 if 0 <= idx < len(available):

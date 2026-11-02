@@ -133,6 +133,18 @@ class PygameApp:
 
     def update(self, dt: float) -> None:
         """Advance view logic and timers."""
+        # Global promotion safeguard matching Pyxel ViewManager
+        if self.session.current_mode not in (
+            GameMode.LOOT,
+            GameMode.GAME_OVER,
+            GameMode.VICTORY,
+            GameMode.WELCOME,
+            GameMode.CLASS_SELECT,
+            GameMode.PROMOTION,
+            GameMode.ABILITY_CHOICE,
+        ) and getattr(self.session.player, "promotion_due", False):
+            self.session.state.begin_promotion(self.session.current_mode)
+
         active_view = self.get_active_view()
         active_view.update(dt, self.session)
 

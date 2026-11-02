@@ -6,6 +6,7 @@ import math
 from typing import TYPE_CHECKING
 import pygame
 
+from src.core.events import AudioCue, event_bus
 from src.core.game_state import GameMode
 from src.core.i18n import i18n, t
 from src.core.theme import ThemeToken
@@ -67,11 +68,13 @@ class PygameWelcomeView(PygameView):
 
     def _activate_option(self, index: int, session: GameSession) -> None:
         key = self.MENU_ITEMS[index][0]
+        event_bus.emit_audio(AudioCue.CLICK)
         if key == "new":
             session.switch_mode(GameMode.CLASS_SELECT)
         elif key == "load":
             if session.has_saved_game():
-                session.load_game()
+                if session.load_game():
+                    event_bus.emit_audio(AudioCue.CLICK)
         elif key == "option":
             i18n.toggle_language()
         elif key == "credits":

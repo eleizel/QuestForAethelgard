@@ -8,6 +8,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 import pygame
 
+from src.core.events import AudioCue, event_bus
+from src.core.game_state import GameMode
+from src.core.i18n import i18n
 from src.core.theme import ThemeToken
 from src.frontends.pygame_ce.asset_manager import assets
 
@@ -21,12 +24,27 @@ class TopHUDComponent:
 
     def __init__(self) -> None:
         self.hud_rect = pygame.Rect(8, 6, 944, 46)
+        self.save_btn_rect = pygame.Rect(608, 12, 98, 32)
         self.char_btn_rect = pygame.Rect(716, 12, 98, 32)
         self.inv_btn_rect = pygame.Rect(824, 12, 98, 32)
         self._hovered_btn: str | None = None
 
     def handle_event(self, event: pygame.event.Event, session: GameSession) -> bool:
         """Handle hotkeys and mouse clicks on HUD action buttons. Returns True if handled."""
+        # Save & Quit option on Exploration Map
+        if session.current_mode == GameMode.MAP:
+            if event.type == pygame.KEYDOWN and event.key in (pygame.K_ESCAPE, pygame.K_q):
+                session.save_game()
+                event_bus.emit_audio(AudioCue.CLICK)
+                session.switch_mode(GameMode.WELCOME)
+                return True
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if self.save_btn_rect.collidepoint(event.pos):
+                    session.save_game()
+                    event_bus.emit_audio(AudioCue.CLICK)
+                    session.switch_mode(GameMode.WELCOME)
+                    return True
+
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_i:
                 session.toggle_inventory()
@@ -51,6 +69,8 @@ class TopHUDComponent:
             self._hovered_btn = "inv"
         elif self.char_btn_rect.collidepoint(mouse_pos):
             self._hovered_btn = "char"
+        elif self.save_btn_rect.collidepoint(mouse_pos):
+            self._hovered_btn = "save"
         else:
             self._hovered_btn = None
 
@@ -72,7 +92,7 @@ class TopHUDComponent:
         else:
             pygame.draw.rect(surface, (218, 165, 32), self.hud_rect, width=2, border_radius=4)
 
-        # 1. Character Headshot Bust (leftmost part precisely aligned with the last straight point of the inner line at x=24)
+        # 1. Character Headshot Bust
         bust_rect = pygame.Rect(self.hud_rect.x + 24, self.hud_rect.y + 5, 36, 36)
         bust_surf = assets.get_bust_portrait(player.class_id, size=(36, 36))
         if bust_surf:
@@ -150,7 +170,30 @@ class TopHUDComponent:
             font_variant="alagard",
         )
 
-        # 6. Action Buttons ([C] CHAR and [I] INV)
+        # 6. Action Buttons ([Q] SAVE, [C] CHAR, [I] INV)
+        # SAVE & QUIT button (only visible on Map)
+        if session.current_mode == GameMode.MAP:
+            s_hover = (self._hovered_btn == "save")
+            s_frame = assets.get_9slice_frame("frame_button_gold", self.save_btn_rect.width, self.save_btn_rect.height, margin=14)
+            if s_frame:
+                surface.blit(s_frame, self.save_btn_rect.topleft)
+            else:
+                pygame.draw.rect(surface, (218, 165, 32), self.save_btn_rect, width=2, border_radius=4)
+            if s_hover:
+                pygame.draw.rect(surface, (255, 255, 255), self.save_btn_rect, width=1, border_radius=4)
+            save_text = "[Q] SAVE" if getattr(i18n, "locale", "en") == "en" else "[Q] GUARDAR"
+            renderer.draw_text(
+                surface,
+                save_text,
+                self.save_btn_rect.centerx,
+                self.save_btn_rect.centery - 6,
+                token=ThemeToken.TEXT_HIGHLIGHT if s_hover else ThemeToken.TEXT_NORMAL,
+                size=12,
+                bold=True,
+                align="center",
+                font_variant="alagard",
+            )
+
         # CHAR button
         c_hover = (self._hovered_btn == "char")
         c_frame = assets.get_9slice_frame("frame_button_gold", self.char_btn_rect.width, self.char_btn_rect.height, margin=14)
