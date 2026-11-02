@@ -1,8 +1,12 @@
 # Quest for Aethelgard
 
-*Quest for Aethelgard* is a gothic-fantasy roguelike RPG with a decoupled pure-Python domain core and pluggable frontends, featuring both a retro 16-color [Pyxel](https://github.com/kitao/pyxel) engine and a modern high-resolution [Pygame-CE](https://pyga.me) client. Choose a hero, navigate branching dungeon routes, survive automatic turn-based battles with interactive timing mechanics, collect tiered equipment and synergistic abilities, promote into specialized advanced classes, and vanquish the bosses across all three acts.
+*Quest for Aethelgard* is a gothic-fantasy roguelike RPG featuring a pure-Python domain core and a **dual-frontend presentation architecture**:
+1. **16-Bit Super Nintendo Golden Age Edition** ([Pygame-CE](https://pyga.me)): A 960×540 widescreen presentation styled after classic SNES JRPGs (*Secret of Evermore*, *Terranigma*, *Chrono Trigger*) with authentic Alagard typography, 9-slice gold ornate frames, scenic biome vistas, detailed hero busts, golden class crests, and procedural waveform audio cues.
+2. **8-Bit Retro Classic Edition** ([Pyxel](https://github.com/kitao/pyxel)): A 256×256 retro console experience featuring a 16-color palette, classic chiptunes, and bitmap fonts.
 
-The game runs locally as a desktop application across multiple display engines and on the web as a progressive web app (PWA). It features complete English and Spanish localization, keyboard, mouse, and touchscreen controls, custom pixel-art assets, biome music, and procedural sound effects.
+Choose a champion, navigate branching spire dungeons, survive speed-governed ATB battles with interactive Quick Time Events, collect tiered equipment with on-hit and on-damaged triggers, promote into specialized advanced classes at Level 10, and vanquish bosses across all three acts.
+
+The game runs locally as a desktop Python application, as a **standalone native desktop executable (`.exe`)**, and in the browser as a **dual-frontend Progressive Web App (PWA)** hosted on GitHub Pages.
 
 ---
 
@@ -12,53 +16,60 @@ The game runs locally as a desktop application across multiple display engines a
 - [Architecture & Design Patterns](#architecture--design-patterns)
 - [Requirements](#requirements)
 - [Install and Run](#install-and-run)
-  - [Frontend Selection (Pyxel vs. Pygame-CE)](#frontend-selection)
+  - [Frontend Selection (Pygame-CE vs. Pyxel)](#frontend-selection)
+- [Packaging & Distribution](#packaging--distribution)
+  - [Standalone Desktop Executable (.exe)](#standalone-desktop-executable-exe)
+  - [Dual-Frontend Web Deployment (GitHub Pages / PWA)](#dual-frontend-web-deployment-github-pages--pwa)
 - [User Manual](#user-manual)
-  - [Start a Run](#start-a-run)
+  - [Start a Run & Route Selection](#start-a-run--route-selection)
   - [Class System & Level 10 Promotions](#class-system--level-10-promotions)
-  - [Explore the Dungeon Map](#explore-the-dungeon-map)
-  - [Combat System & QTE Mechanics](#combat-system--qte-mechanics)
-  - [Character Sheet & Detailed Stats](#character-sheet--detailed-stats)
-  - [Tiered Equipment & Inventory](#tiered-equipment--inventory)
-  - [Events, Shops, and Rewards](#events-shops-and-rewards)
-  - [Save and Load System](#save-and-load-system)
+  - [Spire Exploration Map](#spire-exploration-map)
+  - [Speed-Driven Combat & Boss QTEs](#speed-driven-combat--boss-qtes)
+  - [Tiered Equipment & Paperdoll Inventory](#tiered-equipment--paperdoll-inventory)
+  - [Character Sheet & Hero Attributes](#character-sheet--hero-attributes)
+  - [Merchant Shop, Events & Battle Rewards](#merchant-shop-events--battle-rewards)
+  - [Save and Resume System](#save-and-resume-system)
   - [Controls Reference](#controls-reference)
 - [Project Structure](#project-structure)
 - [Development, Testing & Monte Carlo Telemetry](#development-testing--monte-carlo-telemetry)
+  - [Automated Test Suite (263 Tests)](#automated-test-suite-263-tests)
   - [Architectural Boundary Linter](#architectural-boundary-linter)
-- [Assets and Audio](#assets-and-audio)
+  - [Monte Carlo Balance Telemetry](#monte-carlo-balance-telemetry)
 - [License](#license)
 
 ---
 
 ## Features
 
-- **Multi-Frontend Support**: Seamlessly switch between the classic 256×256 retro Pyxel engine and the modern 960×540 high-DPI Pygame-CE desktop client.
-- **Pure Domain Core**: 100% decoupled Python core with zero GUI dependencies, strictly validated by automated AST boundary checks.
-- **Three Starting Classes & Six Advanced Promotions**: Start as Warrior, Rogue, or Mage. At level 10, promote into Paladin, Berserker, Venomancer, Duelist, Archmage, or Warlock, unlocking permanent signature passives and epic abilities.
-- **Three Dungeon Acts & Branching Biomes**: Explore multi-floor dungeons with Fate (random biomes) or Pathfinder (player-chosen biomes) routing.
-- **Dynamic Branching Map**: Navigate Combat, Elite, Rest, Treasure, Event, Shop, and Act Boss nodes.
-- **Speed-Driven Combat Engine with QTEs**: Automatic tick-based combat governed by speed gauges, active skill queues, and interactive timing Quick Time Events during Elite and Boss encounters.
-- **192-Item Tiered Equipment System**: Equip 8 slots (Head, Shoulders, Chest, Waist, Hands, Legs, Main Hand, Off Hand) across 5 rarity tiers with on-hit and on-damaged triggers.
-- **Interactive Events & Class Armories**: Biome-exclusive narrative events, including Act 1 & 2 weapon racks and mystic caches offering choices between 3 class-specific next-tier gear pieces.
-- **Full Save & Resume**: Cross-platform persistence supporting atomic JSON saves on desktop and LocalStorage on the web, backed by the Memento and Repository patterns.
-- **Rich Retro Presentation**: 16-color Pyxel gothic pixel art, full soundtrack, sound effects, BDF bitmap font, and EN/ES localization.
+- **Dual-Frontend Architecture**:
+  - **16-Bit SNES Edition** (`pygame-ce`): Full 960×540 widescreen layout across all 14 game screens, featuring 9-slice golden ornate frames, Alagard pixel typography, animated hero sprites, class crests, scenic vista windows, threat intelligence, and procedural audio.
+  - **8-Bit Retro Edition** (`pyxel`): Authentic 256×256 chiptune console styling.
+- **Pure Domain Core (Clean Architecture)**: 100% decoupled Python domain model with zero GUI framework imports, continuously validated by an AST boundary enforcement test suite.
+- **Three Starting Classes & Six Advanced Promotions**: Start as Warrior, Rogue, or Mage. At Level 10, promote into Paladin, Berserker, Venomancer, Duelist, Archmage, or Warlock, unlocking permanent signature passives and epic abilities.
+- **Three Dungeon Acts & Biome Routes**: Explore multi-floor dungeons with Fate (random biomes) or Pathfinder (player-chosen expedition routes) mechanics.
+- **Dynamic Spire Node Tree**: Navigate Combat, Elite, Rest, Treasure, Event, Merchant Shop, and Act Boss nodes.
+- **Speed-Driven Combat Engine with QTEs**: Real-time ATB tick gauges governed by speed attributes, active ability cooldowns, 3-slot quick potion belts, and interactive timed circle Quick Time Events against Elite and Boss adversaries.
+- **192-Item Tiered Equipment System**: Equip 7 paperdoll slots (Main Hand, Off Hand, Helmet, Armor, Legs, Ring 1, Ring 2) across 5 rarity tiers with dynamic stat comparison diffs and on-hit/on-damaged procs.
+- **Interactive Narrative Events**: Rich story scenarios with stat/gold/item requirement checks, risk-reward decision trees, and consequence resolution.
+- **Merchant Shop with Live Feedback**: Merchant inventory offering equipment, potions, and herbs with dynamic stat comparisons and live transaction toasts.
+- **Cross-Platform Persistence**: Atomic JSON saves on desktop (`saves/quest_for_aethelgard_save.json`) and Web `LocalStorage`, backed by the Memento and Repository design patterns.
+- **No Virtual Gamepad Clutter**: Web builds feature clean, unobtrusive canvas layouts with mobile touch controls routed directly to interactive UI components rather than overlay joysticks.
 
 ---
 
 ## Architecture & Design Patterns
 
-The codebase adheres strictly to clean architecture and modern software design patterns:
+The codebase strictly follows clean architecture principles and software design patterns:
 
 | Pattern | Architectural Component | Purpose & Implementation |
 | :--- | :--- | :--- |
-| **Facade Pattern** | `GameSession` (`src.core.session`) | Cohesive entry point for frontends and simulations. Exposes state queries and high-level commands without leaking entity internals. |
-| **State Pattern** | `GameStateMachine` & `ModeState` (`src.core.fsm`) | Manages operational game modes (`WELCOME`, `MAP`, `COMBAT`, `SHOP`, etc.) with validated, deterministic state transitions. |
-| **Command Pattern** | `Command` & `CommandDispatcher` (`src.core.commands`) | Encapsulates user actions (`BuyItemCommand`, `TakeLootCommand`, `ChooseAbilityCommand`, `PromoteClassCommand`). |
-| **Observer Pattern** | `EventBus` & `DomainEvent` (`src.core.events`) | Decouples audio, combat popups, and analytics into reactive event streams (`AudioCueEvent`, `DamageDealtEvent`, `HealthRestoredEvent`). |
-| **Domain Services** | `ShopService`, `LootService`, `DraftService`, `ProgressionService` | Business logic isolated from presentation views into dedicated, pure domain services. |
-| **Memento / Repository** | `RunMemento` & `RunRepository` (`src.core.persistence`) | Serializable snapshots decouple persistence from live models, supporting File, Memory, and LocalStorage backends. |
-| **Semantic Tokens** | `ThemeToken` (`src.core.theme`) | Abstract color mapping resolving to 0–15 palette indices in Pyxel and 24-bit RGB tuples in Pygame-CE. |
+| **Facade Pattern** | `GameSession` (`src.core.session`) | Unified domain gateway used by all frontends and simulations. Exposes state queries and commands without leaking entity internals. |
+| **State Pattern** | `GameStateMachine` & `ModeState` (`src.core.fsm`) | Manages all operational modes (`WELCOME`, `MAP`, `COMBAT`, `SHOP`, `INVENTORY`, `PROMOTION`, etc.) with strict state validation. |
+| **Command Pattern** | `Command` & `CommandDispatcher` (`src.core.commands`) | Encapsulates user intent (`BuyItemCommand`, `TakeLootCommand`, `ChooseAbilityCommand`, `PromoteClassCommand`). |
+| **Observer Pattern** | `EventBus` & `DomainEvent` (`src.core.events`) | Reactive event streams decoupling audio cues, floating popups, and battle logs (`AudioCueEvent`, `DamageDealtEvent`, `HealthRestoredEvent`). |
+| **Domain Services** | `ShopService`, `LootService`, `DraftService`, `ProgressionService` | Pure business logic completely isolated from frontend views. |
+| **Memento / Repository** | `RunMemento` & `RunRepository` (`src.core.persistence`) | Immutable serialization snapshots decoupling persistence from live models, supporting File, Memory, and LocalStorage backends. |
+| **Semantic Tokens** | `ThemeToken` (`src.core.theme`) | Abstract design tokens resolving to 0–15 palette indices in Pyxel and 24-bit RGB tuples in Pygame-CE. |
 
 ---
 
@@ -68,9 +79,12 @@ The codebase adheres strictly to clean architecture and modern software design p
 - pip
 
 Main runtime dependencies:
-- [Pyxel](https://github.com/kitao/pyxel) 2.0+ (Retro engine and PWA web deployment)
-- [pygame-ce](https://pyga.me) 2.5+ (Modern high-DPI desktop client)
-- `pytest` (Test suites, architectural boundary linter, and balance telemetry)
+- [pygame-ce](https://pyga.me) 2.5+ (16-Bit SNES Golden Age client)
+- [Pyxel](https://github.com/kitao/pyxel) 2.0+ (8-Bit Retro client)
+- `pytest` (Test suites, architectural boundary linter, balance telemetry)
+- `pyinstaller` (Desktop standalone executable compilation)
+- `pygbag` (WebAssembly compilation for Pygame-CE)
+- `pillow` (Asset format conversion)
 
 ---
 
@@ -99,81 +113,113 @@ python -m pip install -r requirements.txt
 #### Frontend Selection
 
 ```bash
-# Launch with default retro 256x256 Pyxel engine
+# Launch with default 16-Bit SNES Pygame-CE client (960x540)
 python main.py
 
-# Launch explicitly with Pyxel
-python main.py --frontend pyxel
-
-# Launch with modern 960x540 Pygame-CE desktop client
+# Launch explicitly with Pygame-CE
 python main.py --frontend pygame
 
-# Launch headless simulation mode (CI / bot trials)
+# Launch in fullscreen mode
+python main.py --frontend pygame --fullscreen
+
+# Launch in maximized window
+python main.py --frontend pygame --maximized
+
+# Launch with retro 8-Bit Pyxel engine (256x256)
+python main.py --frontend pyxel
+
+# Launch headless simulation mode (for CI / automated trials)
 python main.py --headless
 ```
 
 ---
 
-## User Manual
+## Packaging & Distribution
 
-### Start a Run
+### Standalone Desktop Executable (.exe)
 
-1. On the title screen:
-   - Press `1` for **New Game**.
-   - Press `2` for **Load Game** (resumes saved run).
-   - Press `3` for **Credits**.
-2. Select your hero class: **Warrior** (`1`), **Rogue** (`2`), or **Mage** (`3`).
-3. Select your route style using `B` or `T`:
-   - **Fate**: Randomly picks biomes for each act.
-   - **Pathfinder**: Allows you to pick your preferred biome at the start of each act.
-4. Press `Enter` or `Space` to begin.
+Compile Quest for Aethelgard into a standalone single-file binary with all fonts, backgrounds, sprites, and audio cues embedded:
+
+```powershell
+python tools/build_desktop.py
+```
+
+The resulting executable is generated at `dist/desktop/QuestForAethelgard.exe` (~46 MB) and can be distributed to players on Windows without requiring Python.
+
+### Dual-Frontend Web Deployment (GitHub Pages / PWA)
+
+Build the complete dual-frontend web distribution:
+
+```powershell
+python tools/build_web.py
+```
+
+This compiles:
+1. **Root (`/`)**: 16-Bit SNES Golden Age Edition (Pygame-CE via `pygbag` WebAssembly).
+2. **Subpath (`/pyxel/`)**: 8-Bit Retro Edition (Pyxel via Pyodide WebAssembly).
+3. **No Virtual Gamepads**: Both editions are patched to deactivate on-screen touch joysticks and d-pad overlays.
+4. **Cross-Edition Links**: Bidirectional switching pills allow players to jump between the 16-bit SNES and 8-bit retro presentations in real time.
+
+Both editions are automatically built and deployed via the GitHub Actions CI/CD workflow in [`.github/workflows/deploy.yml`](file:///c:/Users/Sergio/PycharmProjects/QuestForAethelgard/.github/workflows/deploy.yml).
 
 ---
+
+## User Manual
+
+### Start a Run & Route Selection
+
+1. **Title Screen**: Select **New Game** (`[1]`), **Load Game** (`[2]`), or **Credits** (`[4]`). Toggle language using `[3]` or `[L]`.
+2. **Class Selection**: Select your champion:
+   - **Warrior** (`[1]`): High Armor & Brutal Cleaves.
+   - **Rogue** (`[2]`): Lethal Daggers & Toxic Venoms.
+   - **Mage** (`[3]`): Arcane Spells & Barrier Shields.
+3. **Route Mode**: Toggle between **Fate** (random biomes) and **Pathfinder** (choose biomes at the start of each act) using `[B]` or `[T]`.
 
 ### Class System & Level 10 Promotions
 
-Each starting class has unique base attributes, stat scaling, and starter gear. At **Level 10**, players choose between two specialized advanced classes. Promoting restores 50% max HP, unlocks an epic ability draft, permanently boosts attribute growth, and grants a signature passive:
+At **Level 10**, your champion qualifies for subclass promotion:
 
-- **Warrior**:
-  - **Paladin**: Holy bastion specializing in shields, healing, and damage mitigation (*Holy Aegis*).
-  - **Berserker**: Low-health juggernaut trading defense for massive attack speed and damage (*Deathless Onslaught*).
-- **Rogue**:
-  - **Venomancer**: Master of stacking toxic damage-over-time debuffs (*Venom Mastery*).
-  - **Duelist**: Evasive critical striker triggering free counter-attacks (*Riposte Mastery*).
-- **Mage**:
-  - **Archmage**: Pure arcane elementalist wielding spell echoes and cooldown acceleration (*Arcane Overload*).
-  - **Warlock**: Dark summoner sacrificing health for life-leeching soulfire and bone armor (*Soul Siphon*).
+| Base Class | Advanced Class | Role | Signature Passive & Mechanics |
+| :--- | :--- | :--- | :--- |
+| **Warrior** | **Paladin** | Holy Bastion | **Holy Aegis**: Casting abilities heals for a percentage of impact. Enhanced shield and armor scaling. |
+| **Warrior** | **Berserker** | Rage Brawler | **Deathless Onslaught**: Attack speed and damage increase inversely with current health. Emergency healing burst on critical low HP. |
+| **Rogue** | **Venomancer** | Toxin Master | **Venom Mastery**: Poison detonations restore health and amplify ongoing tick damage. |
+| **Rogue** | **Duelist** | Critical Striker | **Riposte Mastery**: High dodge chance triggering immediate counter-attacks upon evasion. |
+| **Mage** | **Archmage** | Burst Elementalist | **Arcane Overload**: Spell echoes trigger chance-based double casts and rapid cooldown reduction. |
+| **Mage** | **Warlock** | Dark Siphon | **Soul Siphon**: Dark spells drain enemy vitality to restore hero HP and reinforce barrier shields. |
 
----
+Promoting immediately launches an **Epic Ability Draft** offering class-exclusive signature spells.
 
-### Explore the Dungeon Map
+### Spire Exploration Map
 
-- The dungeon map is a branching spire reverse-tree.
-- Choose your path floor-by-floor:
-  - **Combat / Elite**: Battle enemies to earn gold, experience, and gear.
-  - **Rest Site**: Rest to recover HP.
-  - **Merchant / Shop**: Purchase potions, rare weapons, and armor.
-  - **Treasure**: Collect free gold and equipment.
-  - **Event**: Encounter narrative events with risk-reward choices.
-  - **Act Boss**: Vanquish the act guardian to advance to the next act.
+- Progress upward floor-by-floor through the Spire node tree:
+  - **Combat / Elite**: Battle monsters for EXP, gold, and gear.
+  - **Rest**: Recover hero HP.
+  - **Shop**: Browse equipment, health potions, and attribute herbs.
+  - **Treasure**: Claim gold caches and rare equipment.
+  - **Event**: Encounter narrative dilemmas with requirement-based choices.
+  - **Boss**: Vanquish the Act Guardian to advance to the next Act.
+- **Save & Quit**: Press `[Q]` or `[ESC]` on the Map to save your run and safely return to the title screen.
 
----
+### Speed-Driven Combat & Boss QTEs
 
-### Combat System & QTE Mechanics
+- Battles feature symmetrical ATB gauges where action frequency scales with the Speed attribute.
+- **Quick-Belt**: Consume belt potions in combat using keys `[1]`, `[2]`, or `[3]`.
+- **Combat Speed**: Press `[Z]` to cycle battle pacing between 1x, 2x, and 4x speed.
+- **Quick Time Events (QTE)**: When Elites and Bosses initiate signature strikes, a shrinking ring clash minigame appears. Press `[Space]` or click when the ring aligns inside the golden target zone for **Perfect** parries or damage mitigation.
 
-- Battles are speed-gauge driven: faster fighters take actions more frequently.
-- **Action Buttons & Belt Hotkeys**: Use `[1]`, `[2]`, `[3]` to quickly consume belt potions.
-- **Combat Speed Toggle**: Press `[Z]` to cycle combat speed (1x, 2x, 4x).
-- **Elite/Boss QTEs**: When an elite or boss triggers a signature ability, interact with the timed Quick Time Event to parry or evade incoming lethal damage.
+### Tiered Equipment & Paperdoll Inventory
 
----
+- Equip gear across 7 slots: Main Hand, Off Hand, Helmet, Armor, Legs, Ring 1, Ring 2.
+- Items span 5 rarity tiers: Common, Uncommon, Rare, Epic, and Legendary.
+- The item inspection panel provides live **`Diff: +X / -X`** stat deltas compared against your currently equipped gear.
+- High-tier equipment features **on-hit** (burn, bleed, poison) and **on-damaged** (thorns, barrier procs) triggers.
 
-### Save and Load System
+### Save and Resume System
 
-- Runs are saved automatically upon entering dungeon nodes and completing battles.
-- On desktop, progress is saved atomically to `saves/quest_for_aethelgard_save.json`.
-- In the browser, saves are stored in `window.localStorage`.
-- Resume anytime from the Title Screen by selecting **Continue Run** (`[C]`).
+- Runs are saved automatically upon navigating spire nodes and concluding battles.
+- Save manually at any point on the map via `[Q] SAVE` or `[ESC]`.
+- Resume anytime from the Title Screen by selecting **Load Game** (`[2]`).
 
 ---
 
@@ -181,46 +227,53 @@ Each starting class has unique base attributes, stat scaling, and starter gear. 
 
 ```text
 QuestForAethelgard/
-├── assets/
-│   ├── game.pyxres              # Pyxel spritesheets, SFX, and chip music
-│   ├── spleen-5x8.bdf           # Bitmap font
-│   ├── manifest.json            # PWA web manifest
-│   └── screenshots/             # Gameplay and marketing previews
+├── assets/                      # Shared visual and audio assets
+│   ├── backgrounds/             # 16-Bit SNES vista panoramas & combat arenas
+│   ├── fonts/                   # Alagard, DotGothic16, Silkscreen typography
+│   ├── icons/                   # Status badges, map nodes, class crests
+│   ├── portraits/               # Large hero busts & class artwork
+│   ├── sprites/                 # SNES combatants & basic/elite/boss enemies
+│   ├── ui/                      # 9-slice gold ornate frames & title logos
+│   ├── game.pyxres              # Pyxel 8-bit soundbank & spritesheet
+│   └── manifest.json            # PWA web manifest
 ├── src/
-│   ├── config.py                # Gameplay, layout, and visual constants
+│   ├── config.py                # Visual constants and display parameters
 │   ├── core/                    # Pure Python domain core (Zero GUI dependencies)
 │   │   ├── commands.py          # Command pattern definitions & dispatcher
-│   │   ├── events.py            # EventBus & reactive domain events
+│   │   ├── events.py            # Reactive EventBus & domain events
 │   │   ├── fsm.py               # State machine & ModeState protocols
 │   │   ├── game_state.py        # Core GameState & mode transitions
 │   │   ├── persistence.py       # RunMemento & RunRepository
 │   │   ├── save_manager.py      # Cross-platform storage backends
 │   │   ├── session.py           # GameSession facade
 │   │   └── theme.py             # Semantic ThemeToken color abstraction
-│   ├── data/                    # Class archetypes, tiered equipment, biomes, events
-│   ├── entities/                # Actor, Player, Enemy, Item, Stats data models
-│   ├── frontends/               # Pluggable modern presentation layers
-│   │   └── pygame_ce/           # High-DPI 960x540 desktop client
-│   │       ├── app.py           # PygameApp master lifecycle
-│   │       ├── renderer.py      # Themed anti-aliased surface renderer
-│   │       ├── audio_adapter.py # Procedural audio cue synthesizer
-│   │       └── views/           # Title, Map, and Combat high-DPI screens
-│   ├── systems/                 # Combat, QTE, map generator, domain services
-│   │   ├── shop_service.py      # Isolated merchant transaction logic
-│   │   ├── loot_service.py      # Isolated loot distribution logic
-│   │   ├── draft_service.py     # Isolated ability draft logic
-│   │   └── progression_service.py # Isolated class promotion logic
+│   ├── data/                    # Class catalog, 192 tiered items, biomes, enemies, events
+│   ├── entities/                # Actor, Player, Enemy, Item, Stats models
+│   ├── frontends/               # Pluggable presentation clients
+│   │   └── pygame_ce/           # 16-Bit SNES Golden Age JRPG engine (960x540)
+│   │       ├── app.py           # PygameApp master lifecycle & async Web loop
+│   │       ├── asset_manager.py # 9-slice gold frames, fonts, vistas, busts
+│   │       ├── renderer.py      # Anti-aliased font & surface renderer
+│   │       ├── audio_adapter.py # Procedural sound waveform synthesizer
+│   │       ├── components/      # Reusable TopHUDComponent status header
+│   │       └── views/           # Complete 14-screen SNES Golden Age suite
+│   ├── systems/                 # Combat, QTE, inventory, map generator, domain services
 │   ├── tools/                   # Asset generation, HTML patcher, build scripts
-│   └── ui/                      # Classic 256x256 Pyxel engine & views
-├── tests/
-│   ├── core/                    # GameSession, FSM, events, and repository tests
-│   ├── entities/                # Actor, Player progression, and equipment tests
+│   └── ui/                      # Classic 8-Bit Pyxel engine (256x256)
+├── tests/                       # 263 automated unit, integration, and boundary tests
+│   ├── core/                    # GameSession, FSM, events, and persistence tests
+│   ├── entities/                # Player progression, enemy scaling, and item tests
 │   ├── frontends/               # Pygame-CE client test suite
-│   ├── simulations/             # Monte Carlo headless simulation runner & balance telemetry
+│   ├── simulations/             # Headless Monte Carlo balance simulation trials
 │   ├── systems/                 # Combat engine, QTE, abilities, and inventory tests
-│   └── test_architecture_boundary.py # AST-based GUI decoupling import linter
-├── main.py                      # Multi-frontend CLI entry point
-├── requirements.txt             # Python dependencies
+│   └── test_architecture_boundary.py # AST import decoupling boundary linter
+├── tools/                       # Build automation scripts
+│   ├── build_desktop.py         # PyInstaller standalone .exe packager
+│   └── build_web.py             # Dual-frontend Pygbag + Pyxel WebAssembly builder
+├── main.py                      # Multi-frontend async launcher
+├── pyxel_main.py                # Standalone Pyxel web entrypoint
+├── pygbag.ini                   # Pygbag packaging configuration
+├── requirements.txt             # Project dependencies
 └── README.md                    # Project documentation
 ```
 
@@ -228,7 +281,9 @@ QuestForAethelgard/
 
 ## Development, Testing & Monte Carlo Telemetry
 
-Run the full automated test suite (250 tests):
+### Automated Test Suite (263 Tests)
+
+Run the full automated test suite:
 
 ```powershell
 python -m pytest
@@ -244,25 +299,13 @@ python -m pytest tests/test_architecture_boundary.py
 
 ### Monte Carlo Balance Telemetry
 
-To test game balance, class win-rates, and equipment drop rates without running the GUI, execute the headless Monte Carlo simulation harness:
+Execute headless Monte Carlo simulation trials to measure win rates and balance across thousands of simulated runs:
 
 ```powershell
 python -m pytest tests/simulations/test_monte_carlo_balance.py -s
 ```
 
 All 6 promoted classes are calibrated to an Act 3 victory rate between **40% and 50%**.
-
----
-
-## Assets and Audio
-
-- Sprite graphics and audio cues for the retro client are bundled in `assets/game.pyxres`.
-- Open in the Pyxel editor using:
-  ```powershell
-  pyxel edit assets/game.pyxres
-  ```
-- Pygame-CE client uses authentic 16-bit Super Nintendo (SNES) pixel art backgrounds (`assets/backgrounds/`) rendered in the Golden Age RPG aesthetic (*Secret of Evermore*, *Terranigma*, *Super Castlevania IV*).
-- Pygame-CE generates procedural sound waveforms directly in memory for audio cues.
 
 ---
 
