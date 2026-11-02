@@ -18,6 +18,7 @@ from src.config import (
     COLOR_RED,
     COLOR_WHITE,
     COLOR_YELLOW,
+    PROJECT_ROOT,
     SCREEN_WIDTH,
 )
 from src.core.i18n import t
@@ -29,11 +30,7 @@ class Renderer:
     """Provides modular UI rendering utilities for game screens."""
 
     def __init__(self):
-        bdf_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-            "assets",
-            "spleen-5x8.bdf",
-        )
+        bdf_path = str(PROJECT_ROOT / "assets" / "spleen-5x8.bdf")
         self.font = pyxel.Font(bdf_path) if os.path.exists(bdf_path) else None
 
     def draw_text(self, x: int, y: int, text: str, col: int) -> None:

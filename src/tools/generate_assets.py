@@ -180,13 +180,8 @@ ABILITY_ICON_COORDS: Final[dict[str, tuple[int, int]]] = {
 }
 
 
-def build_assets() -> None:
-    pyxel.init(256, 256, title="Asset Builder", headless=True)
-
-    project_root = Path(__file__).resolve().parent.parent.parent
-    assets_dir = project_root / "assets"
-    assets_dir.mkdir(parents=True, exist_ok=True)
-    output_path = assets_dir / "game.pyxres"
+def populate_pyxel_resources() -> None:
+    """Populate Pyxel image banks (0, 1, 2), sound channels, and music directly into active Pyxel state."""
 
     # =========================================================================
     # IMAGE BANK 0: CHARACTERS, NPCS & ITEMS
@@ -2040,8 +2035,29 @@ def build_assets() -> None:
     pyxel.musics[7].set([33], [34], [])
     # (Removed pyxel.musics[8] to avoid the 8-slot IndexError)
 
-    pyxel.save(str(output_path))
-    print(f"Successfully generated asset package: {output_path}")
+    pass
+
+
+def build_assets(output_path: Path | str | None = None) -> Path:
+    """Initialize headless Pyxel, populate all resources, and save to game.pyxres."""
+    try:
+        pyxel.init(256, 256, title="Asset Builder", headless=True)
+    except Exception:
+        pass
+
+    if output_path is None:
+        project_root = Path(__file__).resolve().parent.parent.parent
+        assets_dir = project_root / "assets"
+        assets_dir.mkdir(parents=True, exist_ok=True)
+        dest_path = assets_dir / "game.pyxres"
+    else:
+        dest_path = Path(output_path)
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+    populate_pyxel_resources()
+    pyxel.save(str(dest_path))
+    print(f"Successfully generated asset package: {dest_path}")
+    return dest_path
 
 
 def get_enemy_sprite(archetype_id: str) -> tuple[int, int]:
