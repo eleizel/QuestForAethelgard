@@ -212,6 +212,7 @@ def test_pygame_shop_view():
         gold_value=20,
         slot=EquipSlot.MAIN_HAND,
         stats_bonus=Stats(max_hp=10, attack=0, defense=0, speed=0, crit_chance=0.0),
+        tier=2,
     )
     session.state.merchant_stock = [(test_pot, 20)]
 
@@ -219,11 +220,27 @@ def test_pygame_shop_view():
     renderer = PygameRenderer()
     surface = pygame.Surface((960, 540))
 
+    # Buy item
     view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN), session)
-    assert session.player.gold < 100
+    assert session.player.gold == 80
+    assert len(session.player.inventory.pouch) == 1
+    assert len(session.state.merchant_stock) == 0
 
     view.update(0.016, session)
     view.draw(surface, renderer, session)
+
+    # Switch to SELL tab
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_TAB), session)
+    assert view.active_tab == "SELL"
+
+    # Sell item back
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN), session)
+    assert session.player.gold > 80
+    assert len(session.player.inventory.pouch) == 0
+
+    # Leave shop
+    view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE), session)
+    assert session.current_mode == GameMode.MAP
 
 
 def test_pygame_ability_choice_view():
@@ -401,13 +418,33 @@ def test_pygame_events_view():
 def test_pygame_end_game_and_credits_views():
     session = GameSession()
     session.start_new_game(class_id="warrior")
+    session.player.level = 5
+    session.player.gold = 250
     renderer = PygameRenderer()
     surface = pygame.Surface((960, 540))
 
+    # Defeat mode
     session.switch_mode(GameMode.GAME_OVER)
     end_view = PygameEndGameView()
+    end_view.update(0.016, session)
     end_view.draw(surface, renderer, session)
 
+    # Credits transition via 'C' key
+    end_view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_c), session)
+    assert session.current_mode == GameMode.CREDITS
+
+    # Victory mode
+    session.start_new_game(class_id="paladin")
+    session.switch_mode(GameMode.VICTORY)
+    end_view_vic = PygameEndGameView()
+    end_view_vic.update(0.016, session)
+    end_view_vic.draw(surface, renderer, session)
+
+    # Return to title via SPACE
+    end_view_vic.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_SPACE), session)
+    assert session.current_mode == GameMode.WELCOME
+
+    # Credits view back button
     session.switch_mode(GameMode.CREDITS)
     cred_view = PygameCreditsView()
     cred_view.draw(surface, renderer, session)
