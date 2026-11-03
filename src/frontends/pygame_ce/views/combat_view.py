@@ -36,6 +36,71 @@ if TYPE_CHECKING:
 
 
 @dataclass
+class CombatantAnimationState:
+    """Encapsulates procedural JRPG combat animation state for a combatant sprite."""
+    is_hero: bool
+    lunge_timer: float = 0.0
+    lunge_duration: float = 0.28
+    lunge_dist: float = 40.0
+
+    recoil_timer: float = 0.0
+    recoil_duration: float = 0.25
+    recoil_dist: float = 16.0
+    recoil_is_crit: bool = False
+
+    def trigger_lunge(self, max_duration: float | None = None, distance: float = 40.0) -> None:
+        base_dur = 0.28
+        if max_duration is not None and max_duration > 0.0:
+            self.lunge_duration = min(base_dur, max_duration)
+        else:
+            self.lunge_duration = base_dur
+        self.lunge_timer = self.lunge_duration
+        self.lunge_dist = distance
+
+    def trigger_recoil(self, is_crit: bool = False, max_duration: float | None = None) -> None:
+        base_dur = 0.28 if is_crit else 0.24
+        if max_duration is not None and max_duration > 0.0:
+            self.recoil_duration = min(base_dur, max_duration)
+        else:
+            self.recoil_duration = base_dur
+        self.recoil_timer = self.recoil_duration
+        self.recoil_is_crit = is_crit
+
+    def update(self, dt: float) -> None:
+        if self.lunge_timer > 0.0:
+            self.lunge_timer = max(0.0, self.lunge_timer - dt)
+        if self.recoil_timer > 0.0:
+            self.recoil_timer = max(0.0, self.recoil_timer - dt)
+
+    def get_lunge_offset_x(self) -> float:
+        if self.lunge_timer <= 0.0 or self.lunge_duration <= 0.0:
+            return 0.0
+        progress = 1.0 - (self.lunge_timer / self.lunge_duration)
+        progress = max(0.0, min(1.0, progress))
+        # Sine arc: starts at 0, peaks at 1.0 in the middle, returns to 0
+        displacement = math.sin(progress * math.pi) * self.lunge_dist
+        return displacement if self.is_hero else -displacement
+
+    def get_recoil_offsets(self) -> tuple[float, float]:
+        if self.recoil_timer <= 0.0 or self.recoil_duration <= 0.0:
+            return 0.0, 0.0
+        decay = self.recoil_timer / self.recoil_duration
+        decay = max(0.0, min(1.0, decay))
+        progress = 1.0 - decay
+        mult = 1.5 if self.recoil_is_crit else 1.0
+        dist = self.recoil_dist * mult
+
+        # Knockback away from opponent
+        knockback_x = (-dist * decay) if self.is_hero else (dist * decay)
+        # Rapid damped wobble oscillation (~30 rad/s)
+        wobble_x = math.sin(progress * 30.0) * (3.5 * mult) * decay
+        # Small vertical impact flinch
+        flinch_y = -abs(math.sin(progress * math.pi)) * (3.0 * mult) * decay
+
+        return knockback_x + wobble_x, flinch_y
+
+
+@dataclass
 class FloatingNumber:
     """Animated damage or healing popup text in the arena."""
     x: float
@@ -63,6 +128,11 @@ class PygameCombatView(PygameView):
         self._hovered_btn: str | None = None
         self.selected_belt_idx: int = 0
 
+        # Procedural combat animations
+        self.idle_timer: float = 0.0
+        self.player_anim = CombatantAnimationState(is_hero=True)
+        self.enemy_anim = CombatantAnimationState(is_hero=False)
+
         # Clickable rects for mouse interaction
         self.victory_active: bool = False
         self.victory_timer: float = 0.0
@@ -86,6 +156,20 @@ class PygameCombatView(PygameView):
 
     def _cycle_speed(self) -> None:
         self.speed_idx = (self.speed_idx + 1) % len(self.SPEED_STEPS)
+
+    def get_hero_animation_offset(self) -> tuple[float, float]:
+        """Return current combined procedural (offset_x, offset_y) for hero sprite."""
+        idle_y = math.sin(self.idle_timer * 3.0) * 2.5
+        lunge_x = self.player_anim.get_lunge_offset_x()
+        recoil_x, recoil_y = self.player_anim.get_recoil_offsets()
+        return (lunge_x + recoil_x, idle_y + recoil_y)
+
+    def get_enemy_animation_offset(self, enemy_alive: bool = True) -> tuple[float, float]:
+        """Return current combined procedural (offset_x, offset_y) for enemy sprite."""
+        idle_y = math.sin(self.idle_timer * 3.0 + math.pi) * 2.5 if enemy_alive else 0.0
+        lunge_x = self.enemy_anim.get_lunge_offset_x()
+        recoil_x, recoil_y = self.enemy_anim.get_recoil_offsets()
+        return (lunge_x + recoil_x, idle_y + recoil_y)
 
     def handle_event(self, event: pygame.event.Event, session: GameSession) -> None:
         """Process keyboard shortcuts and combat interaction."""
@@ -216,10 +300,11 @@ class PygameCombatView(PygameView):
                 combat.combat_logs.append(t("combat_cooldown", cooldown=rem_cd))
 
     def _detect_deltas(self, session: GameSession) -> None:
-        """Process domain events and trigger screen shake/flash."""
+        """Process domain events and trigger screen shake/flash and combat animations."""
+        dur_cap = min(0.28, self.step_interval * 0.85)
         for ev in session.drain_events():
             if isinstance(ev, DamageDealtEvent):
-                is_hero = (ev.target == session.player.name)
+                is_hero = bool(session.player and ev.target == session.player.name)
                 px = 240 if is_hero else 690
                 py = 130
                 txt = f"-{ev.amount}!" if ev.is_crit else f"-{ev.amount}"
@@ -227,15 +312,19 @@ class PygameCombatView(PygameView):
                 self.popups.append(FloatingNumber(x=px, y=py, text=txt, color=col))
                 if is_hero:
                     self.player_flash = 3
+                    self.player_anim.trigger_recoil(is_crit=ev.is_crit, max_duration=dur_cap)
+                    self.enemy_anim.trigger_lunge(max_duration=dur_cap)
                     if ev.is_crit:
                         self.shake_frames = 5
                 else:
                     self.enemy_flash = 3
+                    self.enemy_anim.trigger_recoil(is_crit=ev.is_crit, max_duration=dur_cap)
+                    self.player_anim.trigger_lunge(max_duration=dur_cap)
                     if ev.is_crit:
                         self.shake_frames = 6
 
             elif isinstance(ev, HealthRestoredEvent):
-                px = 240 if ev.target == session.player.name else 690
+                px = 240 if (session.player and ev.target == session.player.name) else 690
                 py = 130
                 self.popups.append(FloatingNumber(x=px, y=py, text=f"+{ev.amount}", color=(80, 240, 100)))
 
@@ -243,11 +332,35 @@ class PygameCombatView(PygameView):
         """Advance combat simulation tick and collect domain events."""
         if not session.combat:
             return
+        combat = session.combat
+        prev_queued = combat.queued_ability
+        prev_enemy_actions = getattr(combat, "enemy_actions_taken", 0)
+
         session.update_combat()
         self._detect_deltas(session)
 
+        dur_cap = min(0.28, self.step_interval * 0.85)
+        # If player executed a queued ability (it got consumed)
+        if prev_queued is not None and combat.queued_ability is None:
+            if self.player_anim.lunge_timer <= 0.0:
+                self.player_anim.trigger_lunge(max_duration=dur_cap)
+
+        # If enemy performed a non-damaging action (e.g. self-heal/buff)
+        new_enemy_actions = getattr(combat, "enemy_actions_taken", 0)
+        if new_enemy_actions > prev_enemy_actions:
+            if self.enemy_anim.lunge_timer <= 0.0:
+                self.enemy_anim.trigger_lunge(max_duration=dur_cap)
+
     def update(self, dt: float, session: GameSession) -> None:
         """Update popup animations, auto-advance ticks, and QTE timer."""
+        # Drain any pending events immediately (e.g. from user actions or tests)
+        self._detect_deltas(session)
+
+        # Update procedural combat animations
+        self.idle_timer += dt
+        self.player_anim.update(dt)
+        self.enemy_anim.update(dt)
+
         pos = pygame.mouse.get_pos()
         self.top_hud.update(pos)
 
@@ -379,6 +492,16 @@ class PygameCombatView(PygameView):
         vignette.fill((0, 0, 0, 80))
         surface.blit(vignette, arena_rect.topleft)
 
+        # ---------------- PROCEDURAL COMBAT ANIMATION OFFSETS ----------------
+        enemy_alive = bool(enemy and getattr(enemy, "is_alive", True) and getattr(enemy, "current_hp", 1) > 0)
+        hero_off_x_f, hero_off_y_f = self.get_hero_animation_offset()
+        enemy_off_x_f, enemy_off_y_f = self.get_enemy_animation_offset(enemy_alive=enemy_alive)
+
+        hero_off_x = int(round(hero_off_x_f))
+        hero_off_y = int(round(hero_off_y_f))
+        enemy_off_x = int(round(enemy_off_x_f))
+        enemy_off_y = int(round(enemy_off_y_f))
+
         # ---------------- COMBATANT SHADOWS ----------------
         hero_center_x = 280
         ground_y = arena_rect.bottom - 22
@@ -386,11 +509,11 @@ class PygameCombatView(PygameView):
 
         hero_shadow = pygame.Surface((60, 14), pygame.SRCALPHA)
         pygame.draw.ellipse(hero_shadow, (0, 0, 0, 110), (0, 0, 60, 14))
-        surface.blit(hero_shadow, (hero_center_x - 30, ground_y - 6))
+        surface.blit(hero_shadow, (hero_center_x - 30 + hero_off_x, ground_y - 6))
 
         enemy_shadow = pygame.Surface((80, 16), pygame.SRCALPHA)
         pygame.draw.ellipse(enemy_shadow, (0, 0, 0, 110), (0, 0, 80, 16))
-        surface.blit(enemy_shadow, (enemy_center_x - 40, ground_y - 6))
+        surface.blit(enemy_shadow, (enemy_center_x - 40 + enemy_off_x, ground_y - 6))
 
         # ---------------- HERO SPRITE (FACING RIGHT) ----------------
         hero_sprite = assets.get_class_sprite(player.class_id)
@@ -401,22 +524,25 @@ class PygameCombatView(PygameView):
             target_w = max(1, int(hw * (target_h / hh)))
             hero_scaled = pygame.transform.smoothscale(hero_sprite, (target_w, target_h))
 
+            hero_x = hero_center_x - target_w // 2 + hero_off_x
+            hero_y = ground_y - target_h + 4 + hero_off_y
+
             # Hit flash effect
             if self.player_flash > 0:
                 self.player_flash -= 1
                 flash_surf = hero_scaled.copy()
                 flash_surf.fill((255, 255, 255, 200), special_flags=pygame.BLEND_RGBA_ADD)
-                surface.blit(flash_surf, (hero_center_x - target_w // 2, ground_y - target_h + 4))
+                surface.blit(flash_surf, (hero_x, hero_y))
             else:
-                surface.blit(hero_scaled, (hero_center_x - target_w // 2, ground_y - target_h + 4))
+                surface.blit(hero_scaled, (hero_x, hero_y))
 
         # ---------------- ENEMY SPRITE (FACING LEFT) ----------------
         arch_id = getattr(enemy, "archetype_id", None) or enemy.name
         enemy_sprite = assets.get_enemy_sprite(arch_id, max_height=95)
         if enemy_sprite:
             ew, eh = enemy_sprite.get_size()
-            ex = enemy_center_x - ew // 2
-            ey = ground_y - eh + 4
+            ex = enemy_center_x - ew // 2 + enemy_off_x
+            ey = ground_y - eh + 4 + enemy_off_y
 
             if self.enemy_flash > 0:
                 self.enemy_flash -= 1
