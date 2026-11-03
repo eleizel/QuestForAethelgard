@@ -55,9 +55,9 @@ class PygameCharacterModalView(PygameView):
                 session.toggle_character()
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             pos = event.pos
-            if self.close_btn_rect.collidepoint(pos):
+            if self.close_btn_rect.inflate(10, 10).collidepoint(pos):
                 session.toggle_character()
-            elif not self.outer_rect.collidepoint(pos):
+            elif pos[1] >= 56 and not self.outer_rect.collidepoint(pos):
                 # Clicked outside modal frame: close overlay
                 session.toggle_character()
 
