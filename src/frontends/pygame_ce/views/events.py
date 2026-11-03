@@ -6,6 +6,7 @@ import math
 from typing import TYPE_CHECKING
 import pygame
 
+from src.core.events import AudioCue, AudioCueEvent, event_bus
 from src.core.game_state import GameMode
 from src.core.i18n import t, i18n
 from src.core.theme import ThemeToken
@@ -101,12 +102,8 @@ class PygameEventsView(PygameView):
             return
 
         # Play audio cue
-        try:
-            from src.systems.audio_manager import audio_manager, AudioCue
-            cue = AudioCue.CHEST if getattr(event, "scene_type", "") == "CHEST" else AudioCue.CLICK
-            audio_manager.play_cue(cue)
-        except Exception:
-            pass
+        cue = AudioCue.CHEST if getattr(event, "scene_type", "") == "CHEST" else AudioCue.CLICK
+        event_bus.emit_audio(cue)
 
         # Execute effect and transition to resolved text
         outcome = choice.action_hook(session.state)

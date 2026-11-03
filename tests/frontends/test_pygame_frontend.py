@@ -697,3 +697,23 @@ def test_pygame_loot_view_keyboard_c_key():
     c_key = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_c)
     view.handle_event(c_key, session)
     assert session.current_mode == GameMode.MAP
+
+
+def test_pygame_frontend_has_no_pyxel_dependency():
+    """Verify that pygame_ce frontend does not import pyxel or offline generator tools."""
+    import ast
+    from pathlib import Path
+
+    frontend_dir = Path("src/frontends/pygame_ce")
+    for py_file in frontend_dir.rglob("*.py"):
+        with open(py_file, "r", encoding="utf-8") as f:
+            tree = ast.parse(f.read(), filename=str(py_file))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    assert alias.name != "pyxel", f"Forbidden import 'pyxel' in {py_file}"
+                    assert not alias.name.startswith("src.tools"), f"Forbidden import '{alias.name}' in {py_file}"
+            elif isinstance(node, ast.ImportFrom):
+                if node.module:
+                    assert node.module != "pyxel", f"Forbidden import 'pyxel' in {py_file}"
+                    assert not node.module.startswith("src.tools"), f"Forbidden import '{node.module}' in {py_file}"
