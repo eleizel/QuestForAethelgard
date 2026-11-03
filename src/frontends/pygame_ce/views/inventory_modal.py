@@ -352,7 +352,7 @@ class PygameInventoryModalView(PygameView):
             elif self.drop_btn_rect.collidepoint(pos):
                 self._perform_drop(session)
                 return
-            elif self.close_btn_rect.inflate(10, 10).collidepoint(pos) or not pygame.Rect(8, 56, 944, 476).collidepoint(pos):
+            elif self.close_btn_rect.collidepoint(pos):
                 session.toggle_inventory()
                 return
 

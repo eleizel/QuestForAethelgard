@@ -39,7 +39,7 @@ class TopHUDComponent:
                 session.switch_mode(GameMode.WELCOME)
                 return True
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if self.save_btn_rect.inflate(10, 10).collidepoint(event.pos):
+                if self.save_btn_rect.collidepoint(event.pos):
                     session.save_game()
                     event_bus.emit_audio(AudioCue.CLICK)
                     session.switch_mode(GameMode.WELCOME)
@@ -54,10 +54,10 @@ class TopHUDComponent:
                 return True
 
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.inv_btn_rect.inflate(10, 10).collidepoint(event.pos):
+            if self.inv_btn_rect.collidepoint(event.pos):
                 session.toggle_inventory()
                 return True
-            elif self.char_btn_rect.inflate(10, 10).collidepoint(event.pos):
+            elif self.char_btn_rect.collidepoint(event.pos):
                 session.toggle_character()
                 return True
 

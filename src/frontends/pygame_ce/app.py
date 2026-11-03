@@ -90,9 +90,6 @@ class PygameApp:
         self.audio_adapter: PygameAudioAdapter = PygameAudioAdapter(bus=self.session.bus)
 
         # Complete Registry for All 14 Operational Game Modes
-        self._last_touch_time: float = 0.0
-        self._last_touch_pos: tuple[int, int] = (-999, -999)
-
         self.views: dict[GameMode, PygameView] = {
             GameMode.WELCOME: PygameWelcomeView(),
             GameMode.CLASS_SELECT: PygameClassSelectView(),
@@ -117,8 +114,7 @@ class PygameApp:
         return self.views.get(mode, self.views[GameMode.WELCOME])
 
     def handle_events(self) -> None:
-        """Poll and dispatch Pygame window and input events with mobile touch translation."""
-        now = pygame.time.get_ticks() / 1000.0
+        """Poll and dispatch Pygame window and input events."""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.is_running = False
@@ -133,59 +129,6 @@ class PygameApp:
                     except Exception:
                         pass
                     continue
-
-            # Mobile touch translation: map SDL2 FINGERDOWN / FINGERUP / FINGERMOTION
-            # directly to pixel-precise MOUSEBUTTONDOWN / MOUSEBUTTONUP events
-            finger_down_type = getattr(pygame, "FINGERDOWN", 1792)
-            finger_up_type = getattr(pygame, "FINGERUP", 1793)
-            finger_motion_type = getattr(pygame, "FINGERMOTION", 1794)
-
-            if event.type == finger_down_type:
-                px = max(0, min(self.width - 1, int(getattr(event, "x", 0.0) * self.width)))
-                py = max(0, min(self.height - 1, int(getattr(event, "y", 0.0) * self.height)))
-                self._last_touch_pos = (px, py)
-                self._last_touch_time = now
-                try:
-                    pygame.mouse.set_pos((px, py))
-                except Exception:
-                    pass
-                mouse_event = pygame.event.Event(
-                    pygame.MOUSEBUTTONDOWN,
-                    {"pos": (px, py), "button": 1, "touch": True}
-                )
-                active_view = self.get_active_view()
-                active_view.handle_event(mouse_event, self.session)
-                continue
-
-            elif event.type == finger_up_type:
-                px = max(0, min(self.width - 1, int(getattr(event, "x", 0.0) * self.width)))
-                py = max(0, min(self.height - 1, int(getattr(event, "y", 0.0) * self.height)))
-                try:
-                    pygame.mouse.set_pos((px, py))
-                except Exception:
-                    pass
-                mouse_event = pygame.event.Event(
-                    pygame.MOUSEBUTTONUP,
-                    {"pos": (px, py), "button": 1, "touch": True}
-                )
-                active_view = self.get_active_view()
-                active_view.handle_event(mouse_event, self.session)
-                continue
-
-            elif event.type == finger_motion_type:
-                px = max(0, min(self.width - 1, int(getattr(event, "x", 0.0) * self.width)))
-                py = max(0, min(self.height - 1, int(getattr(event, "y", 0.0) * self.height)))
-                try:
-                    pygame.mouse.set_pos((px, py))
-                except Exception:
-                    pass
-                continue
-
-            # De-duplicate synthetic SDL2 mouse events fired immediately after FINGERDOWN
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if (now - self._last_touch_time) < 0.120:
-                    if abs(event.pos[0] - self._last_touch_pos[0]) < 20 and abs(event.pos[1] - self._last_touch_pos[1]) < 20:
-                        continue
 
             active_view = self.get_active_view()
             active_view.handle_event(event, self.session)

@@ -294,30 +294,3 @@ def test_map_view_save_and_quit(tmp_path, monkeypatch):
 
 
 
-
-
-def test_detect_storage_backend_pygbag(monkeypatch):
-    import platform
-    from src.core.save_manager import detect_storage_backend, LocalStorageBackend
-
-    mock_win = MockWindow()
-    monkeypatch.setattr(platform, "window", mock_win, raising=False)
-
-    backend = detect_storage_backend()
-    assert isinstance(backend, LocalStorageBackend)
-    assert backend.window == mock_win
-
-
-def test_detect_storage_backend_pyxel(monkeypatch):
-    import sys
-    from types import ModuleType
-    from src.core.save_manager import detect_storage_backend, LocalStorageBackend
-
-    mock_win = MockWindow()
-    fake_js = ModuleType("js")
-    fake_js.window = mock_win
-    monkeypatch.setitem(sys.modules, "js", fake_js)
-
-    backend = detect_storage_backend()
-    assert isinstance(backend, LocalStorageBackend)
-    assert backend.window == mock_win

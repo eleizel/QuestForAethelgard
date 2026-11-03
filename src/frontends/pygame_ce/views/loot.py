@@ -87,15 +87,7 @@ class PygameLootView(PygameView):
         # Action button rects
         self.take_all_btn_rect = pygame.Rect(380, 474, 180, 36)
         self.cont_btn_rect = pygame.Rect(580, 474, 180, 36)
-        card_w = 720
-        card_h = 56
-        card_spacing = 6
-        start_y = 286
-        self.card_rects: list[pygame.Rect] = [
-            pygame.Rect(120, start_y + i * (card_h + card_spacing), card_w, card_h)
-            for i in range(3)
-        ]
-        self.no_loot_rect = pygame.Rect(120, start_y + 10, card_w, 70)
+        self.card_rects: list[pygame.Rect] = []
 
     def _get_item_icon(self, item) -> pygame.Surface | None:
         """Resolve authentic icon for item: SNES potions or Pyxel retro equipment."""
@@ -146,12 +138,6 @@ class PygameLootView(PygameView):
 
     def _exit_loot(self, session: GameSession) -> None:
         """Advance past the rewards screen into promotion, draft, or map."""
-        try:
-            from src.core.events import AudioCue, event_bus
-            event_bus.emit_audio(AudioCue.CLICK)
-        except Exception:
-            pass
-
         next_mode = LootService.resolve_exit_mode(session.player)
         if next_mode == GameMode.PROMOTION:
             if session.state.begin_promotion(GameMode.LOOT):
@@ -163,11 +149,8 @@ class PygameLootView(PygameView):
         session.state.continue_after_rewards()
 
     def handle_event(self, event: pygame.event.Event, session: GameSession) -> None:
-        """Process keyboard shortcuts and mouse/touch interaction for loot collection."""
-        # Top HUD handles inventory/char buttons unless key is 'C' (reserved for Loot Continue)
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_c:
-            pass
-        elif self.top_hud.handle_event(event, session):
+        """Process keyboard shortcuts and mouse interaction for loot collection."""
+        if self.top_hud.handle_event(event, session):
             return
 
         pending = session.state.pending_loot
@@ -195,36 +178,26 @@ class PygameLootView(PygameView):
             elif event.key in (pygame.K_RETURN, pygame.K_c):
                 self._exit_loot(session)
 
-        elif (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1) or \
-             (event.type == pygame.MOUSEBUTTONUP and event.button == 1):
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             pos = event.pos
 
-            # If all loot has been claimed, tapping anywhere on the stage advances
-            if not pending:
-                if pos[1] >= 56:
-                    self._exit_loot(session)
-                    return
-
-            # Check item card clicks (generous hit target for mobile touch)
+            # Check item card clicks
             for idx, rect in enumerate(self.card_rects):
-                if rect.inflate(16, 12).collidepoint(pos) and idx < len(pending):
+                if rect.collidepoint(pos) and idx < len(pending):
                     session.dispatch(TakeLootCommand(loot_index=idx))
                     if not session.state.pending_loot:
                         self._exit_loot(session)
                     return
 
             # Check Take All button
-            if self.take_all_btn_rect.inflate(20, 20).collidepoint(pos):
-                if pending:
-                    session.dispatch(TakeAllLootCommand())
-                    if not session.state.pending_loot:
-                        self._exit_loot(session)
-                else:
+            if self.take_all_btn_rect.collidepoint(pos) and pending:
+                session.dispatch(TakeAllLootCommand())
+                if not session.state.pending_loot:
                     self._exit_loot(session)
                 return
 
-            # Check Continue button (generous bounds + full bottom-right action area)
-            if self.cont_btn_rect.inflate(30, 24).collidepoint(pos) or (pos[0] >= 550 and pos[1] >= 450):
+            # Check Continue button
+            if self.cont_btn_rect.collidepoint(pos):
                 self._exit_loot(session)
                 return
 
@@ -233,9 +206,9 @@ class PygameLootView(PygameView):
         pos = pygame.mouse.get_pos()
         self.top_hud.update(pos)
 
-        if self.take_all_btn_rect.inflate(10, 10).collidepoint(pos):
+        if self.take_all_btn_rect.collidepoint(pos):
             self._hovered_btn = "take_all"
-        elif self.cont_btn_rect.inflate(10, 10).collidepoint(pos):
+        elif self.cont_btn_rect.collidepoint(pos):
             self._hovered_btn = "continue"
         else:
             self._hovered_btn = None
@@ -428,18 +401,18 @@ class PygameLootView(PygameView):
 
         self.card_rects = []
         if not pending:
-            self.no_loot_rect = pygame.Rect(120, start_y + 10, card_w, 70)
-            nl_bg = pygame.Surface((self.no_loot_rect.width, self.no_loot_rect.height), pygame.SRCALPHA)
+            no_loot_rect = pygame.Rect(120, start_y + 10, card_w, 70)
+            nl_bg = pygame.Surface((no_loot_rect.width, no_loot_rect.height), pygame.SRCALPHA)
             nl_bg.fill((18, 16, 28, 210))
-            surface.blit(nl_bg, self.no_loot_rect.topleft)
-            nl_frame = assets.get_9slice_frame("frame_gold_clean", self.no_loot_rect.width, self.no_loot_rect.height, margin=23)
+            surface.blit(nl_bg, no_loot_rect.topleft)
+            nl_frame = assets.get_9slice_frame("frame_gold_clean", no_loot_rect.width, no_loot_rect.height, margin=23)
             if nl_frame:
-                surface.blit(nl_frame, self.no_loot_rect.topleft)
+                surface.blit(nl_frame, no_loot_rect.topleft)
             renderer.draw_text(
                 surface,
                 "All spoils have been claimed. Press [SPACE] or Click Continue to advance.",
-                self.no_loot_rect.centerx,
-                self.no_loot_rect.centery - 8,
+                no_loot_rect.centerx,
+                no_loot_rect.centery - 8,
                 token=ThemeToken.TEXT_SUCCESS,
                 size=14,
                 bold=True,

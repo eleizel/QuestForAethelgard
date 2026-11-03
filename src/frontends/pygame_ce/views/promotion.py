@@ -72,8 +72,7 @@ class PygamePromotionView(PygameView):
                 if 0 <= idx < len(promos):
                     self._confirm_promotion(session, promos[idx])
 
-        elif (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1) or \
-             (event.type == pygame.MOUSEBUTTONUP and event.button == 1):
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             pos = event.pos
             cards = [(self.card1_rect, 0), (self.card2_rect, 1)]
             for card_rect, idx in cards:

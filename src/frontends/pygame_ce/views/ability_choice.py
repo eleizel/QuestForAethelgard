@@ -74,14 +74,13 @@ class PygameAbilityChoiceView(PygameView):
                 elif event.key == pygame.K_ESCAPE:
                     self.replace_mode = False
                     self.selected_ability = None
-            elif (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1) or \
-                 (event.type == pygame.MOUSEBUTTONUP and event.button == 1):
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 pos = event.pos
-                if self.rep_card1_rect.inflate(10, 10).collidepoint(pos):
+                if self.rep_card1_rect.collidepoint(pos):
                     self._apply_replacement(session, 0)
-                elif self.rep_card2_rect.inflate(10, 10).collidepoint(pos):
+                elif self.rep_card2_rect.collidepoint(pos):
                     self._apply_replacement(session, 1)
-                elif self.cancel_rep_rect.inflate(16, 16).collidepoint(pos):
+                elif self.cancel_rep_rect.collidepoint(pos):
                     self.replace_mode = False
                     self.selected_ability = None
             return
@@ -95,14 +94,13 @@ class PygameAbilityChoiceView(PygameView):
             elif event.key in (pygame.K_s, pygame.K_ESCAPE):
                 self._skip_draft(session)
 
-        elif (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1) or \
-             (event.type == pygame.MOUSEBUTTONUP and event.button == 1):
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             pos = event.pos
             if len(self.choices) > 0 and self.card1_rect.collidepoint(pos):
                 self._handle_choice(session, self.choices[0])
             elif len(self.choices) > 1 and self.card2_rect.collidepoint(pos):
                 self._handle_choice(session, self.choices[1])
-            elif self.skip_btn_rect.inflate(20, 20).collidepoint(pos):
+            elif self.skip_btn_rect.collidepoint(pos):
                 self._skip_draft(session)
 
     def _handle_choice(self, session: GameSession, chosen: Ability) -> None:
