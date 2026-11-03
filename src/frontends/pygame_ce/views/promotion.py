@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import pygame
 
 from src.core.commands import PromoteClassCommand
+from src.core.events import AudioCue, AudioCueEvent, event_bus
 from src.core.game_state import GameMode
 from src.core.theme import ThemeToken
 from src.data.classes import CLASS_REGISTRY
@@ -84,11 +85,7 @@ class PygamePromotionView(PygameView):
         """Select class card on first click/key, confirm promotion on second."""
         if self.selected_index != index:
             self.selected_index = index
-            try:
-                from src.systems.audio_manager import audio_manager, AudioCue
-                audio_manager.play_cue(AudioCue.CLICK)
-            except Exception:
-                pass
+            event_bus.emit_audio(AudioCue.CLICK)
             return False
 
         return self._confirm_promotion(session, class_id)

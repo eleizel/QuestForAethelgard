@@ -21,7 +21,7 @@ import random
 from typing import TYPE_CHECKING
 import pygame
 
-from src.core.events import DamageDealtEvent, HealthRestoredEvent
+from src.core.events import AudioCue, AudioCueEvent, DamageDealtEvent, HealthRestoredEvent, event_bus
 from src.core.i18n import t
 from src.core.theme import ThemeToken
 from src.frontends.pygame_ce.asset_manager import assets
@@ -279,11 +279,7 @@ class PygameCombatView(PygameView):
             if not self.victory_active:
                 self.victory_active = True
                 self.victory_timer = self.victory_duration
-                try:
-                    from src.systems.audio_manager import audio_manager, AudioCue
-                    audio_manager.play_cue(AudioCue.VICTORY)
-                except Exception:
-                    pass
+                event_bus.emit_audio(AudioCue.VICTORY)
 
             self.victory_timer -= dt
             if self.victory_timer <= 0.0:

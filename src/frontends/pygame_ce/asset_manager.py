@@ -59,6 +59,72 @@ PROMOTED_PORTRAITS: Final[dict[str, tuple[int, int, int, int]]] = {
     "warlock": (2, 0, 64, 48, 64),
 }
 
+# Ability Icon Coordinates on Image Bank 1 (16x16)
+ABILITY_ICON_COORDS: Final[dict[str, tuple[int, int]]] = {
+    # Starters (Row y=32)
+    "cross_cut": (0, 32),
+    "shadow_strike": (16, 32),
+    "arcane_bolt": (32, 32),
+    "pw_kill": (48, 32),
+    # Warrior Standard (Row y=32 continuing & Row y=48)
+    "shield_bash": (64, 32),
+    "rallying_cry": (80, 32),
+    "cleave": (96, 32),
+    "iron_skin": (112, 32),
+    "veterans_instincts": (128, 32),
+    "bloodlust": (144, 32),
+    "shieldbreaker_strike": (160, 32),
+    "defensive_superiority": (176, 32),
+    "paladin_guard": (192, 32),
+    "reckless_assault": (208, 32),
+    "blood_frenzy": (224, 32),
+    "cull_the_weak": (240, 32),
+    # Rogue Standard (Row y=48)
+    "poison_shiv": (0, 48),
+    "dirty_tricks": (16, 48),
+    "flurry_of_daggers": (32, 48),
+    "nimble_reflexes": (48, 48),
+    "exposed_weakness": (64, 48),
+    "shadow_step": (80, 48),
+    "venomous_accumulation": (96, 48),
+    "toxic_blood": (112, 48),
+    "venomous_extraction": (128, 48),
+    "riposte": (144, 48),
+    "whirlwind_defense": (160, 48),
+    "hilt_strike": (176, 48),
+    # Mage Standard (Row y=48 continuing & Row y=64)
+    "fireball": (192, 48),
+    "chain_lightning": (208, 48),
+    "creeping_hands": (224, 48),
+    "soulfire": (240, 48),
+    "bone_barrier": (0, 64),
+    "summon_imp": (16, 64),
+    "soul_siphon": (32, 64),
+    "pact_of_pain": (48, 64),
+    "ice_shards": (64, 64),
+    "arcane_missiles": (80, 64),
+    "arcane_reservoir": (96, 64),
+    "spell_echo": (112, 64),
+    # Warrior Epic (Row y=64 continuing)
+    "colossus_stance": (128, 64),
+    "blade_storm": (144, 64),
+    "undying_will": (160, 64),
+    "executioners_might": (176, 64),
+    # Rogue Epic (Row y=64 continuing & Row y=80)
+    "assassinate": (192, 64),
+    "fan_of_knives": (208, 64),
+    "shadow_dance": (224, 64),
+    "death_dealer": (240, 64),
+    # Mage Epic (Row y=80)
+    "meteor": (0, 80),
+    "time_stop": (16, 80),
+    "time_dilation": (32, 80),
+    "phoenix_rebirth": (48, 80),
+    # Fallback / Default
+    "default": (64, 80),
+}
+
+
 
 class AssetManager:
     """Singleton managing loaded backgrounds and cached spritesheets for Pygame-CE."""
@@ -401,7 +467,6 @@ class AssetManager:
         if bank_surf is None:
             return None
 
-        from src.tools.generate_assets import ABILITY_ICON_COORDS
         u, v = ABILITY_ICON_COORDS.get(aid, ABILITY_ICON_COORDS.get("default", (64, 80)))
 
         tile_surf = pygame.Surface((16, 16), pygame.SRCALPHA)
