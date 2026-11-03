@@ -28,6 +28,7 @@ class TopHUDComponent:
         self.char_btn_rect = pygame.Rect(716, 12, 98, 32)
         self.inv_btn_rect = pygame.Rect(824, 12, 98, 32)
         self._hovered_btn: str | None = None
+        self._last_toggle_time: float = 0.0
 
     def handle_event(self, event: pygame.event.Event, session: GameSession) -> bool:
         """Handle hotkeys and mouse clicks on HUD action buttons. Returns True if handled."""
@@ -39,7 +40,7 @@ class TopHUDComponent:
                 session.switch_mode(GameMode.WELCOME)
                 return True
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if self.save_btn_rect.collidepoint(event.pos):
+                if self.save_btn_rect.inflate(8, 10).collidepoint(event.pos):
                     session.save_game()
                     event_bus.emit_audio(AudioCue.CLICK)
                     session.switch_mode(GameMode.WELCOME)
@@ -54,10 +55,15 @@ class TopHUDComponent:
                 return True
 
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.inv_btn_rect.collidepoint(event.pos):
+            now = pygame.time.get_ticks() / 1000.0
+            if (now - self._last_toggle_time) < 0.25:
+                return False
+            if self.inv_btn_rect.inflate(8, 10).collidepoint(event.pos):
+                self._last_toggle_time = now
                 session.toggle_inventory()
                 return True
-            elif self.char_btn_rect.collidepoint(event.pos):
+            elif self.char_btn_rect.inflate(8, 10).collidepoint(event.pos):
+                self._last_toggle_time = now
                 session.toggle_character()
                 return True
 

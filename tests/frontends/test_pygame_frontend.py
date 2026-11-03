@@ -575,3 +575,125 @@ def test_pygame_character_modal_view_detailed():
     assert session.current_mode == GameMode.CHARACTER
     view.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE), session)
     assert session.current_mode != GameMode.CHARACTER
+
+
+def test_top_hud_modal_toggle_and_debounce():
+    import time
+    from src.frontends.pygame_ce.components.top_hud import TopHUDComponent
+
+    session = GameSession()
+    session.start_new_game(class_id="warrior")
+    assert session.current_mode == GameMode.MAP
+
+    hud = TopHUDComponent()
+
+    # 1. Click INV button inside inflated rect
+    inv_click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=hud.inv_btn_rect.center)
+    handled = hud.handle_event(inv_click, session)
+    assert handled is True
+    assert session.current_mode == GameMode.INVENTORY
+
+    # 2. Synthetic second click within debounce window (<0.25s) should be rejected
+    handled_second = hud.handle_event(inv_click, session)
+    assert handled_second is False
+    assert session.current_mode == GameMode.INVENTORY
+
+    # 3. Simulated deliberate click after debounce window (>0.25s) closes modal
+    hud._last_toggle_time -= 0.30
+    handled_third = hud.handle_event(inv_click, session)
+    assert handled_third is True
+    assert session.current_mode == GameMode.MAP
+
+
+def test_modal_outside_click_behavior():
+    session = GameSession()
+    session.start_new_game(class_id="warrior")
+    session.toggle_character()
+    assert session.current_mode == GameMode.CHARACTER
+
+    char_view = PygameCharacterModalView()
+
+    # 1. Clicking in Top HUD area (y < 56) should NOT trigger "outside modal frame" close
+    hud_area_click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(200, 30))
+    char_view.handle_event(hud_area_click, session)
+    assert session.current_mode == GameMode.CHARACTER
+
+    # 2. Clicking outside modal frame below HUD (e.g. margin at x=5, y=100) closes modal
+    outside_click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(5, 100))
+    char_view.handle_event(outside_click, session)
+    assert session.current_mode == GameMode.MAP
+
+    # 3. Inventory modal outside click
+    session.toggle_inventory()
+    assert session.current_mode == GameMode.INVENTORY
+    inv_view = PygameInventoryModalView()
+    inv_outside_click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(5, 100))
+    inv_view.handle_event(inv_outside_click, session)
+    assert session.current_mode == GameMode.MAP
+
+
+def test_pygame_loot_view_mobile_touch_continue():
+    session = GameSession()
+    session.start_new_game(class_id="warrior")
+    session.switch_mode(GameMode.LOOT)
+
+    test_sword = EquipmentItem(
+        id="test_sword_touch",
+        name="Touch Blade",
+        description="A lightweight blade",
+        gold_value=15,
+        slot=EquipSlot.MAIN_HAND,
+        stats_bonus=Stats(max_hp=0, attack=5, defense=0, speed=0, crit_chance=0.0),
+        tier=1,
+    )
+    session.state.pending_loot = [test_sword]
+
+    view = PygameLootView()
+
+    # 1. Test click inside cont_btn_rect
+    cont_click = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=view.cont_btn_rect.center)
+    view.handle_event(cont_click, session)
+    assert session.current_mode == GameMode.MAP
+
+    # Reset back to LOOT
+    session.switch_mode(GameMode.LOOT)
+    session.state.pending_loot = [test_sword]
+
+    # 2. Test bottom-right action area padding outside raw rect (e.g. x=800, y=500)
+    corner_tap = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(800, 500))
+    view.handle_event(corner_tap, session)
+    assert session.current_mode == GameMode.MAP
+
+
+def test_pygame_loot_view_empty_loot_tap_advance():
+    session = GameSession()
+    session.start_new_game(class_id="warrior")
+    session.switch_mode(GameMode.LOOT)
+    session.state.pending_loot = []
+
+    view = PygameLootView()
+
+    # Tapping anywhere on the stage when all loot is claimed advances to MAP
+    stage_tap = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(400, 320))
+    view.handle_event(stage_tap, session)
+    assert session.current_mode == GameMode.MAP
+
+    # Tapping Take All when empty also advances to MAP
+    session.switch_mode(GameMode.LOOT)
+    session.state.pending_loot = []
+    ta_tap = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=view.take_all_btn_rect.center)
+    view.handle_event(ta_tap, session)
+    assert session.current_mode == GameMode.MAP
+
+
+def test_pygame_loot_view_keyboard_c_key():
+    session = GameSession()
+    session.start_new_game(class_id="warrior")
+    session.switch_mode(GameMode.LOOT)
+
+    view = PygameLootView()
+
+    # Pressing C should advance past loot, not open character modal
+    c_key = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_c)
+    view.handle_event(c_key, session)
+    assert session.current_mode == GameMode.MAP

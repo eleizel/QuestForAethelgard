@@ -135,13 +135,23 @@ class FileStorageBackend:
 
 
 def detect_storage_backend() -> StorageBackend:
-    """Select LocalStorageBackend if running in Pyxel WASM, else FileStorageBackend."""
+    """Select LocalStorageBackend if running in Pygbag WASM or Pyxel WASM, else FileStorageBackend."""
+    # 1. Pygbag (CPython WASM)
+    try:
+        import platform
+        if hasattr(platform, "window") and hasattr(platform.window, "localStorage"):
+            return LocalStorageBackend(platform.window)
+    except (ImportError, AttributeError):
+        pass
+
+    # 2. Pyxel WASM (Emscripten / Pyodide)
     try:
         import js  # type: ignore
         if hasattr(js, "window") and hasattr(js.window, "localStorage"):
             return LocalStorageBackend(js.window)
     except (ImportError, AttributeError):
         pass
+
     return FileStorageBackend()
 
 

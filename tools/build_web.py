@@ -217,8 +217,6 @@ def build_pygame_web(dist_web: Path) -> None:
     <!-- Landscape Fullscreen Toggle Button -->
     <button id="fullscreen-btn" onclick="toggleLandscapeFullscreen()" style="position:fixed; bottom:12px; left:14px; z-index:999999; background:rgba(20,24,36,0.92); color:#63b3ed; border:1px solid #4299e1; border-radius:6px; padding:7px 13px; font-family:'Segoe UI',system-ui,sans-serif; font-size:12px; font-weight:bold; cursor:pointer; box-shadow:0 3px 8px rgba(0,0,0,0.6); transition:all 0.2s;" onmouseover="this.style.background='#2c3652';this.style.borderColor='#90cdf4'" onmouseout="this.style.background='rgba(20,24,36,0.92)';this.style.borderColor='#4299e1'">⛶ Landscape Fullscreen</button>
 
-    <!-- Cross-Edition Navigation Link -->
-    <a id="retro-edition-btn" href="pyxel/" style="position:fixed; bottom:12px; right:14px; z-index:999999; background:rgba(20,24,36,0.92); color:#ffd700; border:1px solid #e2a829; border-radius:6px; padding:7px 13px; font-family:'Segoe UI',system-ui,sans-serif; font-size:12px; font-weight:bold; text-decoration:none; box-shadow:0 3px 8px rgba(0,0,0,0.6); transition:all 0.2s;" onmouseover="this.style.background='#2c3652';this.style.borderColor='#ffea75'" onmouseout="this.style.background='rgba(20,24,36,0.92)';this.style.borderColor='#e2a829'">🕹️ Switch to 8-Bit Pyxel Edition</a>
 
     <!-- Landscape Orientation Locking & Resizing Script -->
     <script>

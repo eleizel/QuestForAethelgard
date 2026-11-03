@@ -174,9 +174,14 @@ class PygameApp:
 
         while self.is_running:
             dt = self.clock.tick(60) / 1000.0  # 60 FPS
-            self.handle_events()
-            self.update(dt)
-            self.draw()
+            try:
+                self.handle_events()
+                self.update(dt)
+                self.draw()
+            except Exception as e:
+                import traceback
+                print(f"[QuestForAethelgard run error]: {e}")
+                traceback.print_exc()
 
             frames_rendered += 1
             if max_frames is not None and frames_rendered >= max_frames:
@@ -194,9 +199,14 @@ class PygameApp:
 
         while self.is_running:
             dt = self.clock.tick(60) / 1000.0  # 60 FPS
-            self.handle_events()
-            self.update(dt)
-            self.draw()
+            try:
+                self.handle_events()
+                self.update(dt)
+                self.draw()
+            except Exception as e:
+                import traceback
+                print(f"[QuestForAethelgard run_async error]: {e}")
+                traceback.print_exc()
 
             frames_rendered += 1
             if max_frames is not None and frames_rendered >= max_frames:
