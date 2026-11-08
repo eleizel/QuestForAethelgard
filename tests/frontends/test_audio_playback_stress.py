@@ -23,7 +23,10 @@ import struct
 import time
 import pytest
 import pygame
-import soundfile as sf
+try:
+    import soundfile as sf
+except (ImportError, OSError):
+    sf = None
 
 from src.frontends.pygame_ce.audio_track_loader import get_default_music_dir
 
@@ -234,6 +237,8 @@ class TestAudioFileIntegrity:
     @pytest.mark.parametrize("track_name", ALL_TRACK_NAMES)
     def test_soundfile_full_stream_decode(self, track_name: str):
         """Decode complete PCM audio stream using libsndfile to prove zero stream corruption."""
+        if sf is None:
+            pytest.skip("soundfile / libsndfile is not available in this environment")
         music_dir = get_default_music_dir()
         track_path = music_dir / track_name
 
