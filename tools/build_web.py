@@ -33,6 +33,48 @@ def ensure_assets() -> None:
     print(f"    [OK] Verified {pyxres_file.name} ({pyxres_file.stat().st_size} bytes)")
 
 
+def _convert_mp3_to_ogg(mp3_path: Path, ogg_path: Path) -> None:
+    """Convert an MP3 file to OGG Vorbis for web deployment using ffmpeg or soundfile."""
+    ffmpeg_bin = shutil.which("ffmpeg")
+    if ffmpeg_bin:
+        cmd = [
+            ffmpeg_bin,
+            "-y",
+            "-v",
+            "error",
+            "-i",
+            str(mp3_path),
+            "-c:a",
+            "libvorbis",
+            "-q:a",
+            "4",
+            str(ogg_path),
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True)
+        if res.returncode == 0 and ogg_path.exists():
+            return
+
+    try:
+        import soundfile as sf
+
+        with sf.SoundFile(str(mp3_path), "r") as r:
+            with sf.SoundFile(
+                str(ogg_path),
+                "w",
+                samplerate=r.samplerate,
+                channels=r.channels,
+                format="OGG",
+                subtype="VORBIS",
+            ) as w:
+                while True:
+                    chunk = r.read(65536, dtype="float32")
+                    if len(chunk) == 0:
+                        break
+                    w.write(chunk)
+    except Exception as e:
+        print(f"Warning: Could not convert {mp3_path.name} to OGG: {e}")
+
+
 def prepare_web_stage() -> Path:
     """Prepare clean staging directory for Pygbag."""
     ensure_assets()
@@ -45,6 +87,16 @@ def prepare_web_stage() -> Path:
     shutil.copytree(PROJECT_ROOT / "src", stage_dir / "src")
     shutil.copytree(PROJECT_ROOT / "assets", stage_dir / "assets")
     shutil.copy2(PROJECT_ROOT / "main.py", stage_dir / "main.py")
+
+    # Pygbag and WebAssembly audio backends forbid MP3 files. Convert any MP3s to OGG for web staging.
+    music_stage = stage_dir / "assets" / "music"
+    if music_stage.is_dir():
+        for mp3_file in list(music_stage.glob("*.mp3")):
+            ogg_file = mp3_file.with_suffix(".ogg")
+            if not ogg_file.exists():
+                _convert_mp3_to_ogg(mp3_file, ogg_file)
+            mp3_file.unlink()
+
     return stage_dir
 
 
