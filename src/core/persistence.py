@@ -8,19 +8,31 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from collections.abc import Callable
 from typing import Any, Protocol
 
 
 SAVE_STORAGE_KEY = "quest_for_aethelgard_save"
 CURRENT_SAVE_VERSION = 1
 
+SAVE_MIGRATIONS: dict[int, Callable[[dict[str, Any]], dict[str, Any]]] = {}
+
+
+def register_save_migration(
+    from_version: int, fn: Callable[[dict[str, Any]], dict[str, Any]]
+) -> None:
+    """Register a migration callback to transform payload from `from_version` to `from_version + 1`."""
+    SAVE_MIGRATIONS[from_version] = fn
+
 
 class SaveValidationError(ValueError):
     """Raised when a save payload cannot safely be restored."""
 
 
-def migrate_save_payload(data: dict[str, Any]) -> dict[str, Any]:
-    """Validate and migrate a decoded save payload to the current schema.
+def migrate_save_payload(
+    data: dict[str, Any], target_version: int = CURRENT_SAVE_VERSION
+) -> dict[str, Any]:
+    """Validate and migrate a decoded save payload to the target schema version.
 
     Version 1 is the first explicit schema. Older unversioned saves are treated
     as version 1 for backward compatibility. Future versions are rejected
@@ -36,17 +48,21 @@ def migrate_save_payload(data: dict[str, Any]) -> dict[str, Any]:
     except (TypeError, ValueError) as exc:
         raise SaveValidationError("save version must be an integer") from exc
 
-    if version < 1:
+    if version < 1 and version not in SAVE_MIGRATIONS:
         raise SaveValidationError(f"unsupported save version: {version}")
-    if version > CURRENT_SAVE_VERSION:
+    if version > target_version:
         raise SaveValidationError(
-            f"save version {version} is newer than supported version {CURRENT_SAVE_VERSION}"
+            f"save version {version} is newer than supported version {target_version}"
         )
 
-    # Add migrations here when CURRENT_SAVE_VERSION increases. A migration must
-    # transform exactly one version and then increment `version`.
-    while version < CURRENT_SAVE_VERSION:
-        raise SaveValidationError(f"missing migration from save version {version}")
+    while version < target_version:
+        migration = SAVE_MIGRATIONS.get(version)
+        if migration is not None:
+            migrated = migration(migrated)
+            version += 1
+            migrated["save_version"] = version
+        else:
+            raise SaveValidationError(f"missing migration from save version {version}")
 
     player = migrated.get("player")
     if not isinstance(player, dict):
@@ -82,7 +98,7 @@ def migrate_save_payload(data: dict[str, Any]) -> dict[str, Any]:
         except (TypeError, ValueError) as exc:
             raise SaveValidationError("run_seed must be an integer or null") from exc
 
-    migrated["save_version"] = CURRENT_SAVE_VERSION
+    migrated["save_version"] = target_version
     return migrated
 
 

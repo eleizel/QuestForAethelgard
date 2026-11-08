@@ -13,6 +13,7 @@ from src.core.theme import ThemeToken
 from src.frontends.pygame_ce.asset_manager import assets
 from src.frontends.pygame_ce.music_engine import AudioSettingsManager, DynamicMusicEngine
 from src.frontends.pygame_ce.views.base import PygameView
+from src.version import __version__
 
 if TYPE_CHECKING:
     from src.core.session import GameSession
@@ -44,7 +45,8 @@ class PygameWelcomeView(PygameView):
             if settings_manager is not None
             else (
                 music_engine.settings_manager
-                if music_engine is not None and getattr(music_engine, "settings_manager", None) is not None
+                if music_engine is not None
+                and getattr(music_engine, "settings_manager", None) is not None
                 else AudioSettingsManager()
             )
         )
@@ -188,10 +190,21 @@ class PygameWelcomeView(PygameView):
         if logo:
             logo_w = 640
             ratio = logo_w / logo.get_width()
-            scaled_logo = pygame.transform.smoothscale(logo, (logo_w, int(logo.get_height() * ratio)))
+            scaled_logo = pygame.transform.smoothscale(
+                logo, (logo_w, int(logo.get_height() * ratio))
+            )
             surface.blit(scaled_logo, ((w - logo_w) // 2, 40))
         else:
-            renderer.draw_text(surface, "QUEST FOR AETHELGARD", w // 2, 60, token=ThemeToken.TEXT_HIGHLIGHT, size=36, bold=True, align="center")
+            renderer.draw_text(
+                surface,
+                "QUEST FOR AETHELGARD",
+                w // 2,
+                60,
+                token=ThemeToken.TEXT_HIGHLIGHT,
+                size=36,
+                bold=True,
+                align="center",
+            )
 
         # 3. Gothic Subtitle
         renderer.draw_text(
@@ -207,7 +220,9 @@ class PygameWelcomeView(PygameView):
 
         # 4. Interactive Mute/Unmute Button (Top-Right)
         mute_rect = self.get_mute_button_rect()
-        btn_frame = assets.get_9slice_frame("frame_button_gold", mute_rect.width, mute_rect.height, margin=14)
+        btn_frame = assets.get_9slice_frame(
+            "frame_button_gold", mute_rect.width, mute_rect.height, margin=14
+        )
         if btn_frame:
             surface.blit(btn_frame, mute_rect.topleft)
         else:
@@ -245,13 +260,20 @@ class PygameWelcomeView(PygameView):
         frame = assets.get_ui_component("frame_gold_ornate")
         frame_rect = pygame.Rect((w - 360) // 2, 172, 360, 260)
         if frame:
-            scaled_frame = pygame.transform.smoothscale(frame, (frame_rect.width, frame_rect.height))
+            scaled_frame = pygame.transform.smoothscale(
+                frame, (frame_rect.width, frame_rect.height)
+            )
             surface.blit(scaled_frame, frame_rect)
         else:
-            renderer.draw_panel(surface, frame_rect, bg_token=ThemeToken.PANEL_BG, border_token=ThemeToken.ACCENT_PRIMARY)
+            renderer.draw_panel(
+                surface,
+                frame_rect,
+                bg_token=ThemeToken.PANEL_BG,
+                border_token=ThemeToken.ACCENT_PRIMARY,
+            )
 
         # 5. Menu Options & Sword Cursor
-        is_es = (getattr(i18n, "locale", "en") == "es")
+        is_es = getattr(i18n, "locale", "en") == "es"
         sword = assets.get_ui_component("sword_cursor")
         scaled_sword = pygame.transform.smoothscale(sword, (28, 28)) if sword else None
         sword_pulse = int(math.sin(self.pulse_timer * 6.0) * 3)
@@ -261,7 +283,7 @@ class PygameWelcomeView(PygameView):
 
         for idx, (key, label_en, label_es) in enumerate(self.MENU_ITEMS):
             r = rects[idx]
-            is_sel = (idx == self.selected_index)
+            is_sel = idx == self.selected_index
 
             label = label_es if is_es else label_en
             if key == "load" and not has_save:
@@ -281,7 +303,13 @@ class PygameWelcomeView(PygameView):
             # Shadow + Text
             font = renderer.get_font(size=18, bold=True)
             shadow_surf = font.render(label, True, (10, 12, 18))
-            surface.blit(shadow_surf, (r.centerx - shadow_surf.get_width() // 2 + 10 + 1, r.centery - shadow_surf.get_height() // 2 + 1))
+            surface.blit(
+                shadow_surf,
+                (
+                    r.centerx - shadow_surf.get_width() // 2 + 10 + 1,
+                    r.centery - shadow_surf.get_height() // 2 + 1,
+                ),
+            )
 
             renderer.draw_text(
                 surface,
@@ -305,4 +333,13 @@ class PygameWelcomeView(PygameView):
             size=14,
             bold=True,
             align="center",
+        )
+        renderer.draw_text(
+            surface,
+            f"v{__version__}",
+            20,
+            h - 25,
+            token=ThemeToken.TEXT_MUTED,
+            size=14,
+            align="left",
         )

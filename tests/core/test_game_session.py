@@ -162,3 +162,54 @@ def test_session_dispatch_draft_and_promote_commands():
     res_promote = session.dispatch(PromoteClassCommand(class_id="paladin"))
     assert res_promote.success is True
     assert session.player.class_id == "paladin"
+
+
+def test_concurrent_sessions_have_independent_services():
+    """Two independent sessions run in the same process with isolated storage, events, and RNG."""
+    backend_a = MemoryStorageBackend()
+    backend_b = MemoryStorageBackend()
+    mgr_a = SaveManager(storage=backend_a)
+    mgr_b = SaveManager(storage=backend_b)
+
+    services_a = GameServices(
+        persistence=mgr_a,
+        event_bus=EventBus(),
+        rng=random.Random(111),
+        run_seed=111,
+    )
+    services_b = GameServices(
+        persistence=mgr_b,
+        event_bus=EventBus(),
+        rng=random.Random(222),
+        run_seed=222,
+    )
+
+    session_a = GameSession(services=services_a)
+    session_b = GameSession(services=services_b)
+
+    session_a.start_new_game(class_id="warrior")
+    session_b.start_new_game(class_id="mage")
+
+    # Storage isolation
+    assert backend_a.exists("quest_for_aethelgard_save")
+    assert backend_b.exists("quest_for_aethelgard_save")
+    assert mgr_a.get_save_summary()["class_id"] == "warrior"
+    assert mgr_b.get_save_summary()["class_id"] == "mage"
+
+    # RNG isolation
+    assert session_a.services.run_seed == 111
+    assert session_b.services.run_seed == 222
+    assert session_a.state.run_seed == 111
+    assert session_b.state.run_seed == 222
+
+    # Event bus isolation
+    events_a = []
+    events_b = []
+    session_a.bus.subscribe(DamageDealtEvent, lambda e: events_a.append(e))
+    session_b.bus.subscribe(DamageDealtEvent, lambda e: events_b.append(e))
+
+    evt = DamageDealtEvent(source="Hero", target="Goblin", amount=42)
+    session_a.bus.emit(evt)
+
+    assert len(events_a) == 1
+    assert len(events_b) == 0

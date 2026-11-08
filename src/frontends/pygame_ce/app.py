@@ -85,6 +85,7 @@ class PygameApp:
             if self.maximized and not self.fullscreen:
                 try:
                     from pygame.window import Window
+
                     win = Window.from_display_module()
                     win.maximize()
                 except Exception:
@@ -103,9 +104,7 @@ class PygameApp:
                 else getattr(audio_adapter, "music_engine", None) or DynamicMusicEngine()
             )
         else:
-            self.music_engine = (
-                music_engine if music_engine is not None else DynamicMusicEngine()
-            )
+            self.music_engine = music_engine if music_engine is not None else DynamicMusicEngine()
             self.audio_adapter = PygameAudioAdapter(
                 bus=self.session.bus, music_engine=self.music_engine
             )
@@ -152,7 +151,9 @@ class PygameApp:
 
             if event.type == pygame.KEYDOWN:
                 # F11 or Alt+Enter toggles fullscreen without restarting or distorting
-                if event.key == pygame.K_F11 or (event.key == pygame.K_RETURN and (event.mod & pygame.KMOD_ALT)):
+                if event.key == pygame.K_F11 or (
+                    event.key == pygame.K_RETURN and (event.mod & pygame.KMOD_ALT)
+                ):
                     try:
                         pygame.display.toggle_fullscreen()
                         self.fullscreen = not self.fullscreen
@@ -194,7 +195,10 @@ class PygameApp:
         mode = self.session.current_mode
         if mode in (GameMode.INVENTORY, GameMode.CHARACTER):
             prev_mode = self.session.previous_mode
-            if prev_mode in self.views and prev_mode not in (GameMode.INVENTORY, GameMode.CHARACTER):
+            if prev_mode in self.views and prev_mode not in (
+                GameMode.INVENTORY,
+                GameMode.CHARACTER,
+            ):
                 self.views[prev_mode].draw(self.screen, self.renderer, self.session)
 
         active_view = self.get_active_view()
@@ -203,16 +207,52 @@ class PygameApp:
         if not self.headless:
             pygame.display.flip()
 
+    def _render_emergency_fallback(self, error_msg: str) -> None:
+        """Render a minimal fallback crash screen when an unhandled frame exception occurs."""
+        try:
+            self.screen.fill((20, 20, 25))
+            if hasattr(self, "renderer") and self.renderer is not None:
+                self.renderer.draw_text(
+                    self.screen,
+                    "An unexpected frame failure occurred.",
+                    40,
+                    50,
+                    color=(220, 50, 50),
+                    size=24,
+                )
+                self.renderer.draw_text(
+                    self.screen,
+                    f"Error: {error_msg[:120]}",
+                    40,
+                    100,
+                    color=(200, 200, 200),
+                    size=16,
+                )
+                self.renderer.draw_text(
+                    self.screen,
+                    "Run data has been preserved. Check logs for complete details.",
+                    40,
+                    140,
+                    color=(160, 160, 160),
+                    size=14,
+                )
+            pygame.display.flip()
+        except Exception:
+            pass
+
     def _handle_frame_failure(self, error: Exception) -> None:
         """Record a fatal frame error and terminate the loop safely.
 
         Continuing after a failed update or draw can render mutated state every
-        frame and create an unbounded stream of tracebacks. The caller remains
-        responsible for presenting a recovery screen in a later UI pass.
+        frame and create an unbounded stream of tracebacks. If display is active,
+        attempts to render a fallback diagnostics banner before exiting.
         """
         self.last_error = error
         self.is_running = False
-        logger.exception("Fatal Pygame frame failure; stopping the application loop")
+        logger.exception("Fatal Pygame frame failure; stopping the application loop: %s", error)
+
+        if not self.headless and getattr(self, "screen", None) is not None:
+            self._render_emergency_fallback(str(error))
 
     def run(self, max_frames: int | None = None) -> None:
         """Run application main loop."""

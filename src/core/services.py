@@ -7,6 +7,7 @@ needs and the value object used by composition roots and tests.
 
 from __future__ import annotations
 
+import logging
 import random
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol
@@ -39,3 +40,4 @@ class GameServices:
     event_bus: EventBus
     rng: random.Random = field(default_factory=random.Random)
     run_seed: int | None = None
+    logger: logging.Logger = field(default_factory=lambda: logging.getLogger("quest_for_aethelgard"))
