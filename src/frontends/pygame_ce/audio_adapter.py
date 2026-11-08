@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 import pygame
 
 from src.core.events import AudioCue, AudioCueEvent, event_bus
+from src.frontends.pygame_ce.music_engine import DynamicMusicEngine, MusicContext
 
 if TYPE_CHECKING:
     from src.core.events import EventBus
@@ -17,8 +18,15 @@ if TYPE_CHECKING:
 class PygameAudioAdapter:
     """Translates high-level domain AudioCueEvents into Pygame-CE audio output."""
 
-    def __init__(self, bus: EventBus | None = None) -> None:
+    def __init__(
+        self,
+        bus: EventBus | None = None,
+        music_engine: DynamicMusicEngine | None = None,
+    ) -> None:
         self.bus = bus if bus is not None else event_bus
+        self.music_engine: DynamicMusicEngine = (
+            music_engine if music_engine is not None else DynamicMusicEngine()
+        )
         self.initialized: bool = False
         self._sounds: dict[AudioCue, pygame.mixer.Sound] = {}
         self._init_mixer()
@@ -71,11 +79,27 @@ class PygameAudioAdapter:
 
     def play_cue(self, cue: AudioCue) -> None:
         """Trigger audio cue sound."""
-        if not self.initialized:
+        if not self.initialized or not pygame.mixer.get_init():
             return
         sound = self._sounds.get(cue)
         if sound:
             try:
                 sound.play()
-            except pygame.error:
+            except (pygame.error, Exception):
                 pass
+
+    def set_music_context(self, context: MusicContext | None, force_restart: bool = False) -> None:
+        """Delegate music context switch to internal DynamicMusicEngine."""
+        self.music_engine.set_context(context, force_restart=force_restart)
+
+    def update(self, dt: float) -> None:
+        """Advance internal DynamicMusicEngine timers and loop detection."""
+        self.music_engine.update(dt)
+
+    def toggle_mute(self) -> bool:
+        """Toggle music mute state and persist."""
+        return self.music_engine.toggle_mute()
+
+    def is_muted(self) -> bool:
+        """Return True if background music is muted."""
+        return self.music_engine.is_muted()
