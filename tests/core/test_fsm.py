@@ -99,3 +99,32 @@ def test_terminal_states_reject_gameplay_reentry(terminal_mode):
     assert state.current_mode == terminal_mode
     assert state.switch_mode(GameMode.WELCOME) is True
     assert state.current_mode == GameMode.WELCOME
+
+
+def test_modal_stack_nested_overlays():
+    """Deeply nested modal overlays retain their precise return context."""
+    state = GameState()
+    state.switch_mode(GameMode.MAP)
+
+    assert state.current_mode == GameMode.MAP
+    assert len(state.modal_stack) == 0
+
+    # Open Inventory overlay
+    state.push_modal(GameMode.INVENTORY)
+    assert state.current_mode == GameMode.INVENTORY
+    assert state.modal_stack == [GameMode.MAP]
+
+    # Nest Character sheet on top of Inventory
+    state.push_modal(GameMode.CHARACTER)
+    assert state.current_mode == GameMode.CHARACTER
+    assert state.modal_stack == [GameMode.MAP, GameMode.INVENTORY]
+
+    # Pop Character sheet -> restores Inventory
+    assert state.pop_modal() is True
+    assert state.current_mode == GameMode.INVENTORY
+    assert state.modal_stack == [GameMode.MAP]
+
+    # Pop Inventory -> restores Map
+    assert state.pop_modal() is True
+    assert state.current_mode == GameMode.MAP
+    assert state.modal_stack == []

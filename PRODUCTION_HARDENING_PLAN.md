@@ -126,12 +126,12 @@ without reverse-engineering repository conventions.
 
 | Phase | Status |
 | --- | --- |
-| H0 | Complete — audio work isolated and committed cleanly on feature branch `feat/dynamic-music-engine-and-audio-compression`, assets reconciled (<24MB, 0 WAVs remaining), and test baseline verified (1,144 passed, 0 failed). |
-| H1 | Implemented locally — metadata, bounded dependencies, developer tooling, correctness lint, explicit test commands, asset verification, and CI quality gates are in place. Remote CI execution remains to be observed after push. Broader lint/style cleanup is tracked separately from the passing correctness baseline. |
-| H2 | In progress — session-scoped persistence, event bus, RNG, and persisted run seeds now exist; remaining systems and views still need to stop using compatibility globals. |
-| H3 | In progress — ordinary transitions no longer bypass guards, and terminal states reject gameplay re-entry. The full per-mode transition table and command routing remain. |
-| H4 | In progress — storage constants/protocol are single-sourced; payload validation/version handling and timestamped corrupt-save backups are implemented. Concrete schema migrations and UI recovery messaging remain. |
-| H5 | In progress — frontend imports are lazy at launcher level, frame failures terminate safely, and manifest-referenced assets are verified. |
-| H6 | In progress — default Pygame views now route mode changes through `GameSession`; shared view models and Pyxel migration remain. |
-| H7 | In progress — deterministic map-generation invariant tests now run in the suite; broader generated-state and artifact smoke coverage remain. |
-| H8 | In progress — contributor, architecture, release, and security documentation now exists; versioned release publication and attribution inventory remain. |
+| H0 | Complete - audio work isolated, PR #85 merged to master, assets reconciled (<24MB, 0 WAVs remaining), and test baseline verified. |
+| H1 | Complete - metadata, bounded dependencies, developer tooling, correctness lint, explicit test commands, asset verification, and CI quality gates (PR #86 merged). |
+| H2 | Complete - session-scoped persistence, decoupled event bus, deterministic RNG, logger service, and independent concurrent sessions verified. |
+| H3 | Complete - enforced modal stack (`push_modal`, `pop_modal`), strict transition guards preventing terminal re-entry, and modal layering tests passing. |
+| H4 | Complete - consolidated persistence protocol, versioned save migration pipeline (`register_save_migration`), forward migration tests, and timestamped corrupt-save quarantine (`preserve_invalid`). |
+| H5 | Complete - lazy frontend launcher loading, emergency frame failure fallback diagnostics screen, asset verification suite, and safe unrecoverable exception handling. |
+| H6 | Complete - shared frontend contract with immutable ViewModels (`CombatViewModel`, `ShopViewModel`, `LootViewModel`, `MapViewModel`, `AbilityDraftViewModel`, `StatusViewModel`) and `GameSession` snapshot producers. |
+| H7 | Complete - deterministic invariant test suite covering combat replay reproducibility, spire map topology invariants, inventory equip/unequip stat conservation, and memento round-trips. |
+| H8 | Complete - release operations and attribution (`src/version.py`, v1.0.0 title display, `CHANGELOG.md`, `ATTRIBUTION.md`, bug report template, and comprehensive architecture/release documentation). |

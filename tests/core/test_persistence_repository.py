@@ -5,6 +5,8 @@ import json
 import pytest
 from src.core.game_state import GameState, GameMode
 from src.core.persistence import (
+    SAVE_MIGRATIONS,
+    register_save_migration,
     SAVE_STORAGE_KEY,
     MemoryStorageBackend,
     RunMemento,
@@ -143,3 +145,36 @@ def test_create_memento_and_restore_gamestate():
     assert state.floor == 4
     assert state.player.gold == 120
     assert state.player.class_id == "rogue"
+
+
+def test_save_schema_migration_pipeline():
+    """Versioned migration callbacks are invoked sequentially to upgrade schemas."""
+
+    def migrate_v1_to_v2(payload: dict) -> dict:
+        upgraded = dict(payload)
+        upgraded["migrated_field"] = "v2_val"
+        return upgraded
+
+    def migrate_v2_to_v3(payload: dict) -> dict:
+        upgraded = dict(payload)
+        upgraded["v3_flag"] = True
+        return upgraded
+
+    register_save_migration(1, migrate_v1_to_v2)
+    register_save_migration(2, migrate_v2_to_v3)
+
+    try:
+        raw_v1 = {
+            "save_version": 1,
+            "player": {"name": "MigratingHero"},
+            "floor": 2,
+            "act": 1,
+        }
+        migrated = migrate_save_payload(raw_v1, target_version=3)
+        assert migrated["save_version"] == 3
+        assert migrated["migrated_field"] == "v2_val"
+        assert migrated["v3_flag"] is True
+        assert migrated["floor"] == 2
+    finally:
+        SAVE_MIGRATIONS.pop(1, None)
+        SAVE_MIGRATIONS.pop(2, None)
