@@ -9,14 +9,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import os
 import sys
-
-import pygame
-import pygame.display
-import pygame.font
-import pygame.image
-import pygame.mixer
 
 
 async def main() -> None:

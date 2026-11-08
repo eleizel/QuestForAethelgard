@@ -157,7 +157,7 @@ class PygameLootView(PygameView):
             if session.state.begin_promotion(GameMode.LOOT):
                 return
         elif next_mode == GameMode.ABILITY_CHOICE:
-            session.state.switch_mode(GameMode.ABILITY_CHOICE)
+            session.switch_mode(GameMode.ABILITY_CHOICE)
             return
 
         session.state.continue_after_rewards()

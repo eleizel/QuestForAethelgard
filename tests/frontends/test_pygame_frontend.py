@@ -717,3 +717,17 @@ def test_pygame_frontend_has_no_pyxel_dependency():
                 if node.module:
                     assert node.module != "pyxel", f"Forbidden import 'pyxel' in {py_file}"
                     assert not node.module.startswith("src.tools"), f"Forbidden import '{node.module}' in {py_file}"
+
+
+def test_pygame_app_stops_after_an_unexpected_frame_failure(monkeypatch):
+    """A failed frame must terminate rather than repeatedly raising every frame."""
+    app = PygameApp(headless=True)
+
+    def fail_update(_dt):
+        raise RuntimeError("intentional frame failure")
+
+    monkeypatch.setattr(app, "update", fail_update)
+    app.run(max_frames=3)
+
+    assert app.is_running is False
+    assert isinstance(app.last_error, RuntimeError)

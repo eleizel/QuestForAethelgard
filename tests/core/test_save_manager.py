@@ -2,10 +2,12 @@ import json
 import pytest
 
 from src.core.game_state import GameMode, GameState
+from src.core.session import GameSession
 from src.core.save_manager import (
     FileStorageBackend,
     LocalStorageBackend,
     SaveManager,
+    default_save_dir,
     deserialize_inventory,
     deserialize_map_graph,
     deserialize_player,
@@ -153,6 +155,16 @@ def test_file_storage_backend(tmp_path):
     assert not backend.exists("test_file")
 
 
+def test_default_save_dir_uses_user_data_location(monkeypatch):
+    """The default backend must not write saves into an arbitrary working directory."""
+    monkeypatch.setenv("LOCALAPPDATA", r"C:\\Users\\Test\\AppData\\Local")
+    monkeypatch.setattr("sys.platform", "win32")
+
+    path = default_save_dir()
+
+    assert path.endswith(r"QuestForAethelgard\saves")
+    assert not path == "saves"
+
 def test_save_and_load_full_run(tmp_path):
     backend = FileStorageBackend(save_dir=str(tmp_path))
     sm = SaveManager(storage=backend)
@@ -201,6 +213,10 @@ def test_corrupted_save_handling(tmp_path):
     assert sm.has_save() is True
     assert sm.get_save_data() is None
     assert sm.get_save_summary() is None
+    assert sm.last_load_error is not None
+    backups = list(tmp_path.glob("quest_for_aethelgard_save.*.corrupt.json"))
+    assert len(backups) >= 1
+    assert backups[0].read_text(encoding="utf-8") == "{invalid_json: 42"
 
     dummy_state = GameState()
     assert sm.load_game(dummy_state) is False
@@ -223,18 +239,18 @@ def test_player_promoted_save_roundtrip():
 
 
 def test_full_game_lifecycle_auto_save_and_death(tmp_path):
-    from src.core.save_manager import save_manager
     backend = FileStorageBackend(save_dir=str(tmp_path))
-    save_manager.set_storage(backend)
+    manager = SaveManager(storage=backend)
 
     # 1. Start a new game - auto-save triggers on map entry
-    state = GameState()
-    assert not save_manager.has_save()
-    state.start_new_game(class_id="mage", route_mode="FATE")
-    assert save_manager.has_save()
+    session = GameSession(save_mgr=manager)
+    state = session.state
+    assert not session.has_saved_game()
+    session.start_new_game(class_id="mage", route_mode="FATE")
+    assert session.has_saved_game()
 
     # 2. Inspect summary
-    summary = save_manager.get_save_summary()
+    summary = manager.get_save_summary()
     assert summary is not None
     assert summary["class_id"] == "mage"
     assert summary["act"] == 1
@@ -243,11 +259,11 @@ def test_full_game_lifecycle_auto_save_and_death(tmp_path):
     # 3. Simulate progression & changes
     state.player.gold += 150
     state.player.gain_experience(80)
-    save_manager.save_game(state)
+    manager.save_game(state)
 
     # 4. Load into a brand-new GameState
     fresh_state = GameState()
-    assert save_manager.load_game(fresh_state) is True
+    assert manager.load_game(fresh_state) is True
     assert fresh_state.player.class_id == "mage"
     assert fresh_state.player.gold == state.player.gold
     assert fresh_state.player.experience == state.player.experience
@@ -265,7 +281,7 @@ def test_full_game_lifecycle_auto_save_and_death(tmp_path):
     state.update_combat()
 
     # Save should be deleted on defeat (permadeath)
-    assert not save_manager.has_save()
+    assert not session.has_saved_game()
 
 
 def test_map_view_save_and_quit(tmp_path, monkeypatch):

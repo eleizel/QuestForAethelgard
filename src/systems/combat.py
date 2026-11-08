@@ -7,7 +7,16 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, Final
 
 
-from src.core.events import AudioCue, event_bus, DomainEvent, DamageDealtEvent, HealthRestoredEvent, StatusAppliedEvent, CombatLogEntry
+from src.core.events import (
+    AudioCue,
+    CombatLogEntry,
+    DamageDealtEvent,
+    DomainEvent,
+    EventBus,
+    HealthRestoredEvent,
+    StatusAppliedEvent,
+    event_bus,
+)
 from src.config import TARGET_COMBAT_SPEED
 
 # Backward-compatibility shim for existing unit tests mocking audio playback
@@ -60,6 +69,7 @@ class CombatSystem:
             enemy: Enemy,
             seed: int | None = None,
             normalize_speeds: bool = False,
+            bus: EventBus | None = None,
     ) -> None:
         self.player: Player = player
         self.enemy: Enemy = enemy
@@ -67,6 +77,7 @@ class CombatSystem:
         self.player.combat_def_buff = 0
         # Passive hooks may update combat-owned resources such as action gauge.
         self.player.combat_ref = self
+        self.bus = bus if bus is not None else event_bus
         self.rng: random.Random = random.Random(seed)
         # Keep cosmetic bark selection from shifting the combat RNG stream.
         self.dialogue_rng: random.Random = random.Random(seed + 1 if seed is not None else None)
@@ -168,9 +179,9 @@ class CombatSystem:
 
 
     def emit_event(self, event: DomainEvent) -> None:
-        """Enqueue combat event locally and broadcast on global event bus."""
+        """Enqueue a combat event locally and broadcast on this combat's bus."""
         self.events.append(event)
-        event_bus.emit(event)
+        self.bus.emit(event)
 
     def drain_events(self) -> list[DomainEvent]:
         """Drain and return queued combat events."""
@@ -215,7 +226,7 @@ class CombatSystem:
 
     def resolve_qte_target(self, score: int) -> str:
         """Resolve the current QTE button with the given 0..100 score and enter its feedback pause."""
-        return resolve_target(self.active_qte, score)
+        return resolve_target(self.active_qte, score, bus=self.bus)
 
     def advance_qte_after_feedback(self) -> bool:
         """Advance to the next QTE button, or finalize the sequence if all buttons are resolved."""
@@ -364,12 +375,12 @@ class CombatSystem:
             if not self.player.is_alive:
                 self.result = CombatResult.PLAYER_DEFEAT
                 self.combat_logs.append(_t("combat_player_defeat", player=self.player.name))
-                event_bus.emit_audio(AudioCue.DEFEAT)
+                self.bus.emit_audio(AudioCue.DEFEAT)
             else:
                 self.result = CombatResult.PLAYER_VICTORY
                 self.combat_logs.append(_t("combat_enemy_defeat", enemy=self.enemy.name))
                 self._distribute_rewards()
-                event_bus.emit_audio(AudioCue.VICTORY)  # Sound 4: Victory fanfare
+                self.bus.emit_audio(AudioCue.VICTORY)  # Sound 4: Victory fanfare
             return True
         elif not self.player.is_alive:
             self.arcane_reservoir_charges = 0
@@ -377,7 +388,7 @@ class CombatSystem:
             self.player.evade_charges = 0
             self.result = CombatResult.PLAYER_DEFEAT
             self.combat_logs.append(_t("combat_player_defeat", player=self.player.name))
-            event_bus.emit_audio(AudioCue.DEFEAT)  # Sound 5: Defeat sting
+            self.bus.emit_audio(AudioCue.DEFEAT)  # Sound 5: Defeat sting
             return True
         return False
 
@@ -668,7 +679,7 @@ class CombatSystem:
             self.combat_logs.append(f"[Tick {self.current_tick}] {log_str}")
             self.combat_logs.extend(self._deferred_attack_proc_logs)
             self._deferred_attack_proc_logs.clear()
-            event_bus.emit_audio(AudioCue.CRIT if is_crit else AudioCue.HIT)
+            self.bus.emit_audio(AudioCue.CRIT if is_crit else AudioCue.HIT)
             if dmg_dealt > 0:
                 self.emit_event(DamageDealtEvent(source=self.player.name, target=self.enemy.name, amount=dmg_dealt, is_crit=is_crit, damage_type="ability"))
             self.queued_ability = None
@@ -686,7 +697,7 @@ class CombatSystem:
                 else:
                     self.combat_logs.append(
                         _t("combat_hit", actor=self.player.name, target=self.enemy.name, damage=dmg_dealt))
-                event_bus.emit_audio(AudioCue.CRIT if is_crit else AudioCue.HIT)
+                self.bus.emit_audio(AudioCue.CRIT if is_crit else AudioCue.HIT)
                 if dmg_dealt > 0:
                     self.emit_event(DamageDealtEvent(source=self.player.name, target=self.enemy.name, amount=dmg_dealt, is_crit=is_crit, damage_type="physical"))
 
@@ -904,7 +915,7 @@ class CombatSystem:
             self.combat_logs.append(
                 _t("combat_enemy_skill_heal", enemy=self.enemy.name, healed=healed)
             )
-            event_bus.emit_audio(AudioCue.HEAL)
+            self.bus.emit_audio(AudioCue.HEAL)
             return
 
         if skill is not None and skill.kind == "status":
@@ -956,7 +967,7 @@ class CombatSystem:
                 self._record_signature_proc("duelist_precision")
 
         # Audio feedback: Sound 1 (Crit) or Sound 0 (Hit)
-        event_bus.emit_audio(AudioCue.CRIT if is_crit else AudioCue.HIT)
+        self.bus.emit_audio(AudioCue.CRIT if is_crit else AudioCue.HIT)
         if dmg_dealt > 0:
             self.emit_event(DamageDealtEvent(source=self.enemy.name, target=self.player.name, amount=dmg_dealt, is_crit=is_crit, damage_type="physical"))
 

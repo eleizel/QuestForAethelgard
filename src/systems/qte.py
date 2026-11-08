@@ -6,7 +6,7 @@ import random
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Final
 
-from src.core.events import AudioCue, event_bus
+from src.core.events import AudioCue, EventBus, event_bus
 
 if TYPE_CHECKING:
     from src.systems.combat import CombatSystem
@@ -129,7 +129,11 @@ def generate_qte_sequence(rng: random.Random, count: int | None = None) -> QTESe
     return QTESequence(targets=targets)
 
 
-def resolve_target(qte: QTESequence | None, score: int) -> str:
+def resolve_target(
+    qte: QTESequence | None,
+    score: int,
+    bus: EventBus | None = None,
+) -> str:
     """Resolve the active QTE button with a 0..100 score and start its between-button feedback pause."""
     if qte is None or qte.summary_active:
         return "failed"
@@ -142,10 +146,11 @@ def resolve_target(qte: QTESequence | None, score: int) -> str:
     target.score = clamped
     target.tier = classify_qte_tier(clamped)
     target.feedback_frames = QTE_FEEDBACK_FRAMES
+    target_bus = bus if bus is not None else event_bus
     if clamped >= 61:
-        event_bus.emit_audio(AudioCue.CRIT)
+        target_bus.emit_audio(AudioCue.CRIT)
     elif clamped >= 21:
-        event_bus.emit_audio(AudioCue.HIT)
+        target_bus.emit_audio(AudioCue.HIT)
     return target.tier
 
 
@@ -156,12 +161,15 @@ def advance_sequence_after_feedback(combat: CombatSystem) -> bool:
         return False
     qte.current_index += 1
     if qte.current_index >= len(qte.targets):
-        finalize_qte_sequence(combat)
+        finalize_qte_sequence(combat, bus=combat.bus)
         return True
     return False
 
 
-def finalize_qte_sequence(combat: CombatSystem) -> dict[str, object]:
+def finalize_qte_sequence(
+    combat: CombatSystem,
+    bus: EventBus | None = None,
+) -> dict[str, object]:
     """Calculate the average QTE score across all resolved buttons and apply cumulative tier rewards."""
     qte = combat.active_qte
     if qte is None:
@@ -193,7 +201,7 @@ def finalize_qte_sequence(combat: CombatSystem) -> dict[str, object]:
         dealt = combat.damage_enemy(counter_raw)
         healed = combat.player.heal(max(1, dealt // 2)) if dealt > 0 else 0
         bonuses.append(_t("qte_bonus_counter", dmg=dealt, heal=healed))
-        event_bus.emit_audio(AudioCue.CRIT)
+        (bus if bus is not None else combat.bus).emit_audio(AudioCue.CRIT)
         combat._evaluate_battle_outcome()
 
     failed_buttons = sum(1 for t in qte.targets if t.score < 50)

@@ -8,7 +8,9 @@ from typing import TYPE_CHECKING
 
 from src.entities.enemy import EnemyTier, generate_enemy
 from src.entities.player import Player
+from src.core.events import EventBus, event_bus
 from src.core.fsm import GameStateMachine
+from src.core.services import RunPersistence
 from src.systems.combat import CombatResult, CombatSystem
 from src.systems.inventory import Item
 from src.systems.map_gen import MapGraph, MapNode, NodeType, generate_spire_map
@@ -40,7 +42,11 @@ class GameMode(Enum):
 class GameState:
     """Master state container managing active subsystems and screen transitions."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        persistence: RunPersistence | None = None,
+        rng: random.Random | None = None,
+    ) -> None:
         self.fsm: GameStateMachine = GameStateMachine(initial_mode=GameMode.WELCOME)
         self.player: Player = Player(name="Sir Aethelgard")
         self.map_graph: MapGraph | None = None
@@ -61,6 +67,31 @@ class GameState:
         self.last_exp_earned: int = 0
         self.promotion_return_mode: GameMode | None = None
         self.overlay_return_modes: list[GameMode] = []
+        self._persistence = persistence
+        self.rng = rng if rng is not None else random.Random()
+        self.run_seed: int | None = None
+        self.event_bus = event_bus
+
+    def configure_services(
+        self,
+        persistence: RunPersistence,
+        rng: random.Random,
+        event_bus_instance: EventBus,
+        run_seed: int | None,
+    ) -> None:
+        """Attach session-scoped infrastructure after state construction."""
+        self._persistence = persistence
+        self.rng = rng
+        self.event_bus = event_bus_instance
+        self.run_seed = run_seed
+
+    def _save_run(self) -> bool:
+        """Persist through the session-owned port when one is configured."""
+        return self._persistence.save_game(self) if self._persistence is not None else False
+
+    def _delete_run(self) -> bool:
+        """Delete the run through the session-owned port when one is configured."""
+        return self._persistence.delete_save() if self._persistence is not None else False
 
     def start_new_game(
             self, class_id: str = "warrior", route_mode: str = "FATE"
@@ -89,11 +120,14 @@ class GameState:
         if self.biome_route_mode == "FATE":
             from src.data.biomes import ACT_BIOMES
 
-            self.current_biome = random.choice(ACT_BIOMES[1])
-            self.map_graph = generate_spire_map(num_floors=12, width_lanes=4)
+            self.current_biome = self.rng.choice(ACT_BIOMES[1])
+            self.map_graph = generate_spire_map(
+                num_floors=12,
+                width_lanes=4,
+                seed=self.rng.randrange(2**63),
+            )
             self.switch_mode(GameMode.MAP)
-            from src.core.save_manager import save_manager
-            save_manager.save_game(self)
+            self._save_run()
         elif self.biome_route_mode == "PATHFINDER":
             self.switch_mode(GameMode.BIOME_SELECT)
 
@@ -104,14 +138,17 @@ class GameState:
         elif self.biome_route_mode == "FATE":
             from src.data.biomes import ACT_BIOMES
 
-            self.current_biome = random.choice(ACT_BIOMES[self.act])
+            self.current_biome = self.rng.choice(ACT_BIOMES[self.act])
 
         self.player.heal(int(self.player.max_hp * 0.50))
         num_floors = 18 if self.act == 3 else 12
-        self.map_graph = generate_spire_map(num_floors=num_floors, width_lanes=4)
+        self.map_graph = generate_spire_map(
+            num_floors=num_floors,
+            width_lanes=4,
+            seed=self.rng.randrange(2**63),
+        )
         self.switch_mode(GameMode.MAP)
-        from src.core.save_manager import save_manager
-        save_manager.save_game(self)
+        self._save_run()
 
     def begin_promotion(self, return_mode: GameMode | None = None) -> bool:
         if not self.player.promotion_due or not self.player.available_promotions():
@@ -139,19 +176,19 @@ class GameState:
                 else:
                     self.advance_act()
             else:
-                from src.core.save_manager import save_manager
-                save_manager.delete_save()
+                self._delete_run()
                 self.switch_mode(GameMode.VICTORY)
         else:
             self.switch_mode(GameMode.MAP)
-            from src.core.save_manager import save_manager
-            save_manager.save_game(self)
+            self._save_run()
 
-    def switch_mode(self, new_mode: GameMode) -> None:
+    def switch_mode(self, new_mode: GameMode) -> bool:
         """Transition the active game mode using the state machine."""
-        self.fsm.transition_to(self, new_mode, force=True)
+        if not self.fsm.transition_to(self, new_mode):
+            return False
         self.previous_mode = self.fsm.previous_mode
         self.current_mode = self.fsm.current_mode
+        return True
 
     def _toggle_menu_overlay(self, target: GameMode) -> None:
         """Open an inventory or character overlay, or return to its previous view."""
@@ -159,8 +196,7 @@ class GameState:
             destination = self.overlay_return_modes.pop() if self.overlay_return_modes else self.previous_mode
             self.switch_mode(destination)
             if destination == GameMode.MAP:
-                from src.core.save_manager import save_manager
-                save_manager.save_game(self)
+                self._save_run()
             return
 
         self.overlay_return_modes.append(self.current_mode)
@@ -205,18 +241,19 @@ class GameState:
                 floor=effective_floor,
                 biome_id=self.current_biome,
                 player_speed=self.player.base_stats.speed,
+                rng=self.rng,
             )
-            self.combat = CombatSystem(player=self.player, enemy=enemy)
+            self.combat = CombatSystem(player=self.player, enemy=enemy, bus=self.event_bus)
             self.combat.normalize_speeds()
             self.switch_mode(GameMode.COMBAT)
 
         elif node.node_type == NodeType.REST:
-            healed = self.player.heal(random.randint(25, 40))
+            healed = self.player.heal(self.rng.randint(25, 40))
             self.current_event_text = t("event_rest", healed=healed)
             self.switch_mode(GameMode.EVENTS)
 
         elif node.node_type == NodeType.TREASURE:
-            gold = random.randint(25, 40)
+            gold = self.rng.randint(25, 40)
             self.player.gold += gold
             self.current_event_text = t("event_treasure", gold=gold)
             self.switch_mode(GameMode.EVENTS)
@@ -229,7 +266,7 @@ class GameState:
 
         else:  # NodeType.EVENT
             from src.data.events import get_random_event
-            self.current_event = get_random_event(self.current_biome)
+            self.current_event = get_random_event(self.current_biome, rng=self.rng)
             self.current_event_text = self.current_event.description
             self.switch_mode(GameMode.EVENTS)
 
@@ -271,8 +308,7 @@ class GameState:
             self.switch_mode(GameMode.LOOT)
 
         elif result == CombatResult.PLAYER_DEFEAT:
-            from src.core.save_manager import save_manager
-            save_manager.delete_save()
+            self._delete_run()
             self.switch_mode(GameMode.GAME_OVER)
 
     def reset_to_title(self) -> None:

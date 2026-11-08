@@ -1,0 +1,7 @@
+-r requirements.txt
+
+# Local quality tools. CI will enable each as its baseline is made clean.
+ruff>=0.8.0,<1.0.0
+mypy>=1.13.0,<2.0.0
+coverage>=7.6.0,<8.0.0
+pip-audit>=2.8.0,<3.0.0

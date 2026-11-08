@@ -12,8 +12,12 @@ from src.core.commands import (
     PromoteClassCommand,
 )
 from src.core.game_state import GameMode
+import random
+
+from src.core.events import DamageDealtEvent, EventBus
 from src.core.persistence import MemoryStorageBackend
 from src.core.save_manager import SaveManager
+from src.core.services import GameServices
 from src.entities.item import Item, ItemType
 from src.data.abilities import ABILITY_REGISTRY
 
@@ -49,7 +53,7 @@ def test_session_persistence_lifecycle():
     session.state.floor = 4
     session.player.gold = 300
 
-    assert session.has_saved_game() is False
+    assert session.has_saved_game() is True
     assert session.save_game() is True
     assert session.has_saved_game() is True
 
@@ -63,6 +67,40 @@ def test_session_persistence_lifecycle():
 
     assert session.delete_save() is True
     assert session.has_saved_game() is False
+
+
+def test_sessions_keep_persistence_events_and_rng_isolated():
+    """Session-owned services prevent one run from leaking into another."""
+    first_storage = MemoryStorageBackend()
+    second_storage = MemoryStorageBackend()
+    first_services = GameServices(
+        persistence=SaveManager(storage=first_storage),
+        event_bus=EventBus(),
+        rng=random.Random(101),
+        run_seed=101,
+    )
+    second_services = GameServices(
+        persistence=SaveManager(storage=second_storage),
+        event_bus=EventBus(),
+        rng=random.Random(202),
+        run_seed=202,
+    )
+
+    first = GameSession(services=first_services)
+    second = GameSession(services=second_services)
+    first.start_new_game(class_id="warrior")
+
+    assert first.has_saved_game() is True
+    assert second.has_saved_game() is False
+    assert first.bus is not second.bus
+    assert first.state.rng is first_services.rng
+    assert second.state.rng is second_services.rng
+    assert first.state.run_seed == 101
+    assert second.state.run_seed == 202
+
+    first.bus.emit(DamageDealtEvent(source="first", target="enemy", amount=1))
+    assert len(first.drain_events()) == 1
+    assert second.drain_events() == []
 
 
 def test_session_dispatch_shop_commands():

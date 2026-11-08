@@ -1,6 +1,8 @@
 name: Build and Deploy Dual-Frontend Web & Desktop
 
 on:
+  pull_request:
+    branches: [ master ]
   push:
     branches: [ master ]
   workflow_dispatch:
@@ -15,7 +17,44 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  quality:
+    name: Quality gates (Python 3.12)
+    runs-on: ubuntu-latest
+    env:
+      SDL_VIDEODRIVER: dummy
+      SDL_AUDIODRIVER: dummy
+      PYGAME_HIDE_SUPPORT_PROMPT: "1"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install "ruff>=0.8.0,<1.0.0"
+
+      - name: Compile source and tests
+        run: python -m compileall -q src tests
+
+      - name: Run correctness lint
+        run: ruff check src tests tools
+
+      - name: Verify manifest-referenced assets
+        run: python tools/verify_assets.py
+
+      - name: Run full headless test suite
+        run: python -m pytest -q
+
   build-web:
+    if: github.event_name != 'pull_request'
+    needs: quality
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -45,6 +84,7 @@ jobs:
           path: 'dist/web'
 
   deploy-pages:
+    if: github.event_name != 'pull_request'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -56,6 +96,8 @@ jobs:
         uses: actions/deploy-pages@v4
 
   build-desktop:
+    if: github.event_name != 'pull_request'
+    needs: quality
     runs-on: windows-latest
     steps:
       - name: Checkout repo

@@ -7,6 +7,8 @@ and snapshot queries without directly manipulating entity internals.
 
 from __future__ import annotations
 
+import random
+import secrets
 from typing import TYPE_CHECKING
 from src.core.commands import (
     Command,
@@ -19,9 +21,10 @@ from src.core.commands import (
     SkipAbilityDraftCommand,
     PromoteClassCommand,
 )
-from src.core.events import DomainEvent, event_bus
+from src.core.events import DomainEvent, EventBus, event_bus
 from src.core.game_state import GameState, GameMode
 from src.core.save_manager import save_manager, SaveManager
+from src.core.services import GameServices
 from src.systems.combat import CombatResult, CombatSystem
 from src.systems.shop_service import ShopService
 from src.systems.loot_service import LootService
@@ -39,10 +42,29 @@ class GameSession:
         self,
         game_state: GameState | None = None,
         save_mgr: SaveManager | None = None,
+        services: GameServices | None = None,
     ) -> None:
+        if services is not None and save_mgr is not None:
+            raise ValueError("Pass either services or save_mgr, not both")
+
+        if services is None:
+            run_seed = secrets.randbits(64)
+            services = GameServices(
+                persistence=save_mgr if save_mgr is not None else save_manager,
+                event_bus=event_bus,
+                rng=random.Random(run_seed),
+                run_seed=run_seed,
+            )
+        self.services = services
+        self.save_manager = self.services.persistence
+        self.bus: EventBus = self.services.event_bus
         self.state: GameState = game_state if game_state is not None else GameState()
-        self.save_manager: SaveManager = save_mgr if save_mgr is not None else save_manager
-        self.bus = event_bus
+        self.state.configure_services(
+            self.save_manager,
+            self.services.rng,
+            self.bus,
+            self.services.run_seed,
+        )
 
     @property
     def player(self) -> Player:
@@ -88,9 +110,9 @@ class GameSession:
         """Return to title screen and reset session."""
         self.state.reset_to_title()
 
-    def switch_mode(self, mode: GameMode) -> None:
+    def switch_mode(self, mode: GameMode) -> bool:
         """Transition to another operational mode."""
-        self.state.switch_mode(mode)
+        return self.state.switch_mode(mode)
 
     def can_open_overlay(self) -> bool:
         """Check if modal overlays are allowed in the current state."""
