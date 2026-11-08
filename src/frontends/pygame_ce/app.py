@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import os
-import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
 import pygame
 
 from src.core.game_state import GameMode
 from src.core.session import GameSession
 from src.frontends.pygame_ce.audio_adapter import PygameAudioAdapter
+from src.frontends.pygame_ce.music_engine import DynamicMusicEngine, resolve_music_context
 from src.frontends.pygame_ce.renderer import PygameRenderer
 from src.frontends.pygame_ce.views.base import PygameView
 
@@ -31,6 +31,9 @@ from src.frontends.pygame_ce.views.end_game import PygameEndGameView
 from src.frontends.pygame_ce.views.credits import PygameCreditsView
 
 
+logger = logging.getLogger(__name__)
+
+
 class PygameApp:
     """Master application controller driving the Pygame-CE lifecycle and view routing."""
 
@@ -42,6 +45,8 @@ class PygameApp:
         fullscreen: bool = False,
         maximized: bool = False,
         session: GameSession | None = None,
+        music_engine: DynamicMusicEngine | None = None,
+        audio_adapter: PygameAudioAdapter | None = None,
     ) -> None:
         self.width: int = width
         self.height: int = height
@@ -49,6 +54,7 @@ class PygameApp:
         self.fullscreen: bool = fullscreen
         self.maximized: bool = maximized
         self.is_running: bool = False
+        self.last_error: Exception | None = None
 
         if self.headless:
             os.environ["SDL_VIDEODRIVER"] = "dummy"
@@ -87,11 +93,26 @@ class PygameApp:
         self.clock: pygame.time.Clock = pygame.time.Clock()
         self.session: GameSession = session if session is not None else GameSession()
         self.renderer: PygameRenderer = PygameRenderer()
-        self.audio_adapter: PygameAudioAdapter = PygameAudioAdapter(bus=self.session.bus)
+
+        # Dynamic Music Engine & Audio Adapter Initialization
+        if audio_adapter is not None:
+            self.audio_adapter = audio_adapter
+            self.music_engine = (
+                music_engine
+                if music_engine is not None
+                else getattr(audio_adapter, "music_engine", None) or DynamicMusicEngine()
+            )
+        else:
+            self.music_engine = (
+                music_engine if music_engine is not None else DynamicMusicEngine()
+            )
+            self.audio_adapter = PygameAudioAdapter(
+                bus=self.session.bus, music_engine=self.music_engine
+            )
 
         # Complete Registry for All 14 Operational Game Modes
         self.views: dict[GameMode, PygameView] = {
-            GameMode.WELCOME: PygameWelcomeView(),
+            GameMode.WELCOME: PygameWelcomeView(music_engine=self.music_engine),
             GameMode.CLASS_SELECT: PygameClassSelectView(),
             GameMode.BIOME_SELECT: PygameBiomeSelectView(),
             GameMode.MAP: PygameMapView(),
@@ -107,6 +128,15 @@ class PygameApp:
             GameMode.VICTORY: PygameEndGameView(),
             GameMode.CREDITS: PygameCreditsView(),
         }
+
+        # Initialize music context for the starting game mode
+        self.update_music_context()
+
+    def update_music_context(self, force_restart: bool = False) -> None:
+        """Synchronize dynamic music context with the active GameSession mode and state."""
+        target_context = resolve_music_context(self.session)
+        if target_context is not None:
+            self.music_engine.set_context(target_context, force_restart=force_restart)
 
     def get_active_view(self) -> PygameView:
         """Resolve active view for the current GameSession operational mode."""
@@ -130,11 +160,17 @@ class PygameApp:
                         pass
                     continue
 
+            self.music_engine.handle_event(event)
+
             active_view = self.get_active_view()
             active_view.handle_event(event, self.session)
 
     def update(self, dt: float) -> None:
-        """Advance view logic and timers."""
+        """Advance view logic, timers, and dynamic background music."""
+        # Synchronize dynamic music context and advance playback transitions
+        self.update_music_context()
+        self.music_engine.update(dt)
+
         # Global promotion safeguard matching Pyxel ViewManager
         if self.session.current_mode not in (
             GameMode.LOOT,
@@ -167,51 +203,64 @@ class PygameApp:
         if not self.headless:
             pygame.display.flip()
 
+    def _handle_frame_failure(self, error: Exception) -> None:
+        """Record a fatal frame error and terminate the loop safely.
+
+        Continuing after a failed update or draw can render mutated state every
+        frame and create an unbounded stream of tracebacks. The caller remains
+        responsible for presenting a recovery screen in a later UI pass.
+        """
+        self.last_error = error
+        self.is_running = False
+        logger.exception("Fatal Pygame frame failure; stopping the application loop")
+
     def run(self, max_frames: int | None = None) -> None:
         """Run application main loop."""
         self.is_running = True
         frames_rendered = 0
 
-        while self.is_running:
-            dt = self.clock.tick(60) / 1000.0  # 60 FPS
-            try:
-                self.handle_events()
-                self.update(dt)
-                self.draw()
-            except Exception as e:
-                import traceback
-                print(f"[QuestForAethelgard run error]: {e}")
-                traceback.print_exc()
+        try:
+            while self.is_running:
+                dt = self.clock.tick(60) / 1000.0  # 60 FPS
+                try:
+                    self.handle_events()
+                    self.update(dt)
+                    self.draw()
+                except Exception as error:
+                    self._handle_frame_failure(error)
+                    break
 
-            frames_rendered += 1
-            if max_frames is not None and frames_rendered >= max_frames:
-                break
-
-        if not self.headless:
-            pygame.quit()
+                frames_rendered += 1
+                if max_frames is not None and frames_rendered >= max_frames:
+                    break
+        finally:
+            self.music_engine.stop()
+            if not self.headless:
+                pygame.quit()
 
     async def run_async(self, max_frames: int | None = None) -> None:
-        """Run asynchronous application main loop for WebAssembly (Pygbag) and event loops."""
+        """Run the asynchronous main loop used by WebAssembly and event loops."""
         import asyncio
 
         self.is_running = True
         frames_rendered = 0
 
-        while self.is_running:
-            dt = self.clock.tick(60) / 1000.0  # 60 FPS
-            try:
-                self.handle_events()
-                self.update(dt)
-                self.draw()
-            except Exception as e:
-                import traceback
-                print(f"[QuestForAethelgard run_async error]: {e}")
-                traceback.print_exc()
+        try:
+            while self.is_running:
+                dt = self.clock.tick(60) / 1000.0  # 60 FPS
+                try:
+                    self.handle_events()
+                    self.update(dt)
+                    self.draw()
+                except Exception as error:
+                    self._handle_frame_failure(error)
+                    break
 
-            frames_rendered += 1
-            if max_frames is not None and frames_rendered >= max_frames:
-                break
-            await asyncio.sleep(0)
-
-        if not self.headless:
-            pygame.quit()
+                frames_rendered += 1
+                if max_frames is not None and frames_rendered >= max_frames:
+                    break
+                await asyncio.sleep(0)
+        finally:
+            self.music_engine.stop()
+            if not self.headless:
+                pygame.quit()

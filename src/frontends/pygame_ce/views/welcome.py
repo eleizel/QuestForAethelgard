@@ -11,6 +11,7 @@ from src.core.game_state import GameMode
 from src.core.i18n import i18n, t
 from src.core.theme import ThemeToken
 from src.frontends.pygame_ce.asset_manager import assets
+from src.frontends.pygame_ce.music_engine import AudioSettingsManager, DynamicMusicEngine
 from src.frontends.pygame_ce.views.base import PygameView
 
 if TYPE_CHECKING:
@@ -28,9 +29,80 @@ class PygameWelcomeView(PygameView):
         ("credits", "CREDITS", "CRÉDITOS"),
     ]
 
-    def __init__(self) -> None:
+    MUTE_BUTTON_RECT = pygame.Rect(960 - 140, 16, 124, 36)
+
+    def __init__(
+        self,
+        music_engine: DynamicMusicEngine | None = None,
+        settings_manager: AudioSettingsManager | None = None,
+    ) -> None:
         self.selected_index: int = 0
         self.pulse_timer: float = 0.0
+        self.music_engine: DynamicMusicEngine | None = music_engine
+        self.settings_manager: AudioSettingsManager = (
+            settings_manager
+            if settings_manager is not None
+            else (
+                music_engine.settings_manager
+                if music_engine is not None and getattr(music_engine, "settings_manager", None) is not None
+                else AudioSettingsManager()
+            )
+        )
+        self.mute_rect: pygame.Rect = self.MUTE_BUTTON_RECT.copy()
+        self.mute_hovered: bool = False
+
+    @property
+    def mute_button_rect(self) -> pygame.Rect:
+        """Alias property for mute_rect."""
+        return self.mute_rect
+
+    @property
+    def is_mute_hovered(self) -> bool:
+        """Alias property for mute_hovered."""
+        return self.mute_hovered
+
+    @is_mute_hovered.setter
+    def is_mute_hovered(self, val: bool) -> None:
+        self.mute_hovered = bool(val)
+
+    @property
+    def mute_button_text(self) -> str:
+        """Alias property returning current dynamic label."""
+        return self.get_mute_button_label()
+
+    def set_music_engine(self, music_engine: DynamicMusicEngine) -> None:
+        """Inject or update active DynamicMusicEngine reference."""
+        self.music_engine = music_engine
+        if getattr(music_engine, "settings_manager", None) is not None:
+            self.settings_manager = music_engine.settings_manager
+
+    def get_mute_button_rect(self) -> pygame.Rect:
+        """Return bounding box for mute button in 960x540 canvas coordinate space."""
+        return self.mute_rect.copy()
+
+    def is_muted(self) -> bool:
+        """Return True if background music is currently muted."""
+        if self.music_engine is not None:
+            return self.music_engine.is_muted()
+        return self.settings_manager.is_music_muted()
+
+    def set_muted(self, muted: bool) -> None:
+        """Explicitly set mute state on DynamicMusicEngine and/or AudioSettingsManager."""
+        if self.music_engine is not None:
+            self.music_engine.set_muted(muted)
+        else:
+            self.settings_manager.set_music_muted(muted)
+
+    def toggle_mute(self) -> bool:
+        """Toggle mute state, emit audio click cue, persist, and return new mute state."""
+        event_bus.emit_audio(AudioCue.CLICK)
+        if self.music_engine is not None:
+            return self.music_engine.toggle_mute()
+        return self.settings_manager.toggle_music_muted()
+
+    def get_mute_button_label(self) -> str:
+        """Return dynamic visual button text reflecting mute status."""
+        return "[♫ UNMUTE]" if self.is_muted() else "[♫ MUTE]"
 
     def _get_item_rects(self, frame_rect: pygame.Rect) -> list[pygame.Rect]:
         rects = []
@@ -42,7 +114,10 @@ class PygameWelcomeView(PygameView):
     def handle_event(self, event: pygame.event.Event, session: GameSession) -> None:
         """Handle keyboard arrows, hotkeys, and mouse interaction."""
         if event.type == pygame.KEYDOWN:
-            if event.key in (pygame.K_UP, pygame.K_w):
+            if event.key == pygame.K_m:
+                self.toggle_mute()
+                return
+            elif event.key in (pygame.K_UP, pygame.K_w):
                 self.selected_index = (self.selected_index - 1) % len(self.MENU_ITEMS)
             elif event.key in (pygame.K_DOWN, pygame.K_s):
                 self.selected_index = (self.selected_index + 1) % len(self.MENU_ITEMS)
@@ -58,6 +133,11 @@ class PygameWelcomeView(PygameView):
                 self._activate_option(3, session)
 
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            mute_rect = self.get_mute_button_rect()
+            if mute_rect.collidepoint(event.pos):
+                self.toggle_mute()
+                return
+
             frame_rect = pygame.Rect((960 - 360) // 2, 172, 360, 260)
             rects = self._get_item_rects(frame_rect)
             for idx, r in enumerate(rects):
@@ -65,6 +145,9 @@ class PygameWelcomeView(PygameView):
                     self.selected_index = idx
                     self._activate_option(idx, session)
                     return
+
+        elif event.type == pygame.MOUSEMOTION:
+            self.mute_hovered = self.get_mute_button_rect().collidepoint(event.pos)
 
     def _activate_option(self, index: int, session: GameSession) -> None:
         key = self.MENU_ITEMS[index][0]
@@ -84,6 +167,8 @@ class PygameWelcomeView(PygameView):
         """Update breathing pulse timer and track mouse hover."""
         self.pulse_timer += dt
         pos = pygame.mouse.get_pos()
+        self.mute_hovered = self.get_mute_button_rect().collidepoint(pos)
+
         frame_rect = pygame.Rect((960 - 360) // 2, 172, 360, 260)
         rects = self._get_item_rects(frame_rect)
         for idx, r in enumerate(rects):
@@ -120,7 +205,43 @@ class PygameWelcomeView(PygameView):
             align="center",
         )
 
-        # 4. Ornate 16-Bit Golden Frame
+        # 4. Interactive Mute/Unmute Button (Top-Right)
+        mute_rect = self.get_mute_button_rect()
+        btn_frame = assets.get_9slice_frame("frame_button_gold", mute_rect.width, mute_rect.height, margin=14)
+        if btn_frame:
+            surface.blit(btn_frame, mute_rect.topleft)
+        else:
+            pygame.draw.rect(surface, (218, 165, 32), mute_rect, width=2, border_radius=4)
+
+        if self.mute_hovered:
+            pygame.draw.rect(surface, (255, 236, 39), mute_rect, width=2, border_radius=4)
+
+        mute_label = self.get_mute_button_label()
+        mute_font = renderer.get_font(size=14, bold=True, variant="alagard")
+        shadow_surf = mute_font.render(mute_label, True, (10, 12, 18))
+        surface.blit(
+            shadow_surf,
+            (mute_rect.centerx - shadow_surf.get_width() // 2 + 1, mute_rect.centery - 7),
+        )
+
+        mute_token = (
+            ThemeToken.TEXT_HIGHLIGHT
+            if self.mute_hovered
+            else (ThemeToken.TEXT_ALERT if self.is_muted() else ThemeToken.TEXT_NORMAL)
+        )
+        renderer.draw_text(
+            surface,
+            mute_label,
+            mute_rect.centerx,
+            mute_rect.centery - 8,
+            token=mute_token,
+            size=14,
+            bold=True,
+            align="center",
+            font_variant="alagard",
+        )
+
+        # 5. Ornate 16-Bit Golden Frame
         frame = assets.get_ui_component("frame_gold_ornate")
         frame_rect = pygame.Rect((w - 360) // 2, 172, 360, 260)
         if frame:
