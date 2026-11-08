@@ -162,8 +162,9 @@ def test_default_save_dir_uses_user_data_location(monkeypatch):
 
     path = default_save_dir()
 
-    assert path.endswith(r"QuestForAethelgard\saves")
+    assert path.endswith(("QuestForAethelgard/saves", r"QuestForAethelgard\saves"))
     assert not path == "saves"
+
 
 def test_save_and_load_full_run(tmp_path):
     backend = FileStorageBackend(save_dir=str(tmp_path))
@@ -307,9 +308,6 @@ def test_map_view_save_and_quit(tmp_path, monkeypatch):
     # State should have switched to WELCOME and save file exists
     assert state.current_mode == GameMode.WELCOME
     assert save_manager.has_save()
-
-
-
 
 
 def test_detect_storage_backend_pygbag(monkeypatch):
