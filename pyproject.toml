@@ -1,0 +1,38 @@
+[project]
+name = "quest-for-aethelgard"
+version = "0.1.0"
+description = "A dual-frontend gothic-fantasy roguelike RPG."
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "pygame-ce>=2.5.0,<3.0.0",
+    "pyxel>=2.0.0,<3.0.0",
+    "pillow>=10.0.0,<12.0.0",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["build", "dist", ".venv"]
+
+[tool.ruff.lint]
+# Start with syntax and undefined-name correctness. Import/style cleanup is a
+# separately tracked baseline: the legacy tree currently has hundreds of
+# findings, and a bulk auto-fix would be unsafe while feature work is active.
+select = ["E9", "F821"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["src/core", "src/entities", "src/systems"]
+check_untyped_defs = true
+warn_unused_ignores = true
+warn_return_any = true
+no_implicit_optional = true
+
+[tool.coverage.run]
+branch = true
+source = ["src/core", "src/entities", "src/systems"]
+
+[tool.coverage.report]
+skip_covered = true
+show_missing = true

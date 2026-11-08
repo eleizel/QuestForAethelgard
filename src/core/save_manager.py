@@ -12,7 +12,9 @@ from __future__ import annotations
 import json
 import os
 import sys
-from typing import Any, Protocol
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
 
 from src.core.game_state import GameMode, GameState
 from src.entities.actor import Stats
@@ -20,30 +22,13 @@ from src.entities.item import EquipSlot, EquipmentItem
 from src.entities.player import Player
 from src.systems.inventory import Inventory, MAX_BELT_SLOTS
 from src.systems.map_gen import MapGraph, MapNode, NodeType
-from src.core.persistence import RunMemento, RunRepository, MemoryStorageBackend, SAVE_STORAGE_KEY, CURRENT_SAVE_VERSION
-
-SAVE_STORAGE_KEY = "quest_for_aethelgard_save"
-CURRENT_SAVE_VERSION = 1
-
-
-class StorageBackend(Protocol):
-    """Protocol defining persistence storage operations."""
-
-    def get(self, key: str) -> str | None:
-        """Retrieve raw string data for key, or None if absent."""
-        ...
-
-    def set(self, key: str, value: str) -> bool:
-        """Store raw string data for key. Returns True on success."""
-        ...
-
-    def remove(self, key: str) -> bool:
-        """Remove key from storage. Returns True if removed."""
-        ...
-
-    def exists(self, key: str) -> bool:
-        """Check if key exists and contains non-empty data."""
-        ...
+from src.core.persistence import (
+    CURRENT_SAVE_VERSION,
+    SAVE_STORAGE_KEY,
+    RunMemento,
+    RunRepository,
+    StorageBackend,
+)
 
 
 class LocalStorageBackend:
@@ -86,11 +71,26 @@ class LocalStorageBackend:
             return False
 
 
+def default_save_dir() -> str:
+    """Return the platform-appropriate directory for user-owned run data."""
+    if sys.platform.startswith("win"):
+        root = os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA")
+        if root:
+            return str(Path(root) / "QuestForAethelgard" / "saves")
+    if sys.platform == "darwin":
+        return str(Path.home() / "Library" / "Application Support" / "QuestForAethelgard" / "saves")
+
+    root = os.environ.get("XDG_DATA_HOME")
+    if root:
+        return str(Path(root) / "quest-for-aethelgard" / "saves")
+    return str(Path.home() / ".local" / "share" / "quest-for-aethelgard" / "saves")
+
+
 class FileStorageBackend:
     """Desktop Python fallback storage utilizing atomic JSON files on disk."""
 
-    def __init__(self, save_dir: str = "saves") -> None:
-        self.save_dir = save_dir
+    def __init__(self, save_dir: str | None = None) -> None:
+        self.save_dir = save_dir if save_dir is not None else default_save_dir()
 
     def _get_path(self, key: str) -> str:
         return os.path.join(self.save_dir, f"{key}.json")
@@ -107,9 +107,9 @@ class FileStorageBackend:
             return None
 
     def set(self, key: str, value: str) -> bool:
+        path = self._get_path(key)
         try:
             os.makedirs(self.save_dir, exist_ok=True)
-            path = self._get_path(key)
             temp_path = f"{path}.tmp"
             with open(temp_path, "w", encoding="utf-8") as f:
                 f.write(value)
@@ -132,6 +132,19 @@ class FileStorageBackend:
 
     def exists(self, key: str) -> bool:
         return os.path.exists(self._get_path(key))
+
+    def preserve_invalid(self, key: str, raw_value: str) -> bool:
+        """Keep a timestamped copy of a corrupt save without touching the original."""
+        try:
+            os.makedirs(self.save_dir, exist_ok=True)
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+            backup_path = os.path.join(self.save_dir, f"{key}.{timestamp}.corrupt.json")
+            with open(backup_path, "w", encoding="utf-8") as backup:
+                backup.write(raw_value)
+            return True
+        except OSError as error:
+            print(f"FileStorage corrupt-save backup error for {key}: {error}")
+            return False
 
 
 def detect_storage_backend() -> StorageBackend:
@@ -363,6 +376,7 @@ def serialize_game_state(game_state: GameState) -> dict[str, Any]:
         "previous_mode": game_state.previous_mode.name,
         "player": serialize_player(game_state.player),
         "map_graph": serialize_map_graph(game_state.map_graph) if game_state.map_graph else None,
+        "run_seed": game_state.run_seed,
     }
 
 
@@ -372,6 +386,8 @@ def restore_game_state(game_state: GameState, data: dict[str, Any]) -> bool:
         game_state.act = int(data.get("act", 1))
         game_state.biome_route_mode = str(data.get("biome_route_mode", "FATE"))
         game_state.current_biome = str(data.get("current_biome", "arboretum"))
+        saved_seed = data.get("run_seed")
+        game_state.run_seed = int(saved_seed) if saved_seed is not None else None
         game_state.combat = None
         game_state.pending_loot = []
         game_state.merchant_stock = []
@@ -437,6 +453,11 @@ class SaveManager:
         memento = self.repository.load()
         return memento.to_dict() if memento else None
 
+    @property
+    def last_load_error(self) -> str | None:
+        """Expose the last rejected save reason for a controlled UI recovery flow."""
+        return self.repository.last_load_error
+
     def get_save_summary(self) -> dict[str, Any] | None:
         """Extract quick run overview for UI banners without reconstructing full entities."""
         data = self.get_save_data()
@@ -450,6 +471,7 @@ class SaveManager:
             "act": data.get("act", 1),
             "floor": data.get("floor", 1),
             "current_biome": data.get("current_biome", "arboretum"),
+            "run_seed": data.get("run_seed"),
         }
 
     def save_game(self, game_state: GameState) -> bool:

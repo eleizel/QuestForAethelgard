@@ -107,10 +107,22 @@ class GameOverState(ModeState):
     def can_open_overlay(self, context: GameState) -> bool:
         return False
 
+    def can_transition_to(self, target_mode: GameMode) -> bool:
+        """A defeated run can only return to title/credits or remain visible."""
+        from src.core.game_state import GameMode
+
+        return target_mode in {GameMode.GAME_OVER, GameMode.WELCOME, GameMode.CREDITS}
+
 
 class VictoryState(ModeState):
     def can_open_overlay(self, context: GameState) -> bool:
         return False
+
+    def can_transition_to(self, target_mode: GameMode) -> bool:
+        """A completed run cannot re-enter gameplay without a fresh title flow."""
+        from src.core.game_state import GameMode
+
+        return target_mode in {GameMode.VICTORY, GameMode.WELCOME, GameMode.CREDITS}
 
 
 class GameStateMachine:

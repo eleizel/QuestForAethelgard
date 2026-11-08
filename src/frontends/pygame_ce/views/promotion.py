@@ -95,7 +95,7 @@ class PygamePromotionView(PygameView):
         res = session.dispatch(PromoteClassCommand(class_id=promo_id))
         if res.success:
             # Level 10 Epic Draft is tied to class promotion - switch directly to ABILITY_CHOICE
-            session.state.switch_mode(GameMode.ABILITY_CHOICE)
+            session.switch_mode(GameMode.ABILITY_CHOICE)
             return True
         return False
 
@@ -106,7 +106,7 @@ class PygamePromotionView(PygameView):
         if ret_mode == GameMode.LOOT or ret_mode is None:
             session.state.continue_after_rewards()
         else:
-            session.state.switch_mode(ret_mode)
+            session.switch_mode(ret_mode)
 
     def update(self, dt: float, session: GameSession) -> None:
         """Update hover state."""

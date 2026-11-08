@@ -1,8 +1,16 @@
 """Unit tests for Phase 5: Memento & Repository Pattern for persistence."""
 
+import json
+
 import pytest
 from src.core.game_state import GameState, GameMode
-from src.core.persistence import RunMemento, RunRepository, MemoryStorageBackend
+from src.core.persistence import (
+    SAVE_STORAGE_KEY,
+    MemoryStorageBackend,
+    RunMemento,
+    RunRepository,
+    migrate_save_payload,
+)
 from src.core.save_manager import create_run_memento, restore_from_memento
 from src.entities.player import Player
 
@@ -34,18 +42,21 @@ def test_run_memento_immutability_and_roundtrip():
         previous_mode_name="LOOT",
         player_data={"name": "Aethelgard", "level": 10, "class_id": "paladin"},
         map_data={"current_node_id": 42},
+        run_seed=1234,
     )
 
     data = memento.to_dict()
     assert data["floor"] == 5
     assert data["act"] == 2
     assert data["player"]["class_id"] == "paladin"
+    assert data["run_seed"] == 1234
 
     restored = RunMemento.from_dict(data)
     assert restored.floor == memento.floor
     assert restored.act == memento.act
     assert restored.current_biome == memento.current_biome
     assert restored.player_data == memento.player_data
+    assert restored.run_seed == 1234
 
 
 def test_run_repository_lifecycle():
@@ -81,6 +92,32 @@ def test_run_repository_lifecycle():
     assert deleted is True
     assert repo.exists() is False
     assert repo.load() is None
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"save_version": 2, "player": {}},
+        {"save_version": 1, "player": []},
+        {"save_version": 1, "player": {}, "floor": 0},
+        {"save_version": 1, "player": {}, "map_graph": []},
+    ],
+)
+def test_repository_rejects_invalid_or_newer_save_payloads(payload):
+    """Invalid data and unsupported future schemas never reach restoration."""
+    storage = MemoryStorageBackend()
+    storage.set(SAVE_STORAGE_KEY, json.dumps(payload))
+
+    assert RunRepository(storage).load() is None
+
+
+def test_unversioned_save_payload_migrates_to_current_schema():
+    """Pre-versioned payloads retain the compatibility behavior of version 1."""
+    payload = migrate_save_payload({"player": {"name": "Aethelgard"}})
+
+    assert payload["save_version"] == 1
+    assert payload["floor"] == 1
+    assert payload["act"] == 1
 
 
 def test_create_memento_and_restore_gamestate():

@@ -32,7 +32,7 @@ The game runs locally as a desktop Python application, as a **standalone native 
   - [Controls Reference](#controls-reference)
 - [Project Structure](#project-structure)
 - [Development, Testing & Monte Carlo Telemetry](#development-testing--monte-carlo-telemetry)
-  - [Automated Test Suite (263 Tests)](#automated-test-suite-263-tests)
+  - [Automated Test Suite](#automated-test-suite)
   - [Architectural Boundary Linter](#architectural-boundary-linter)
   - [Monte Carlo Balance Telemetry](#monte-carlo-balance-telemetry)
 - [License](#license)
@@ -52,7 +52,7 @@ The game runs locally as a desktop Python application, as a **standalone native 
 - **192-Item Tiered Equipment System**: Equip 7 paperdoll slots (Main Hand, Off Hand, Helmet, Armor, Legs, Ring 1, Ring 2) across 5 rarity tiers with dynamic stat comparison diffs and on-hit/on-damaged procs.
 - **Interactive Narrative Events**: Rich story scenarios with stat/gold/item requirement checks, risk-reward decision trees, and consequence resolution.
 - **Merchant Shop with Live Feedback**: Merchant inventory offering equipment, potions, and herbs with dynamic stat comparisons and live transaction toasts.
-- **Cross-Platform Persistence**: Atomic JSON saves on desktop (`saves/quest_for_aethelgard_save.json`) and Web `LocalStorage`, backed by the Memento and Repository design patterns.
+- **Cross-Platform Persistence**: Atomic JSON saves in the desktop user's application-data directory and Web `LocalStorage`, backed by the Memento and Repository design patterns.
 - **No Virtual Gamepad Clutter**: Web builds feature clean, unobtrusive canvas layouts with mobile touch controls routed directly to interactive UI components rather than overlay joysticks.
 
 ---
@@ -75,7 +75,7 @@ The codebase strictly follows clean architecture principles and software design 
 
 ## Requirements
 
-- Python 3.10 or newer
+- Python 3.12 or 3.13 (the CI-supported versions)
 - pip
 
 Main runtime dependencies:
@@ -281,12 +281,12 @@ QuestForAethelgard/
 
 ## Development, Testing & Monte Carlo Telemetry
 
-### Automated Test Suite (263 Tests)
+### Automated Test Suite
 
 Run the full automated test suite:
 
 ```powershell
-python -m pytest
+.\.venv\Scripts\python.exe -m pytest -q
 ```
 
 ### Architectural Boundary Linter
@@ -294,7 +294,7 @@ python -m pytest
 Enforce that the domain core (`src/core`, `src/entities`, `src/systems`, `src/data`) maintains zero imports from GUI frameworks (`pyxel`, `pygame`, `src.ui`):
 
 ```powershell
-python -m pytest tests/test_architecture_boundary.py
+.\.venv\Scripts\python.exe -m pytest tests/test_architecture_boundary.py -q
 ```
 
 ### Monte Carlo Balance Telemetry
@@ -302,7 +302,7 @@ python -m pytest tests/test_architecture_boundary.py
 Execute headless Monte Carlo simulation trials to measure win rates and balance across thousands of simulated runs:
 
 ```powershell
-python -m pytest tests/simulations/test_monte_carlo_balance.py -s
+.\.venv\Scripts\python.exe -m pytest tests/simulations/test_monte_carlo_balance.py -s
 ```
 
 All 6 promoted classes are calibrated to an Act 3 victory rate between **40% and 50%**.
@@ -312,3 +312,11 @@ All 6 promoted classes are calibrated to an Act 3 victory rate between **40% and
 ## License
 
 All rights reserved. See repository metadata for licensing terms.
+
+## Project Operations
+
+- [Contributing](CONTRIBUTING.md)
+- [Architecture](ARCHITECTURE.md)
+- [Testing](TESTING.md)
+- [Release checklist](RELEASING.md)
+- [Security policy](SECURITY.md)

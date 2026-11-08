@@ -87,3 +87,15 @@ def test_gamestate_delegation_sync():
     assert state.current_mode == GameMode.INVENTORY
     assert state.fsm.current_mode == GameMode.INVENTORY
     assert state.previous_mode == GameMode.MAP
+
+
+@pytest.mark.parametrize("terminal_mode", [GameMode.GAME_OVER, GameMode.VICTORY])
+def test_terminal_states_reject_gameplay_reentry(terminal_mode):
+    """Terminal screens can only lead back through the title/credits flow."""
+    state = GameState()
+    state.switch_mode(terminal_mode)
+
+    assert state.switch_mode(GameMode.COMBAT) is False
+    assert state.current_mode == terminal_mode
+    assert state.switch_mode(GameMode.WELCOME) is True
+    assert state.current_mode == GameMode.WELCOME

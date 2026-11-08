@@ -139,7 +139,7 @@ class PygameAbilityChoiceView(PygameView):
             if ret_mode == GameMode.LOOT:
                 session.state.continue_after_rewards()
             else:
-                session.state.switch_mode(ret_mode)
+                session.switch_mode(ret_mode)
         else:
             session.state.continue_after_rewards()
 
