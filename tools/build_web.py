@@ -20,6 +20,36 @@ import sys
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
+AUDIO_REJECTION_GUARD = """
+    <!-- Audio Promise Rejection Guard for WebAssembly / Browsers -->
+    <script>
+        (function() {
+            if (typeof window !== 'undefined' && typeof HTMLMediaElement !== 'undefined') {
+                const originalPlay = HTMLMediaElement.prototype.play;
+                HTMLMediaElement.prototype.play = function() {
+                    const result = originalPlay.apply(this, arguments);
+                    if (result !== undefined && typeof result.catch === 'function') {
+                        result.catch(function(err) {
+                            if (err && (err.name === 'AbortError' || (err.message && err.message.indexOf('interrupted by a call to pause') !== -1))) {
+                                return;
+                            }
+                        });
+                    }
+                    return result;
+                };
+
+                window.addEventListener('unhandledrejection', function(event) {
+                    const reason = event.reason;
+                    if (reason && (reason.name === 'AbortError' || (reason.message && reason.message.indexOf('interrupted by a call to pause') !== -1))) {
+                        event.preventDefault();
+                    }
+                });
+            }
+        })();
+    </script>
+"""
+
+
 
 def ensure_assets() -> None:
     """Ensure game.pyxres is generated and verified before staging/packaging."""
@@ -314,9 +344,9 @@ def build_pygame_web(dist_web: Path) -> None:
     """
 
     if "</head>" in html:
-        html = html.replace("</head>", f"{landscape_head_tags}\n{landscape_and_ui_css}\n</head>", 1)
+        html = html.replace("</head>", f"{AUDIO_REJECTION_GUARD}\n{landscape_head_tags}\n{landscape_and_ui_css}\n</head>", 1)
     else:
-        html += landscape_head_tags + landscape_and_ui_css
+        html += AUDIO_REJECTION_GUARD + landscape_head_tags + landscape_and_ui_css
 
     if "</body>" in html:
         html = html.replace("</body>", f"{landscape_ui_elements}\n</body>", 1)
@@ -389,9 +419,9 @@ def build_pyxel_web(dist_web: Path) -> None:
     """
 
     if "<head>" in pyxel_html:
-        pyxel_html = pyxel_html.replace("<head>", f"<head>\n{pyxel_addons}", 1)
+        pyxel_html = pyxel_html.replace("<head>", f"<head>\n{AUDIO_REJECTION_GUARD}\n{pyxel_addons}", 1)
     else:
-        pyxel_html = f"{pyxel_addons}\n{pyxel_html}"
+        pyxel_html = f"{AUDIO_REJECTION_GUARD}\n{pyxel_addons}\n{pyxel_html}"
 
     dest_index.write_text(pyxel_html, encoding="utf-8")
     print("    [OK] Pyxel Web Edition built and patched (Virtual Gamepad Disabled).")
